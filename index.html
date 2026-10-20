@@ -1682,16 +1682,9 @@ const streetLabelsLayer = L.esri.dynamicMapLayer({
 const pbd07Layer = L.kmzLayer();
 pbd07Layer.load('./KMZs/PBD07.kmz');
 
-const pbd08Layer = L.kmzLayer();
-pbd08Layer.load('./KMZs/PBD08.kmz');
-
-const pbd09Layer = L.kmzLayer();
-pbd09Layer.load('./KMZs/PBD09.kmz?v=2');
-
 const kmzOverlays = {
-  "PBD07 Overlay": pbd07Layer,
-  "PBD08 Overlay": pbd08Layer,
-  "PBD09 Overlay": pbd09Layer
+  "PBD07 Overlay": pbd07Layer
+ 
 };
 
 L.control.layers(null, kmzOverlays, { 
