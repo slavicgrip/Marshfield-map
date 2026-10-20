@@ -1680,7 +1680,7 @@ const streetLabelsLayer = L.esri.dynamicMapLayer({
     }, 200); // Small timeout ensures the DOM elements are fully rendered first
 	
 const pbd03Layer = L.kmzLayer();
-pbd03Layer.load('./KMZs/' + encodeURI('Wausau PBD03.kmz'));
+pbd03Layer.load(encodeURI('Wausau PBD03.kmz'));
 
 const pbd08Layer = L.kmzLayer();
 pbd08Layer.load('./KMZs/PBD08.kmz');
