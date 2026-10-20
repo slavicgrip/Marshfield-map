@@ -1679,17 +1679,24 @@ const streetLabelsLayer = L.esri.dynamicMapLayer({
       });
     }, 200); // Small timeout ensures the DOM elements are fully rendered first
 	
-const pbd07Layer = L.kmzLayer();
-pbd07Layer.load('./KMZs/PBD07.kmz');
+const pbd03Layer = L.kmzLayer();
+pbd03Layer.load('./KMZs/' + encodeURI('Wausau CAN- PBD03.kmz'));
+
+const pbd08Layer = L.kmzLayer();
+pbd08Layer.load('./KMZs/PBD08.kmz');
+
+const pbd09Layer = L.kmzLayer();
+pbd09Layer.load('./KMZs/PBD09.kmz');
 
 const kmzOverlays = {
-  "PBD07 Overlay": pbd07Layer
- 
+  "Wausau CAN - PBD03": pbd03Layer,
+  "PBD08 Overlay": pbd08Layer,
+  "PBD09 Overlay": pbd09Layer
 };
 
 L.control.layers(null, kmzOverlays, { 
   position: 'bottomleft',
-  collapsed: false 
+  collapsed: true
 }).addTo(map);
 
   </script>
