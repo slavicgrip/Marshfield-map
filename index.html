@@ -42,6 +42,23 @@
 
 <script src="https://unpkg.com/leaflet-kmz@latest/dist/leaflet-kmz.js"></script>
 
+<style>
+  /* Force the Fiber panel to the bottom-left */
+  #kmz-legend-panel {
+    position: absolute !important;
+    bottom: 20px !important;
+    left: 20px !important;
+    right: auto !important;
+  }
+
+  /* Force the Filter Pins panel to the bottom-right */
+  #legend-panel {
+    position: absolute !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    left: auto !important;
+  }
+
   <style>
   .zone-row {
       display: flex;
