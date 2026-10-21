@@ -24,42 +24,42 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
  
- <!-- Load Esri Leaflet plugin right after regular Leaflet -->
-<script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
+  <!-- Load Esri Leaflet plugin right after regular Leaflet -->
+  <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
 
-<!-- Load Esri Leaflet Renderers plugin to preserve ArcGIS styling -->
-<script src="https://unpkg.com/esri-leaflet-renderers@3.0.0/dist/esri-leaflet-renderers.js"></script>
+  <!-- Load Esri Leaflet Renderers plugin to preserve ArcGIS styling -->
+  <script src="https://unpkg.com/esri-leaflet-renderers@3.0.0/dist/esri-leaflet-renderers.js"></script>
 
-<!-- Leaflet Grouped Layer Control CSS -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-groupedlayercontrol/0.6.1/leaflet.groupedlayercontrol.min.css" />
+  <!-- Leaflet Grouped Layer Control CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-groupedlayercontrol/0.6.1/leaflet.groupedlayercontrol.min.css" />
 
-<!-- Leaflet Grouped Layer Control JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-groupedlayercontrol/0.6.1/leaflet.groupedlayercontrol.min.js"></script>
+  <!-- Leaflet Grouped Layer Control JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-groupedlayercontrol/0.6.1/leaflet.groupedlayercontrol.min.js"></script>
 
-<!-- Leaflet Control Layers Tree CSS & JS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet.control.layers.tree/L.Control.Layers.Tree.css" />
-<script src="https://unpkg.com/leaflet.control.layers.tree/L.Control.Layers.Tree.js"></script>
+  <!-- Leaflet Control Layers Tree CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.control.layers.tree/L.Control.Layers.Tree.css" />
+  <script src="https://unpkg.com/leaflet.control.layers.tree/L.Control.Layers.Tree.js"></script>
 
-<script src="https://unpkg.com/leaflet-kmz@latest/dist/leaflet-kmz.js"></script>
+  <script src="https://unpkg.com/leaflet-kmz@latest/dist/leaflet-kmz.js"></script>
 
-<style>
-  /* Force the Fiber panel to the bottom-left */
-  #kmz-legend-panel {
-    position: absolute !important;
-    bottom: 20px !important;
-    left: 20px !important;
-    right: auto !important;
-  }
+  <style>
+    /* Force the Fiber panel to the bottom-left */
+    #kmz-legend-panel {
+      position: absolute !important;
+      bottom: 20px !important;
+      left: 20px !important;
+      right: auto !important;
+    }
 
-  /* Force the Filter Pins panel to the bottom-right */
-  #legend-panel {
-    position: absolute !important;
-    bottom: 20px !important;
-    right: 20px !important;
-    left: auto !important;
-  }
+    /* Force the Filter Pins panel to the bottom-right */
+    #legend-panel {
+      position: absolute !important;
+      bottom: 20px !important;
+      right: 20px !important;
+      left: auto !important;
+    }
 
-  .zone-row {
+    .zone-row {
       display: flex;
       align-items: center;
       gap: 4px;
@@ -134,7 +134,7 @@
       border: 1px solid #4a6278;
       background-color: #34495e;
       color: white;
-      font-size: 16px; /* Prevents iOS auto-zoom on input focus */
+      font-size: 16px;
     }
     #address-input::placeholder { color: #bdc3c7; }
     #address-input:focus { outline: none; background-color: #3d566e; border-color: #3498db; }
@@ -177,7 +177,7 @@
       border-radius: 8px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.2);
       width: 300px;
-      display: none; /* Hidden by default until logged in */
+      display: none;
     }
     
     .zones-panel.collapsed .zones-body,
@@ -244,53 +244,6 @@
       background-color: white; width: 34px; height: 34px;
       line-height: 34px; text-align: center; font-size: 16px;
       cursor: pointer; border-radius: 4px; box-shadow: 0 1px 5px rgba(0,0,0,0.4); user-select: none;
-    }
-
-    /* POPUP STYLES */
-    .popup-content { display: flex; flex-direction: column; gap: 8px; min-width: 200px; max-width: 240px; }
-    .popup-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 4px; }
-    .popup-title-text { font-weight: bold; font-size: 14px; color: #2c3e50; }
-    .popup-content input[type="text"], .popup-content textarea, .popup-content select {
-      width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;
-    }
-    .popup-content textarea { resize: vertical; min-height: 50px; }
-
-    .file-upload-label {
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      background: #f0f3f6; border: 1px dashed #b0bec5; border-radius: 4px;
-      padding: 8px; cursor: pointer; font-size: 12px; color: #34495e; font-weight: 600;
-    }
-    .file-upload-label:hover { background: #e2e8f0; }
-
-    .image-gallery { display: flex; gap: 4px; overflow-x: auto; padding: 4px 0; }
-    .image-thumb-container { position: relative; flex-shrink: 0; }
-    .image-thumb-container img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; }
-    .delete-img-btn {
-      position: absolute; top: -4px; right: -4px; background: #e74c3c; color: white;
-      border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px;
-      line-height: 18px; text-align: center; cursor: pointer; font-weight: bold;
-    }
-
-    .popup-actions { display: flex; gap: 6px; margin-top: 4px; }
-    .btn {
-      padding: 8px 10px; border: none; border-radius: 4px; color: white;
-      cursor: pointer; font-size: 12px; font-weight: bold; min-height: 36px;
-    }
-    .btn-save { background-color: #2ecc71; flex: 1; }
-    .btn-delete { background-color: #e74c3c; }
-    .btn-close { background-color: transparent; font-size: 16px; padding: 0 4px; border: none; color: #7f8c8d; cursor: pointer; line-height: 1; }
-    .btn-close:hover { color: #2c3e50; }
-
-    .modal-overlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.5); display: none; align-items: center;
-      justify-content: center; z-index: 2000;
-    }
-    .modal-card { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 340px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
-    .modal-card input { font-size: 16px; }
-
-    @media (max-width: 600px) {
-      .header-title { display: none; }
     }
 
     .pin-actions {
@@ -380,10 +333,11 @@
       </div>
     </div>
     <div class="header-right" style="position: relative; display: flex; align-items: center; gap: 10px;">
-      <div class="status-badge">
-        <span id="status-dot" class="status-dot"></span>
+      <div class="status-badge" style="display: flex; gap: 6px; align-items: center;">
+        <span id="status-dot" class="status-dot" title="Database Connection"></span>
+        <span id="arcgis-status-dot" class="status-dot" style="background-color: #f39c12;" title="ArcGIS / Utility Services"></span>
       </div>
-      <button id="auth-btn" class="auth-btn" onclick="openLoginChoiceModal()">Login</button>
+      <button id="auth-btn" class="auth-btn" onclick="window.openLoginChoiceModal()">Login</button>
     </div>
   </header>
 
@@ -455,6 +409,37 @@
   </div>
 
   <script>
+    // --- GLOBAL MODAL HELPERS (GUARANTEED SCOPE) ---
+    window.openLoginChoiceModal = function() {
+      const modal = document.getElementById("login-choice-modal");
+      if (modal) modal.style.display = "flex";
+    };
+
+    window.closeLoginChoiceModal = function() {
+      const modal = document.getElementById("login-choice-modal");
+      if (modal) modal.style.display = "none";
+    };
+
+    window.openArcGISLoginModal = function() {
+      const modal = document.getElementById("arcgis-login-modal");
+      if (modal) modal.style.display = "flex";
+    };
+
+    window.closeArcGISLoginModal = function() {
+      const modal = document.getElementById("arcgis-login-modal");
+      if (modal) modal.style.display = "none";
+    };
+
+    window.openLoginModal = function() {
+      const modal = document.getElementById("login-modal");
+      if (modal) modal.style.display = "flex";
+    };
+
+    window.closeLoginModal = function() {
+      const modal = document.getElementById("login-modal");
+      if (modal) modal.style.display = "none";
+    };
+
     let secureEsriLayers = [];
 
     const myBaseServices = [
@@ -1208,8 +1193,10 @@
     auth.onAuthStateChanged(async user => {
       currentUser = user;
       const authBtn = document.getElementById("auth-btn");
-      authBtn.innerText = user ? "Logout" : "Login";
-      authBtn.onclick = user ? logoutUser : openLoginChoiceModal;
+      if (authBtn) {
+        authBtn.innerText = user ? "Logout" : "Login";
+        authBtn.onclick = user ? logoutUser : window.openLoginChoiceModal;
+      }
 
       if (user) {
         try {
@@ -1247,8 +1234,6 @@
       });
     });
 
-    function openLoginModal() { document.getElementById("login-modal").style.display = "flex"; }
-    function closeLoginModal() { document.getElementById("login-modal").style.display = "none"; }
     async function logoutUser() { await auth.signOut(); }
 
     async function loginUser() {
@@ -1288,26 +1273,6 @@
       } catch (err) {
         alert("Error sending password reset email: " + err.message);
       }
-    }
-
-    function openLoginChoiceModal() {
-      const modal = document.getElementById("login-choice-modal");
-      if (modal) modal.style.display = "flex";
-    }
-
-    function closeLoginChoiceModal() {
-      const modal = document.getElementById("login-choice-modal");
-      if (modal) modal.style.display = "none";
-    }
-
-    function openArcGISLoginModal() {
-      const modal = document.getElementById("arcgis-login-modal");
-      if (modal) modal.style.display = "flex";
-    }
-
-    function closeArcGISLoginModal() {
-      const modal = document.getElementById("arcgis-login-modal");
-      if (modal) modal.style.display = "none";
     }
 
     // CITY ARCGIS AUTH & LAYERS
@@ -1471,6 +1436,10 @@
         position: 'topright', 
         collapsed: true 
       }).addTo(map);
+
+      // Light up ArcGIS status dot
+      const arcDot = document.getElementById("arcgis-status-dot");
+      if (arcDot) arcDot.style.backgroundColor = "#2ecc71";
 
       alert("City ArcGIS layers loaded successfully!");
     }
@@ -1638,4 +1607,93 @@
       <input type="text" id="edit-title" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
       
       <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Note / Description:</label>
-      <textarea id="edit-note" rows="3" style="width: 100%; padding: 8px; margin-top
+      <textarea id="edit-note" rows="3" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+      
+      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Pin Category / Color:</label>
+      <select id="edit-color" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; background: white;">
+        <option value="purple">🟣 Purple (Default)</option>
+        <option value="blue">🔵 Blue (Water)</option>
+        <option value="red">🔴 Red (Electric)</option>
+        <option value="green">🟢 Green (Storm/Sewer)</option>
+        <option value="pink">🩷 Pink (Fiber Optic)</option>
+        <option value="yellow">🟡 Yellow (WE Energies)</option>
+      </select>
+      
+      <label style="display: block; margin-top: 12px; font-size: 13px; font-weight: 500;">Current Photos:</label>
+      <div id="edit-photo-preview" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; margin-bottom: 10px;"></div>
+      
+      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Add More Photos:</label>
+      <input type="file" id="edit-file-input" multiple accept="image/*" style="width: 100%; margin-top: 4px; font-size: 12px;">
+      <div id="upload-status-modal" style="font-size: 11px; color: #666; margin-top: 4px; display: none;"></div>
+      
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+        <button type="button" onclick="document.getElementById('edit-modal').style.display='none'" style="padding: 6px 12px; background: #e5e7eb; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+        <button type="button" onclick="savePinEdits()" style="padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sign In Choice Modal (3 Options) -->
+  <div id="login-choice-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
+      <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Sign In Options</h3>
+      
+      <button type="button" onclick="closeLoginChoiceModal(); openLoginModal();" style="width: 100%; padding: 10px; margin-bottom: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #1e293b;">
+        🔐 App Login (Firebase)
+      </button>
+      
+      <button type="button" onclick="closeLoginChoiceModal(); openArcGISLoginModal();" style="width: 100%; padding: 10px; margin-bottom: 10px; background: #f0f9ff; border: 1px solid #0284c7; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #0284c7;">
+        🚽 Sewer / Storm / Traffic Login
+      </button>
+
+      <button type="button" onclick="closeLoginChoiceModal(); document.getElementById('utility-login-modal').style.display='flex';" style="width: 100%; padding: 10px; margin-bottom: 16px; background: #eff6ff; border: 1px solid #2563eb; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #1d4ed8;">
+        ⚡ Marshfield Utilities Login
+      </button>
+
+      <button type="button" onclick="closeLoginChoiceModal()" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ArcGIS Secure Login Modal -->
+  <div id="arcgis-login-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
+      <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">ArcGIS Secure Login</h3>
+      
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #475569;">Username</label>
+        <input type="text" id="arcgis-user" placeholder="Enter ArcGIS username" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #475569;">Password</label>
+        <input type="password" id="arcgis-pass" placeholder="Enter ArcGIS password" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
+      </div>
+
+      <button type="button" onclick="generateArcGISToken()" style="width: 100%; padding: 10px; margin-bottom: 8px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Sign In & Load Layers</button>
+      
+      <button type="button" onclick="closeArcGISLoginModal()" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Marshfield Utilities ArcGIS Login Modal -->
+  <div id="utility-login-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
+      <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Marshfield Utilities Login</h3>
+      
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #475569;">Username</label>
+        <input type="text" id="utility-user" placeholder="Enter Utility username" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #475569;">Password</label>
+        <input type="password" id="utility-pass" placeholder="Enter Utility password" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
+      </div>
+
+      <button type="button" onclick="generateUtilityToken()" style="width: 100%; padding: 10px; margin-bottom: 8px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Sign In & Load Utility Layers</button>
+      <button type="button" onclick="document.getElementById('utility-login-modal').style.display='none'" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
+    </div>
+  </div>
+
+</body>
+</html>
