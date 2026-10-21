@@ -441,9 +441,9 @@
       <button type="button" class="legend-toggle-all" onclick="toggleAllKmz()">Toggle</button>
     </div>
     <div class="legend-content" id="kmz-legend-content" style="display: none;">
-      <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd03" checked onchange="toggleKmzLayers()"> Wausau PBD03</label>
-      <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd07" checked onchange="toggleKmzLayers()"> Spencer PBD07</label>
-      <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd09" checked onchange="toggleKmzLayers()"> Loyal/Greenwood PBD09</label>
+      <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd03" onchange="toggleKmzLayers()"> Wausau PBD03</label>
+      <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd07" onchange="toggleKmzLayers()"> Spencer PBD07</label>
+      <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd09" onchange="toggleKmzLayers()"> Loyal/Greenwood PBD09</label>
     </div>
   </div>
 
@@ -1711,18 +1711,15 @@ const streetLabelsLayer = L.esri.dynamicMapLayer({
       });
     }, 200); // Small timeout ensures the DOM elements are fully rendered first
 	
-// 1. Load the KMZ layers and add them by default
+// 1. Load the KMZ layers WITHOUT adding them to the map by default
 const pbd03Layer = L.kmzLayer();
 pbd03Layer.load('./' + encodeURI('Wausau PBD03.kmz'));
-pbd03Layer.addTo(map);
 
 const pbd07Layer = L.kmzLayer();
 pbd07Layer.load('./KMZs/PBD07.kmz');
-pbd07Layer.addTo(map);
 
 const pbd09Layer = L.kmzLayer();
 pbd09Layer.load('./KMZs/PBD09.kmz');
-pbd09Layer.addTo(map);
 
 // 2. Prevent map clicks from dragging through the panel
 const kmzPanel = document.getElementById('kmz-legend-panel');
