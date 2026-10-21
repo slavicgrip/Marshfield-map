@@ -422,9 +422,9 @@
   </div>
 </div>
   
-<div class="legend-panel" id="kmz-legend-panel" style="position: absolute; bottom: 20px; left: 20px; right: auto; z-index: 1000;">
+<div class="legend-panel" id="kmz-legend-panel" style="position: absolute; bottom: 20px; left: 20px !important; right: auto !important; z-index: 1000;">
   <div class="legend-header">
-    <h4 id="kmz-legend-title" onclick="toggleKmzCollapse()" style="cursor: pointer;">Map Overlays ▸</h4>
+    <h4 id="kmz-legend-title" onclick="toggleKmzCollapse()" style="cursor: pointer;">Fiber ▸</h4>
     <button type="button" class="legend-toggle-all" onclick="toggleAllKmz()">Toggle</button>
   </div>
   <div class="legend-content" id="kmz-legend-content" style="display: none;">
@@ -1740,10 +1740,10 @@ function toggleKmzCollapse() {
   const title = document.getElementById('kmz-legend-title');
   if (content.style.display === 'none') {
     content.style.display = 'block';
-    title.innerHTML = 'Map Overlays ▾';
+    title.innerHTML = 'Fiber ▾';
   } else {
     content.style.display = 'none';
-    title.innerHTML = 'Map Overlays ▸';
+    title.innerHTML = 'Fiber ▸';
   }
 }
 
