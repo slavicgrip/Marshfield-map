@@ -180,7 +180,6 @@
       display: none; /* Hidden by default until logged in */
     }
     
-    /* ADDED: Hide list and body content when collapsed */
     .zones-panel.collapsed .zones-body,
     .zones-panel.collapsed .zones-list {
       display: none;
@@ -195,7 +194,7 @@
       padding-bottom: 4px; 
       margin-bottom: 6px; 
       letter-spacing: 0.5px; 
-      cursor: pointer; /* ADDED: Makes header look clickable */
+      cursor: pointer;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -290,91 +289,84 @@
     .modal-card { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 340px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
     .modal-card input { font-size: 16px; }
 
-    /* Hide long title on very small mobile screens to keep header clean */
     @media (max-width: 600px) {
       .header-title { display: none; }
     }
-	/* Modern Popup Buttons */
-.pin-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
 
-.pin-actions button {
-  background-color: #2563eb;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
+    .pin-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
 
-.pin-actions button:hover {
-  background-color: #1d4ed8;
-}
+    .pin-actions button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
 
-/* Make delete pin button red */
-.pin-actions button:nth-child(2) {
-  background-color: #dc2626;
-}
-.pin-actions button:nth-child(2):hover {
-  background-color: #b91c1c;
-}
+    .pin-actions button:hover {
+      background-color: #1d4ed8;
+    }
 
-/* Photo thumbnail delete button styling */
-.delete-img-btn {
-  background: rgba(220, 38, 38, 0.9);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 22px;
-  height: 22px;
-  font-size: 11px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: absolute;
-  top: 4px;
-  right: 4px;
-}
-.delete-img-btn:hover {
-  background: #b91c1c;
-}
+    .pin-actions button:nth-child(2) {
+      background-color: #dc2626;
+    }
+    .pin-actions button:nth-child(2):hover {
+      background-color: #b91c1c;
+    }
 
-/* Make group headers look clickable */
-.leaflet-control-layers-group-name {
-  font-weight: bold;
-  cursor: pointer;
-  padding: 4px 6px;
-  background: #f4f4f4;
-  border-radius: 4px;
-  margin-top: 5px;
-  display: block;
-  user-select: none;
-}
+    .delete-img-btn {
+      background: rgba(220, 38, 38, 0.9);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      top: 4px;
+      right: 4px;
+    }
+    .delete-img-btn:hover {
+      background: #b91c1c;
+    }
 
-.leaflet-control-layers-group-name:hover {
-  background: #e2e2e2;
-}
+    .leaflet-control-layers-group-name {
+      font-weight: bold;
+      cursor: pointer;
+      padding: 4px 6px;
+      background: #f4f4f4;
+      border-radius: 4px;
+      margin-top: 5px;
+      display: block;
+      user-select: none;
+    }
 
-/* Keep the group header visible, but hide the sub-layer labels and separators when collapsed */
-.leaflet-control-layers-group.collapsed label:not(:first-child),
-.leaflet-control-layers-group.collapsed .leaflet-control-layers-separator {
-  display: none !important;
-}
+    .leaflet-control-layers-group-name:hover {
+      background: #e2e2e2;
+    }
 
-/* Make the expanded Leaflet layer control scrollable */
-.leaflet-control-layers-expanded {
-  max-height: 350px; /* Adjust this height if you want it taller or shorter */
-  overflow-y: auto;  /* Adds a vertical scrollbar when content exceeds max-height */
-  scrollbar-width: thin; /* Makes the scrollbar sleek on modern browsers */
-}
+    .leaflet-control-layers-group.collapsed label:not(:first-child),
+    .leaflet-control-layers-group.collapsed .leaflet-control-layers-separator {
+      display: none !important;
+    }
 
+    .leaflet-control-layers-expanded {
+      max-height: 350px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
   </style>
 </head>
 <body>
@@ -388,16 +380,11 @@
       </div>
     </div>
     <div class="header-right" style="position: relative; display: flex; align-items: center; gap: 10px;">
-  <div class="status-badge">
-    <span id="status-dot" class="status-dot"></span>
-  </div>
-  
- <div class="header-right">
-  <div class="status-badge">
-    <span id="status-dot" class="status-dot"></span>
-  </div>
-  <button id="auth-btn" class="auth-btn" onclick="openLoginChoiceModal()">Login</button>
-</div>
+      <div class="status-badge">
+        <span id="status-dot" class="status-dot"></span>
+      </div>
+      <button id="auth-btn" class="auth-btn" onclick="openLoginChoiceModal()">Login</button>
+    </div>
   </header>
 
   <div id="map"></div>
@@ -408,8 +395,6 @@
       <span>Jump To...</span>
       <span>▼</span>
     </div>
-    
-    <!-- This wrapper is what the CSS hides when collapsed -->
     <div class="zones-body">
       <div class="zones-list" id="zones-list"></div>
       <button type="button" class="zone-btn" onclick="addNewUserLocation()" style="margin-top: 6px; background: #e2e8f0; justify-content: center; font-weight: bold; width: 100%;">
@@ -418,7 +403,7 @@
     </div>
   </div>
 
-<!-- Filter Pins Panel (Bottom-Right) -->
+  <!-- Filter Pins Panel (Bottom-Right) -->
   <div class="legend-panel" id="legend-panel">
     <div class="legend-header">
       <h4 id="legend-title" onclick="toggleLegendCollapse()" style="cursor: pointer;">Filter Pins ▸</h4>
@@ -470,22 +455,16 @@
   </div>
 
   <script>
-  
- 
-      // Global variable to track the ArcGIS-only control
+    let secureEsriLayers = [];
 
-let secureEsriLayers = [];
-
-// --- AUTO-DISCOVERY WITH CATEGORIES ---
     const myBaseServices = [
-	  { name: "Parcel Info", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/ArcGIS/rest/services/Parcel_Info_Online/FeatureServer" },	
+      { name: "Parcel Info", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/ArcGIS/rest/services/Parcel_Info_Online/FeatureServer" },	
       { name: "Storm Utility", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/arcgis/rest/services/Storm_Utility/FeatureServer" },
       { name: "Sanitary Utility", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/arcgis/rest/services/Sanitary_Utility/FeatureServer" },
       { name: "Traffic & WW", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/arcgis/rest/services/Traffic_Controls_and_WW_Utilities/FeatureServer" }
     ];
 
-  
-    // 1. FIREBASE CONFIGURATION
+    // FIREBASE CONFIGURATION
     const firebaseConfig = {
       apiKey: "AIzaSyBrAnUfutqF33QJUKwRHXZHk9JRPHDGEr8",
       authDomain: "marshfield-map-b7ff6.firebaseapp.com",
@@ -504,14 +483,13 @@ let secureEsriLayers = [];
     let currentUserProfile = null;
     let activeMarkers = {}; 
     let searchResultMarker = null;
-    let geofenceLayerGroup = L.layerGroup(); // Layer to hold visual boundary circles
+    let geofenceLayerGroup = L.layerGroup();
 
     const MARSHFIELD_CENTER = [44.6688, -90.1718];
     const MARSHFIELD_ZOOM = 13;
 
-    // Distance calculation helper (Haversine formula)
     function getDistanceMeters(lat1, lon1, lat2, lon2) {
-      const R = 6371e3; // Earth radius in meters
+      const R = 6371e3;
       const rad = Math.PI / 180;
       const dLat = (lat2 - lat1) * rad;
       const dLon = (lon2 - lon1) * rad;
@@ -523,24 +501,20 @@ let secureEsriLayers = [];
       return R * c;
     }
 
-    // Check if coordinates fall within user's allowed geofences
     function isWithinAllowedGeofences(lat, lng) {
       if (!currentUserProfile || !currentUserProfile.allowedGeofences || currentUserProfile.allowedGeofences.length === 0) {
-        return true; // No geofences defined -> Unrestricted editing allowed!
+        return true;
       }
       
-      // Check if ANY fence in the list has a valid radius configured
       const strictFences = currentUserProfile.allowedGeofences.filter(fence => {
         const radius = fence.radiusMeters || fence.radius;
         return radius != null && Number(radius) > 0;
       });
 
-      // If NONE of the user's zones have a radius set, treat them all as jump shortcuts (unrestricted editing)
       if (strictFences.length === 0) {
         return true; 
       }
 
-      // If strict fences DO exist, enforce them
       for (const fence of strictFences) {
         const loc = fence.location || fence.geopoint || fence.coords || fence.point || fence;
         const centerLat = loc.latitude ?? loc.lat;
@@ -550,14 +524,13 @@ let secureEsriLayers = [];
         if (centerLat == null || centerLng == null) continue;
 
         if (getDistanceMeters(centerLat, centerLng, lat, lng) <= radius) {
-          return true; // Within an allowed boundary!
+          return true;
         }
       }
 
-      return false; // Outside all defined boundary radiuses
+      return false;
     }
 
-    // 2. SVG PIN ICONS
     const colorHexMap = {
       purple: '#8e44ad', blue: '#2980b9', red: '#c0392b',
       green: '#27ae60', pink: '#e91e63', yellow: '#f39c12'
@@ -589,28 +562,24 @@ let secureEsriLayers = [];
       yellow: createSvgPinIcon('yellow')
     };
 
-    // 3. MAP INITIALIZATION & FREE BASE LAYERS
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 21,       // Keeps the layer active up to zoom 21
-      maxNativeZoom: 19, // Stretches the highest available OSM tiles cleanly
+      maxZoom: 21,
+      maxNativeZoom: 19,
       attribution: '&copy; OpenStreetMap contributors'
     });
 
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 21,       // Keeps the layer active up to zoom 21
-      maxNativeZoom: 19, // Stretches the highest available Esri tiles cleanly
+      maxZoom: 21,
+      maxNativeZoom: 19,
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
     });
 
     const map = L.map('map', { 
       zoomControl: false,
-      maxZoom: 21,       // Allows the map container to reach zoom 21
+      maxZoom: 21,
       layers: [osmLayer] 
     }).setView(MARSHFIELD_CENTER, MARSHFIELD_ZOOM);
 	
-	
-
-// Use event delegation on the map container to reliably catch hover state over the layer control
     const mapContainer = map.getContainer();
 
     mapContainer.addEventListener('mouseover', (e) => {
@@ -625,7 +594,7 @@ let secureEsriLayers = [];
       }
     });
 	
-    map.addLayer(geofenceLayerGroup); // Add geofence boundary circles layer
+    map.addLayer(geofenceLayerGroup);
 
     const baseMaps = {
       "OpenStreetMap": osmLayer,
@@ -634,8 +603,7 @@ let secureEsriLayers = [];
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
     L.control.zoom({ position: 'topright' }).addTo(map);
 	
-	let arcgisLayerControl = null;
-    const groupedOverlays = {};
+    let arcgisLayerControl = null;
 
     const ResetViewControl = L.Control.extend({
       options: { position: 'topright' },
@@ -649,8 +617,6 @@ let secureEsriLayers = [];
         
         button.onclick = function (e) {
           e.preventDefault();
-          
-          // Check if the logged-in user has a primary (first) saved location/geofence
           const primaryZone = currentUserProfile?.allowedGeofences?.[0];
           
           if (primaryZone) {
@@ -659,16 +625,13 @@ let secureEsriLayers = [];
             const lng = loc.longitude ?? loc.lng;
 
             if (lat != null && lng != null) {
-              // Fly to their primary location
               map.flyTo([lat, lng], 15, { duration: 1 });
               return;
             }
           }
 
-          // Fallback to default Marshfield center if no primary location exists
           map.flyTo(MARSHFIELD_CENTER, MARSHFIELD_ZOOM, { duration: 1 });
         };
-        
         return container;
       }
     });
@@ -702,9 +665,8 @@ let secureEsriLayers = [];
       } catch (err) {
         console.error("Error creating pin:", err);
       }
-    }); // <-- Closes the click handler function properly!
+    });
 
-    // 4. SEARCH LOGIC
     const searchInput = document.getElementById("address-input");
     const searchResults = document.getElementById("search-results");
     let searchDebounceTimeout = null;
@@ -723,7 +685,6 @@ let secureEsriLayers = [];
     });
 
     async function performAddressSearch(query) {
-      // Added addressdetails=1 so Nominatim gives us structured address fields
       const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&limit=15`;
 
       try {
@@ -735,17 +696,10 @@ let secureEsriLayers = [];
         });
         const results = await response.json();
 
-        // Exact full state names to check against the structured state property
         const allowedStates = [
-          "Wisconsin", 
-          "Minnesota", 
-          "Iowa", 
-          "Illinois", 
-          "Michigan", 
-          "Indiana"
+          "Wisconsin", "Minnesota", "Iowa", "Illinois", "Michigan", "Indiana"
         ];
 
-        // Filter strictly by the official state field returned by the search engine
         const filteredResults = results.filter(result => {
           const state = result.address && result.address.state;
           return state && allowedStates.some(allowed => 
@@ -787,138 +741,131 @@ let secureEsriLayers = [];
         .bindPopup(`<b>Search Location</b><br>${result.display_name}`, { closeButton: false })
         .openPopup();
     }
-	// 5. REAL-TIME FIRESTORE SYNC
-db.collection("marshfield_pins").onSnapshot(function(snapshot) {
-  var statusDot = document.getElementById("status-dot");
-  if (statusDot) statusDot.classList.add("online");
 
-  snapshot.docChanges().forEach(function(change) {
-    var id = change.doc.id;
-    var data = change.doc.data();
+    // REAL-TIME FIRESTORE SYNC
+    db.collection("marshfield_pins").onSnapshot(function(snapshot) {
+      var statusDot = document.getElementById("status-dot");
+      if (statusDot) statusDot.classList.add("online");
 
-    if (change.type === "added" || change.type === "modified") {
-      renderPinMarker(id, data);
-    }
-    if (change.type === "removed" && activeMarkers[id]) {
-      markerClusterGroup.removeLayer(activeMarkers[id].marker);
-      delete activeMarkers[id];
-    }
-  });
-});
+      snapshot.docChanges().forEach(function(change) {
+        var id = change.doc.id;
+        var data = change.doc.data();
 
-// 6. RENDER PIN MARKER
-function renderPinMarker(id, data) {
-  var currentUser = auth.currentUser;
-  var isOwner = currentUser && data.userId === currentUser.uid;
-  var isSuperAdmin = typeof currentUserProfile !== 'undefined' && currentUserProfile && currentUserProfile.role === "super_admin";
-  
-  var pinLat = data.lat ?? data.latitude;
-  var pinLng = data.lng ?? data.longitude;
-  var isGeofenceAllowed = typeof isWithinAllowedGeofences === 'function' && isWithinAllowedGeofences(pinLat, pinLng);
-  
-  var canEditPin = currentUser && (isOwner || isSuperAdmin || isGeofenceAllowed);
-
-  var pinColor = data.color && markerIcons[data.color] ? data.color : 'purple';
-  var chosenIcon = markerIcons[pinColor];
-  var isDraggable = !!canEditPin;
-
-  var entry = activeMarkers[id];
-
-  if (!entry) {
-    var marker = L.marker([pinLat, pinLng], { 
-      icon: chosenIcon,
-      draggable: isDraggable
+        if (change.type === "added" || change.type === "modified") {
+          renderPinMarker(id, data);
+        }
+        if (change.type === "removed" && activeMarkers[id]) {
+          markerClusterGroup.removeLayer(activeMarkers[id].marker);
+          delete activeMarkers[id];
+        }
+      });
     });
 
-    marker.on('dragstart', function() {
-      markerClusterGroup.removeLayer(marker);
-      marker.addTo(map);
-    });
+    function renderPinMarker(id, data) {
+      var currentUser = auth.currentUser;
+      var isOwner = currentUser && data.userId === currentUser.uid;
+      var isSuperAdmin = typeof currentUserProfile !== 'undefined' && currentUserProfile && currentUserProfile.role === "super_admin";
+      
+      var pinLat = data.lat ?? data.latitude;
+      var pinLng = data.lng ?? data.longitude;
+      var isGeofenceAllowed = typeof isWithinAllowedGeofences === 'function' && isWithinAllowedGeofences(pinLat, pinLng);
+      
+      var canEditPin = currentUser && (isOwner || isSuperAdmin || isGeofenceAllowed);
 
-    marker.on('dragend', async function(e) {
-      var newLatLng = e.target.getLatLng();
-      map.removeLayer(marker);
-      markerClusterGroup.addLayer(marker);
+      var pinColor = data.color && markerIcons[data.color] ? data.color : 'purple';
+      var chosenIcon = markerIcons[pinColor];
+      var isDraggable = !!canEditPin;
 
-      if (!isWithinAllowedGeofences(newLatLng.lat, newLatLng.lng)) {
-        alert("Action blocked: This location is outside your allowed editing geofence.");
-        e.target.setLatLng([pinLat, pinLng]);
-        return;
-      }
+      var entry = activeMarkers[id];
 
-      try {
-        await db.collection("marshfield_pins").doc(id).update({
-          lat: newLatLng.lat,
-          lng: newLatLng.lng,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      if (!entry) {
+        var marker = L.marker([pinLat, pinLng], { 
+          icon: chosenIcon,
+          draggable: isDraggable
         });
-      } catch (err) {
-        alert("Error updating position: " + err.message);
-        e.target.setLatLng([pinLat, pinLng]);
+
+        marker.on('dragstart', function() {
+          markerClusterGroup.removeLayer(marker);
+          marker.addTo(map);
+        });
+
+        marker.on('dragend', async function(e) {
+          var newLatLng = e.target.getLatLng();
+          map.removeLayer(marker);
+          markerClusterGroup.addLayer(marker);
+
+          if (!isWithinAllowedGeofences(newLatLng.lat, newLatLng.lng)) {
+            alert("Action blocked: This location is outside your allowed editing geofence.");
+            e.target.setLatLng([pinLat, pinLng]);
+            return;
+          }
+
+          try {
+            await db.collection("marshfield_pins").doc(id).update({
+              lat: newLatLng.lat,
+              lng: newLatLng.lng,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } catch (err) {
+            alert("Error updating position: " + err.message);
+            e.target.setLatLng([pinLat, pinLng]);
+          }
+        });
+
+        entry = { marker: marker, data: data };
+        activeMarkers[id] = entry;
+        markerClusterGroup.addLayer(marker);
+      } else {
+        entry.data = data;
+        entry.marker.setIcon(chosenIcon);
+        entry.marker.setLatLng([pinLat, pinLng]);
       }
-    });
 
-    entry = { marker: marker, data: data };
-    activeMarkers[id] = entry;
-    markerClusterGroup.addLayer(marker);
-  } else {
-    entry.data = data;
-    entry.marker.setIcon(chosenIcon);
-    entry.marker.setLatLng([pinLat, pinLng]);
-  }
+      if (entry.marker.dragging) {
+        isDraggable ? entry.marker.dragging.enable() : entry.marker.dragging.disable();
+      }
 
-  if (entry.marker.dragging) {
-    isDraggable ? entry.marker.dragging.enable() : entry.marker.dragging.disable();
-  }
+      var images = data.imageUrls || (data.imageUrl ? [data.imageUrl] : []);
+      var imageGalleryHtml = "";
+      if (images.length > 0) {
+        imageGalleryHtml = '<div class="image-gallery">' + 
+          images.map(function(url, idx) {
+            var deleteBtn = canEditPin ? '<button type="button" class="delete-img-btn" onclick="removePinImage(\'' + id + '\',' + idx + ')" title="Remove photo">✕</button>' : '';
+            return '<div class="image-thumb-container"><a href="' + url + '" target="_blank"><img src="' + url + '" alt="photo"></a>' + deleteBtn + '</div>';
+          }).join('') + '</div>';
+      }
 
-  // --- Image Gallery HTML ---
-  var images = data.imageUrls || (data.imageUrl ? [data.imageUrl] : []);
-  var imageGalleryHtml = "";
-  if (images.length > 0) {
-    imageGalleryHtml = '<div class="image-gallery">' + 
-      images.map(function(url, idx) {
-        var deleteBtn = canEditPin ? '<button type="button" class="delete-img-btn" onclick="removePinImage(\'' + id + '\',' + idx + ')" title="Remove photo">✕</button>' : '';
-        return '<div class="image-thumb-container"><a href="' + url + '" target="_blank"><img src="' + url + '" alt="photo"></a>' + deleteBtn + '</div>';
-      }).join('') + '</div>';
-  }
+      var editDeleteBtns = canEditPin ? '<div class="pin-actions"><button onclick="openEditModal(\'' + id + '\')">Edit Pin</button><button onclick="deletePin(\'' + id + '\')">Delete Pin</button></div>' : '';
+      var popupContent = '<div class="pin-popup"><h3>' + (data.title || 'Marshfield Pin') + '</h3><p>' + (data.description || data.note || '') + '</p>' + imageGalleryHtml + editDeleteBtns + '</div>';
+      entry.marker.bindPopup(popupContent);
 
-  // --- Popup Content ---
-  var editDeleteBtns = canEditPin ? '<div class="pin-actions"><button onclick="openEditModal(\'' + id + '\')">Edit Pin</button><button onclick="deletePin(\'' + id + '\')">Delete Pin</button></div>' : '';
-  var popupContent = '<div class="pin-popup"><h3>' + (data.title || 'Marshfield Pin') + '</h3><p>' + (data.description || data.note || '') + '</p>' + imageGalleryHtml + editDeleteBtns + '</div>';
-  entry.marker.bindPopup(popupContent);
+      var tooltipTitle = data.title && data.title.trim() !== '' ? data.title : 'Untitled Pin';
+      if (entry.marker.getTooltip()) {
+        entry.marker.setTooltipContent(tooltipTitle);
+      } else {
+        entry.marker.bindTooltip(tooltipTitle, { direction: 'top', offset: [0, -40], opacity: 0.9 });
+      }
 
-  // --- Tooltip ---
-  var tooltipTitle = data.title && data.title.trim() !== '' ? data.title : 'Untitled Pin';
-  if (entry.marker.getTooltip()) {
-    entry.marker.setTooltipContent(tooltipTitle);
-  } else {
-    entry.marker.bindTooltip(tooltipTitle, { direction: 'top', offset: [0, -40], opacity: 0.9 });
-  }
-
-  // --- Filter Check ---
-  var checkedColors = Array.from(document.querySelectorAll('.filter-checkbox:checked')).map(function(cb) { return cb.value; });
-  if (checkedColors.includes(pinColor)) {
-    if (!markerClusterGroup.hasLayer(entry.marker)) markerClusterGroup.addLayer(entry.marker);
-  } else {
-    if (markerClusterGroup.hasLayer(entry.marker)) {
-      entry.marker.closePopup();
-      markerClusterGroup.removeLayer(entry.marker);
+      var checkedColors = Array.from(document.querySelectorAll('.filter-checkbox:checked')).map(function(cb) { return cb.value; });
+      if (checkedColors.includes(pinColor)) {
+        if (!markerClusterGroup.hasLayer(entry.marker)) markerClusterGroup.addLayer(entry.marker);
+      } else {
+        if (markerClusterGroup.hasLayer(entry.marker)) {
+          entry.marker.closePopup();
+          markerClusterGroup.removeLayer(entry.marker);
+        }
+      }
     }
-  }
-}
-    // 7. PHOTO, MODAL & PIN MANAGEMENT FUNCTIONS
+
     window.openEditModal = function(id) {
-      console.log("Opening edit modal for pin ID:", id);
       const entry = activeMarkers[id];
       if (!entry || !entry.data) {
-        console.error("Pin data not found for ID:", id);
         alert("Could not load pin data for editing.");
         return;
       }
       
       const pinData = entry.data;
 
-      // Populate form fields safely
       const idField = document.getElementById("edit-pin-id");
       const titleField = document.getElementById("edit-title");
       const noteField = document.getElementById("edit-note");
@@ -929,7 +876,6 @@ function renderPinMarker(id, data) {
       if (noteField) noteField.value = pinData.note || pinData.description || "";
       if (colorField) colorField.value = pinData.color || "#3b82f6";
 
-      // Render existing photos in the modal preview with delete buttons
       const previewContainer = document.getElementById("edit-photo-preview");
       if (previewContainer) {
         const urls = pinData.imageUrls || (pinData.imageUrl ? [pinData.imageUrl] : []);
@@ -945,18 +891,11 @@ function renderPinMarker(id, data) {
         }
       }
 
-      // Clear file input selection
       const fileInput = document.getElementById("edit-file-input");
       if (fileInput) fileInput.value = "";
 
-      // Show the modal
       const modal = document.getElementById("edit-modal");
-      if (modal) {
-        modal.style.display = "flex";
-      } else {
-        console.error("Could not find the edit modal element in your HTML.");
-        alert("Edit modal element not found on page.");
-      }
+      if (modal) modal.style.display = "flex";
     };
 
     window.savePinEdits = async function() {
@@ -966,28 +905,20 @@ function renderPinMarker(id, data) {
       const colorField = document.getElementById("edit-color");
       const fileInput = document.getElementById("edit-file-input");
 
-      if (!idField || !titleField || !noteField) {
-        alert("Error: Form fields missing.");
-        return;
-      }
+      if (!idField || !titleField || !noteField) return;
 
       const id = idField.value;
       const title = titleField.value.trim();
       const note = noteField.value.trim();
       const color = colorField ? colorField.value : "#3b82f6";
 
-      if (!id) {
-        alert("Error: No Pin ID found for saving.");
-        return;
-      }
+      if (!id) return;
 
       try {
-        // 1. Upload any new photos selected in the modal
         if (fileInput && fileInput.files && fileInput.files.length > 0) {
           await window.uploadPhotos(id, fileInput.files);
         }
 
-        // 2. Update Firestore data
         await db.collection("marshfield_pins").doc(id).update({
           title: title,
           note: note,
@@ -996,10 +927,8 @@ function renderPinMarker(id, data) {
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        // Close modal on success
         const modal = document.getElementById("edit-modal");
         if (modal) modal.style.display = "none";
-        
       } catch (err) {
         alert("Error updating pin: " + err.message);
       }
@@ -1027,10 +956,7 @@ function renderPinMarker(id, data) {
         const uploadedUrls = [];
 
         for (let file of files) {
-          if (file.size > 10 * 1024 * 1024) {
-            alert(`File "${file.name}" is larger than 10MB.`);
-            continue;
-          }
+          if (file.size > 10 * 1024 * 1024) continue;
 
           const fileRef = storage.ref().child(`pins/${pinId}/${Date.now()}_${file.name}`);
           const snapshot = await fileRef.put(file);
@@ -1077,7 +1003,7 @@ function renderPinMarker(id, data) {
 
     window.removePinImageFromModal = async function(id, index) {
       await window.removePinImage(id, index);
-      window.openEditModal(id); // Refreshes modal preview instantly
+      window.openEditModal(id);
     };
 
     window.closePinPopup = function(pinId) {
@@ -1086,7 +1012,6 @@ function renderPinMarker(id, data) {
       }
     };
 
-    // 8. LEGEND CONTROLS
     function toggleLegendCollapse() {
       const content = document.getElementById("legend-content");
       const title = document.getElementById("legend-title");
@@ -1124,43 +1049,6 @@ function renderPinMarker(id, data) {
       filterMarkers();
     };
 
-    // 9. PIN ACTIONS
-    window.savePin = async function(id) {
-      const titleInput = document.getElementById(`title-${id}`);
-      const noteInput = document.getElementById(`note-${id}`);
-      const colorInput = document.getElementById(`color-${id}`);
-
-      if (activeMarkers[id]) {
-        const pinLatLng = activeMarkers[id].marker.getLatLng();
-        if (!isWithinAllowedGeofences(pinLatLng.lat, pinLatLng.lng)) {
-          alert("Action blocked: This pin's location is outside your allowed editing geofence.");
-          return;
-        }
-      }
-
-      try {
-        await db.collection("marshfield_pins").doc(id).update({
-          title: titleInput ? titleInput.value.trim() : '',
-          note: noteInput ? noteInput.value.trim() : '',
-          color: colorInput ? colorInput.value : 'purple',
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        if (activeMarkers[id]) activeMarkers[id].marker.closePopup();
-      } catch (err) {
-        alert("Error saving pin: " + err.message);
-      }
-    };
-
-    window.deletePin = async function(id) {
-      if (!confirm("Delete this pin?")) return;
-      try {
-        await db.collection("marshfield_pins").doc(id).delete();
-      } catch (err) {
-        alert("Error deleting pin: " + err.message);
-      }
-    };
-
-// Allow users to save their current map view as a new jump location
     window.addNewUserLocation = async function() {
       if (!currentUser) {
         alert("You must be logged in to save locations.");
@@ -1174,7 +1062,6 @@ function renderPinMarker(id, data) {
 
       try {
         const userRef = db.collection("users").doc(currentUser.uid);
-        
         const newLocation = {
           name: name.trim(),
           location: new firebase.firestore.GeoPoint(center.lat, center.lng),
@@ -1197,7 +1084,6 @@ function renderPinMarker(id, data) {
       }
     };
 	
-	// Allow users to delete a saved location by its index
     window.removeUserLocation = async function(index) {
       if (!currentUser || !currentUserProfile || !currentUserProfile.allowedGeofences) return;
       
@@ -1206,17 +1092,13 @@ function renderPinMarker(id, data) {
 
       try {
         const userRef = db.collection("users").doc(currentUser.uid);
-        
-        // Make a copy of the array and remove the item at this index
         const updatedZones = [...currentUserProfile.allowedGeofences];
         updatedZones.splice(index, 1);
 
-        // Update Firestore with the new array
         await userRef.update({
           allowedGeofences: updatedZones
         });
 
-        // Update local profile state and refresh the UI
         currentUserProfile.allowedGeofences = updatedZones;
         updateZonesPanelUI();
       } catch (err) {
@@ -1224,25 +1106,21 @@ function renderPinMarker(id, data) {
       }
     };
 	
-	async function renameUserLocation(index, currentName) {
+    async function renameUserLocation(index, currentName) {
       const newName = prompt("Rename location:", currentName);
       if (!newName || newName.trim() === "" || newName === currentName) return;
 
       const trimmedName = newName.trim();
 
-      // Update local profile array safely
       if (currentUserProfile && currentUserProfile.allowedGeofences) {
         currentUserProfile.allowedGeofences[index].name = trimmedName;
       }
 
-      // Update Firestore database
       try {
         const userRef = db.collection("users").doc(auth.currentUser.uid);
         await userRef.update({
           allowedGeofences: currentUserProfile.allowedGeofences
         });
-        
-        // Re-render the UI and map circles with the new name
         updateZonesPanelUI();
       } catch (err) {
         console.error("Failed to rename location:", err);
@@ -1250,7 +1128,6 @@ function renderPinMarker(id, data) {
       }
     }
 
-    // Helper to render the zones panel and map boundary circles
     function updateZonesPanelUI() {
       const zonesPanel = document.getElementById("zones-panel");
       const zonesList = document.getElementById("zones-list");
@@ -1324,51 +1201,23 @@ function renderPinMarker(id, data) {
       }
     }
 
-    async function renameUserLocation(index, currentName) {
-      const newName = prompt("Rename location:", currentName);
-      if (!newName || newName.trim() === "" || newName === currentName) return;
-
-      const trimmedName = newName.trim();
-
-      if (currentUserProfile && currentUserProfile.allowedGeofences) {
-        currentUserProfile.allowedGeofences[index].name = trimmedName;
-      }
-
-      try {
-        const userRef = db.collection("users").doc(auth.currentUser.uid);
-        await userRef.update({
-          allowedGeofences: currentUserProfile.allowedGeofences
-        });
-        
-        updateZonesPanelUI();
-      } catch (err) {
-        console.error("Failed to rename location:", err);
-        alert("Could not save the new name. Please try again.");
-      }
-    }
-
-    // Helper to jump to a specific zone from the UI panel
     window.jumpToZone = function(lat, lng) {
       map.flyTo([lat, lng], 15, { duration: 1.5 });
     };
 
-    // 10. AUTH, MODAL & PASSWORD RESET CONTROLS
     auth.onAuthStateChanged(async user => {
-  currentUser = user;
-  const authBtn = document.getElementById("auth-btn");
-  authBtn.innerText = user ? "Logout" : "Login";
-  
-  // Update this line to use our new choice modal when logged out!
-  authBtn.onclick = user ? logoutUser : openLoginChoiceModal;
+      currentUser = user;
+      const authBtn = document.getElementById("auth-btn");
+      authBtn.innerText = user ? "Logout" : "Login";
+      authBtn.onclick = user ? logoutUser : openLoginChoiceModal;
 
       if (user) {
         try {
           const userDoc = await db.collection("users").doc(user.uid).get();
           if (userDoc.exists) {
             currentUserProfile = userDoc.data();
-            updateZonesPanelUI(); // Renders panel & handles initial jump-to view
+            updateZonesPanelUI();
 
-            // Jump to first zone on initial login if available
             const firstZone = currentUserProfile.allowedGeofences?.[0];
             if (firstZone) {
               const loc = firstZone.location || firstZone.geopoint || firstZone.coords || firstZone.point || firstZone;
@@ -1419,7 +1268,7 @@ function renderPinMarker(id, data) {
       }
     }
 
-window.toggleZonesPanel = function() {
+    window.toggleZonesPanel = function() {
       const panel = document.getElementById("zones-panel");
       panel.classList.toggle("collapsed");
     };
@@ -1440,426 +1289,353 @@ window.toggleZonesPanel = function() {
         alert("Error sending password reset email: " + err.message);
       }
     }
-	function toggleAuthDropdown() {
-  const menu = document.getElementById("auth-dropdown-menu");
-  menu.style.display = menu.style.display === "block" ? "none" : "block";
-}
 
-// Close dropdown when clicking outside of it
-window.addEventListener("click", function(event) {
-  const btn = document.getElementById("auth-btn");
-  const menu = document.getElementById("auth-dropdown-menu");
-  if (menu && btn && !btn.contains(event.target) && !menu.contains(event.target)) {
-    menu.style.display = "none";
-  }
-});
-
-function openLoginChoiceModal() {
-  const modal = document.getElementById("login-choice-modal");
-  if (modal) {
-    modal.style.display = "flex";
-  } else {
-    console.error("login-choice-modal missing from HTML!");
-  }
-}
-
-function closeLoginChoiceModal() {
-  const modal = document.getElementById("login-choice-modal");
-  if (modal) {
-    modal.style.display = "none";
-  }
-}
-
-function openArcGISLoginModal() {
-  const modal = document.getElementById("arcgis-login-modal");
-  if (modal) {
-    modal.style.display = "flex";
-  }
-}
-
-function closeArcGISLoginModal() {
-  const modal = document.getElementById("arcgis-login-modal");
-  if (modal) {
-    modal.style.display = "none";
-  }
-}
-
-	 secureEsriLayers = [];
-
-async function generateArcGISToken() {
-  const username = document.getElementById("arcgis-user").value.trim();
-  const password = document.getElementById("arcgis-pass").value.trim();
-
-  if (!username || !password) {
-    alert("Please enter both username and password.");
-    return;
-  }
-
-  const tokenUrl = "https://www.arcgis.com/sharing/rest/generateToken";
-
-  const params = new URLSearchParams();
-  params.append("username", username);
-  params.append("password", password);
-  params.append("client", "referer");
-  params.append("referer", window.location.origin);
-  params.append("expiration", 60);
-  params.append("f", "json");
-
-  try {
-    const response = await fetch(tokenUrl, {
-      method: "POST",
-      body: params
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      alert("Login failed: " + data.error.message);
-      return;
+    function openLoginChoiceModal() {
+      const modal = document.getElementById("login-choice-modal");
+      if (modal) modal.style.display = "flex";
     }
 
-    const token = data.token;
-    console.log("Token successfully generated!");
-
-    // Close your ArcGIS login modal
-    closeArcGISLoginModal();
-
-    // Clean up any previously loaded secure layers if re-logging in
-    secureEsriLayers.forEach(layer => {
-      map.removeLayer(layer);
-    });
-    secureEsriLayers = [];
-
-    // Remove old layer control from map if it already exists
-    if (typeof arcgisLayerControl !== 'undefined' && arcgisLayerControl) {
-      map.removeControl(arcgisLayerControl);
+    function closeLoginChoiceModal() {
+      const modal = document.getElementById("login-choice-modal");
+      if (modal) modal.style.display = "none";
     }
 
-    // Call the loader once token is ready
-    loadArcGISLayers(token);
+    function openArcGISLoginModal() {
+      const modal = document.getElementById("arcgis-login-modal");
+      if (modal) modal.style.display = "flex";
+    }
 
-  } catch (err) {
-    alert("Connection error connecting to ArcGIS server: " + err.message);
-  }
-}
+    function closeArcGISLoginModal() {
+      const modal = document.getElementById("arcgis-login-modal");
+      if (modal) modal.style.display = "none";
+    }
 
-async function loadArcGISLayers(token) {
-  // Build the tree structure for the accordion folders
-  const overlaysTree = {
-    label: "<b>Marshfield Utilities & Data</b>",
-    children: []
-  };
+    // CITY ARCGIS AUTH & LAYERS
+    async function generateArcGISToken() {
+      const username = document.getElementById("arcgis-user").value.trim();
+      const password = document.getElementById("arcgis-pass").value.trim();
 
-  const streetLabelsLayer = L.esri.dynamicMapLayer({
-    url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Street_Names_Annotation/MapServer",
-    opacity: 1.0,
-    format: "png24",
-    zIndex: 1000
-  });
-
-  const addressLabelsLayer = L.esri.dynamicMapLayer({
-    url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Site_Address_Annotations/MapServer",
-    opacity: 1.0,
-    format: "png24",
-    zIndex: 1000
-  });
-
-  addressLabelsLayer.addTo(map);
-
-  overlaysTree.children.push({
-    label: "<b>Site Address Annotations</b>",
-    layer: addressLabelsLayer,
-    checked: true
-  });
-
-  streetLabelsLayer.addTo(map);
-
-  overlaysTree.children.push({
-    label: "<b>Street Names & Annotations</b>",
-    layer: streetLabelsLayer,
-    checked: true
-  });
-
-  // ... (the rest of your sublayers inside loadArcGISLayers go here)
-
- // --- 2. EXISTING UTILITY SERVICES LOOP ---
-  for (const service of myBaseServices) {
-    const serviceBranch = {
-      label: `<b>${service.name}</b>`,
-      children: []
-    };
-
-    try {
-      const response = await fetch(`${service.url}?f=json&token=${token}`);
-      const data = await response.json();
-
-      if (data.layers && Array.isArray(data.layers)) {
-        const defaultVisibleLayers = [
-          "Intake Point", "Inlet", "Storm Manhole", "Storm Line", 
-          "Box Culverts", "Storm Open Drainage", "Storm Storage Basin", 
-          "Sanitary Manhole", "Sanitary Lift Station", "Sanitary Gravity Main", 
-          "Sanitary Force Main", "Traffic Controls", "Traffic Control Pull Boxes", 
-          "Control Cabinet", "Traffic Control Conduit"
-        ];
-
-        data.layers.forEach(subLayer => {
-          const fullLayerUrl = `${service.url}/${subLayer.id}`;
-          
-          // Clean up any raw database/view names into friendly titles
-          let displayName = subLayer.name;
-          if (displayName.toLowerCase().includes("parcelinformation")) {
-            displayName = "Parcel Information";
-          }
-
-          const featureLayer = L.esri.featureLayer({
-            url: fullLayerUrl,
-            token: token,
-            minZoom: 17,
-            style: function (feature) {
-              return { weight: 3, opacity: 0.85, fillOpacity: 0.1 };
-            }
-          });
-          
-          featureLayer.bindPopup(function (e) {
-            const props = e.feature.properties;
-            let html = `<div style="max-height: 200px; overflow-y: auto;"><strong>${displayName}</strong><br><hr style="margin: 4px 0;">`;
-            for (const key in props) {
-              if (props[key] !== null && props[key] !== "") {
-                html += `<b>${key}:</b> ${props[key]}<br>`;
-              }
-            }
-            html += `</div>`;
-            return html;
-          });
-
-          // Auto-enable default layers on the map
-          if (defaultVisibleLayers.includes(subLayer.name)) {
-            featureLayer.addTo(map);
-          }
-
-          serviceBranch.children.push({
-            label: displayName,
-            layer: featureLayer
-          });
-        });
+      if (!username || !password) {
+        alert("Please enter both username and password.");
+        return;
       }
-    } catch (error) {
-      console.error(`Failed to load layers for ${service.name}:`, error);
+
+      const tokenUrl = "https://www.arcgis.com/sharing/rest/generateToken";
+
+      const params = new URLSearchParams();
+      params.append("username", username);
+      params.append("password", password);
+      params.append("client", "referer");
+      params.append("referer", window.location.origin);
+      params.append("expiration", 60);
+      params.append("f", "json");
+
+      try {
+        const response = await fetch(tokenUrl, {
+          method: "POST",
+          body: params
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+          alert("Login failed: " + data.error.message);
+          return;
+        }
+
+        const token = data.token;
+        closeArcGISLoginModal();
+
+        secureEsriLayers.forEach(layer => {
+          map.removeLayer(layer);
+        });
+        secureEsriLayers = [];
+
+        if (typeof arcgisLayerControl !== 'undefined' && arcgisLayerControl) {
+          map.removeControl(arcgisLayerControl);
+        }
+
+        loadArcGISLayers(token);
+
+      } catch (err) {
+        alert("Connection error connecting to ArcGIS server: " + err.message);
+      }
     }
 
-    overlaysTree.children.push(serviceBranch);
-  
-  }
+    async function loadArcGISLayers(token) {
+      const overlaysTree = {
+        label: "<b>Marshfield Utilities & Data</b>",
+        children: []
+      };
 
-  // Remove old ArcGIS control if re-logging in
-  if (arcgisLayerControl) {
-    map.removeControl(arcgisLayerControl);
-  }
+      const streetLabelsLayer = L.esri.dynamicMapLayer({
+        url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Street_Names_Annotation/MapServer",
+        opacity: 1.0,
+        format: "png24",
+        zIndex: 1000
+      });
 
-// Create the tree-based accordion control box
-  arcgisLayerControl = L.control.layers.tree(null, overlaysTree, { 
-    position: 'topright', 
-    collapsed: true 
-  }).addTo(map);
+      const addressLabelsLayer = L.esri.dynamicMapLayer({
+        url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Site_Address_Annotations/MapServer",
+        opacity: 1.0,
+        format: "png24",
+        zIndex: 1000
+      });
 
-}// <--- Closes your main asynchronous loading function (e.g., loadArcGISLayers)
+      addressLabelsLayer.addTo(map);
 
+      overlaysTree.children.push({
+        label: "<b>Site Address Annotations</b>",
+        layer: addressLabelsLayer,
+        checked: true
+      });
 
-    // Build the clean, grouped layer control widget
-    arcgisLayerControl = L.control.groupedLayers(null, groupedOverlays, {
-      collapsed: true,
-      groupCheckboxes: false // Optional: allows toggling an entire service on/off at once
-    }).addTo(map);
-	
-	setTimeout(() => {
-      document.querySelectorAll('.leaflet-control-layers-group').forEach(group => {
-        const label = group.querySelector('label');
-        if (label && !group.dataset.hasListener) {
-          group.dataset.hasListener = "true";
-          
-          // Create a toggle arrow indicator
-          const arrow = document.createElement('span');
-          arrow.innerHTML = ' ▼ ';
-          arrow.style.fontSize = '10px';
-          label.prepend(arrow);
+      streetLabelsLayer.addTo(map);
 
-          label.style.cursor = 'pointer';
-          label.addEventListener('click', (e) => {
-            // Prevent clicking sublayer checkboxes inside from triggering the collapse
-            if (e.target.tagName === 'INPUT') return;
-            
-            group.classList.toggle('collapsed');
-            arrow.innerHTML = group.classList.contains('collapsed') ? ' ► ' : ' ▼ ';
+      overlaysTree.children.push({
+        label: "<b>Street Names & Annotations</b>",
+        layer: streetLabelsLayer,
+        checked: true
+      });
+
+      for (const service of myBaseServices) {
+        const serviceBranch = {
+          label: `<b>${service.name}</b>`,
+          children: []
+        };
+
+        try {
+          const response = await fetch(`${service.url}?f=json&token=${token}`);
+          const data = await response.json();
+
+          if (data.layers && Array.isArray(data.layers)) {
+            const defaultVisibleLayers = [
+              "Intake Point", "Inlet", "Storm Manhole", "Storm Line", 
+              "Box Culverts", "Storm Open Drainage", "Storm Storage Basin", 
+              "Sanitary Manhole", "Sanitary Lift Station", "Sanitary Gravity Main", 
+              "Sanitary Force Main", "Traffic Controls", "Traffic Control Pull Boxes", 
+              "Control Cabinet", "Traffic Control Conduit"
+            ];
+
+            data.layers.forEach(subLayer => {
+              const fullLayerUrl = `${service.url}/${subLayer.id}`;
+              
+              let displayName = subLayer.name;
+              if (displayName.toLowerCase().includes("parcelinformation")) {
+                displayName = "Parcel Information";
+              }
+
+              const featureLayer = L.esri.featureLayer({
+                url: fullLayerUrl,
+                token: token,
+                minZoom: 17,
+                style: function (feature) {
+                  return { weight: 3, opacity: 0.85, fillOpacity: 0.1 };
+                }
+              });
+              
+              featureLayer.bindPopup(function (e) {
+                const props = e.feature.properties;
+                let html = `<div style="max-height: 200px; overflow-y: auto;"><strong>${displayName}</strong><br><hr style="margin: 4px 0;">`;
+                for (const key in props) {
+                  if (props[key] !== null && props[key] !== "") {
+                    html += `<b>${key}:</b> ${props[key]}<br>`;
+                  }
+                }
+                html += `</div>`;
+                return html;
+              });
+
+              if (defaultVisibleLayers.includes(subLayer.name)) {
+                featureLayer.addTo(map);
+              }
+
+              serviceBranch.children.push({
+                label: displayName,
+                layer: featureLayer
+              });
+            });
+          }
+        } catch (error) {
+          console.error(`Failed to load layers for ${service.name}:`, error);
+        }
+
+        overlaysTree.children.push(serviceBranch);
+      }
+
+      if (arcgisLayerControl) {
+        map.removeControl(arcgisLayerControl);
+      }
+
+      arcgisLayerControl = L.control.layers.tree(null, overlaysTree, { 
+        position: 'topright', 
+        collapsed: true 
+      }).addTo(map);
+
+      alert("City ArcGIS layers loaded successfully!");
+    }
+
+    // MARSHFIELD UTILITIES AUTH & LAYERS
+    let utilityLayerControl = null;
+    let utilityFeatureLayers = [];
+
+    async function generateUtilityToken() {
+      const username = document.getElementById("utility-user").value.trim();
+      const password = document.getElementById("utility-pass").value.trim();
+
+      if (!username || !password) {
+        alert("Please enter both username and password.");
+        return;
+      }
+
+      const tokenUrl = "https://gis.marshfieldutilities.org/arcgisserver/tokens/generateToken";
+
+      const params = new URLSearchParams();
+      params.append("username", username);
+      params.append("password", password);
+      params.append("client", "requestip");
+      params.append("expiration", "60");
+      params.append("f", "json");
+
+      try {
+        const response = await fetch(tokenUrl, { method: "POST", body: params });
+        const data = await response.json();
+
+        if (data.error || !data.token) {
+          alert("Login failed: " + (data.error?.message || "Invalid credentials"));
+          return;
+        }
+
+        const token = data.token;
+        document.getElementById("utility-login-modal").style.display = "none";
+
+        loadUtilityLayers(token);
+      } catch (err) {
+        alert("Connection error connecting to Utility server: " + err.message);
+      }
+    }
+
+    async function loadUtilityLayers(token) {
+      const utilityServiceUrl = "https://gis.marshfieldutilities.org/arcgisserver/rest/services/UtilityLocating/UtilityLocator/MapServer";
+
+      const utilityTree = {
+        label: "<b>⚡ Marshfield Utilities</b>",
+        children: []
+      };
+
+      try {
+        const response = await fetch(`${utilityServiceUrl}?f=json&token=${token}`);
+        const data = await response.json();
+
+        if (data.layers && Array.isArray(data.layers)) {
+          data.layers.forEach(subLayer => {
+            const fullLayerUrl = `${utilityServiceUrl}/${subLayer.id}`;
+
+            const featureLayer = L.esri.featureLayer({
+              url: fullLayerUrl,
+              token: token,
+              minZoom: 17,
+              style: function () {
+                return { weight: 3, opacity: 0.85, fillOpacity: 0.1 };
+              }
+            });
+
+            featureLayer.bindPopup(function (e) {
+              const props = e.feature.properties;
+              let html = `<div style="max-height: 200px; overflow-y: auto;"><strong>${subLayer.name}</strong><br><hr style="margin: 4px 0;">`;
+              for (const key in props) {
+                if (props[key] !== null && props[key] !== "") {
+                  html += `<b>${key}:</b> ${props[key]}<br>`;
+                }
+              }
+              html += `</div>`;
+              return html;
+            });
+
+            utilityTree.children.push({
+              label: subLayer.name,
+              layer: featureLayer
+            });
           });
         }
-      });
-    }, 300);
 
-    alert("All secure ArcGIS services auto-loaded and grouped!");
+        if (utilityLayerControl) {
+          map.removeControl(utilityLayerControl);
+        }
 
-  } catch (err) {
-    alert("Connection error: " + err.message);
-  }
-}
+        utilityLayerControl = L.control.layers.tree(null, utilityTree, {
+          position: 'topright',
+          collapsed: true
+        }).addTo(map);
 
-// Make group headers collapsible/expandable like an accordion
-    setTimeout(() => {
-      document.querySelectorAll('.leaflet-control-layers-group-name').forEach(header => {
-        header.addEventListener('click', (e) => {
-          const groupContainer = e.target.closest('.leaflet-control-layers-group');
-          if (groupContainer) {
-            groupContainer.classList.toggle('collapsed');
-          }
-        });
-      });
-    }, 200); // Small timeout ensures the DOM elements are fully rendered first
-	
-// 1. Load the KMZ layers WITHOUT adding them to the map by default
-const pbd03Layer = L.kmzLayer();
-pbd03Layer.load('./' + encodeURI('Wausau PBD03.kmz'));
-
-const pbd07Layer = L.kmzLayer();
-pbd07Layer.load('./KMZs/PBD07.kmz');
-
-const pbd09Layer = L.kmzLayer();
-pbd09Layer.load('./KMZs/PBD09.kmz');
-
-// 2. Prevent map clicks from dragging through the panel
-const kmzPanel = document.getElementById('kmz-legend-panel');
-L.DomEvent.disableClickPropagation(kmzPanel);
-L.DomEvent.disableScrollPropagation(kmzPanel);
-
-// 3. Checkbox toggle logic
-function toggleKmzLayers() {
-  const checkboxes = document.querySelectorAll('.kmz-checkbox');
-  checkboxes.forEach(cb => {
-    const layerKey = cb.getAttribute('data-layer');
-    let targetLayer;
-    if (layerKey === 'pbd03') targetLayer = pbd03Layer;
-    if (layerKey === 'pbd07') targetLayer = pbd07Layer;
-    if (layerKey === 'pbd09') targetLayer = pbd09Layer;
-
-    if (cb.checked) {
-      if (!map.hasLayer(targetLayer)) map.addLayer(targetLayer);
-    } else {
-      if (map.hasLayer(targetLayer)) map.removeLayer(targetLayer);
+        alert("Marshfield Utilities layers loaded successfully!");
+      } catch (err) {
+        console.error("Failed to load Utility layers:", err);
+        alert("Error loading utility layers. Check console for details.");
+      }
     }
-  });
-}
 
-// 4. Collapse & Toggle-All functions matching your filter panel
-function toggleKmzCollapse() {
-  const content = document.getElementById('kmz-legend-content');
-  const title = document.getElementById('kmz-legend-title');
-  if (content.style.display === 'none') {
-    content.style.display = 'block';
-    title.innerHTML = 'Fiber ▾';
-  } else {
-    content.style.display = 'none';
-    title.innerHTML = 'Fiber ▸';
-  }
-}
+    // KMZ LAYERS
+    const pbd03Layer = L.kmzLayer();
+    pbd03Layer.load('./' + encodeURI('Wausau PBD03.kmz'));
 
-function toggleAllKmz() {
-  const checkboxes = document.querySelectorAll('.kmz-checkbox');
-  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-  checkboxes.forEach(cb => {
-    cb.checked = !allChecked;
-  });
-  toggleKmzLayers();
-}
+    const pbd07Layer = L.kmzLayer();
+    pbd07Layer.load('./KMZs/PBD07.kmz');
 
+    const pbd09Layer = L.kmzLayer();
+    pbd09Layer.load('./KMZs/PBD09.kmz');
+
+    const kmzPanel = document.getElementById('kmz-legend-panel');
+    L.DomEvent.disableClickPropagation(kmzPanel);
+    L.DomEvent.disableScrollPropagation(kmzPanel);
+
+    function toggleKmzLayers() {
+      const checkboxes = document.querySelectorAll('.kmz-checkbox');
+      checkboxes.forEach(cb => {
+        const layerKey = cb.getAttribute('data-layer');
+        let targetLayer;
+        if (layerKey === 'pbd03') targetLayer = pbd03Layer;
+        if (layerKey === 'pbd07') targetLayer = pbd07Layer;
+        if (layerKey === 'pbd09') targetLayer = pbd09Layer;
+
+        if (cb.checked) {
+          if (!map.hasLayer(targetLayer)) map.addLayer(targetLayer);
+        } else {
+          if (map.hasLayer(targetLayer)) map.removeLayer(targetLayer);
+        }
+      });
+    }
+
+    function toggleKmzCollapse() {
+      const content = document.getElementById('kmz-legend-content');
+      const title = document.getElementById('kmz-legend-title');
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        title.innerHTML = 'Fiber ▾';
+      } else {
+        content.style.display = 'none';
+        title.innerHTML = 'Fiber ▸';
+      }
+    }
+
+    function toggleAllKmz() {
+      const checkboxes = document.querySelectorAll('.kmz-checkbox');
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      checkboxes.forEach(cb => {
+        cb.checked = !allChecked;
+      });
+      toggleKmzLayers();
+    }
   </script>
- <!-- Edit Pin Modal -->
-<div id="edit-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
-  <div class="modal-content" style="background: white; padding: 20px; border-radius: 8px; width: 360px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-    <h3>Edit Pin</h3>
-    <input type="hidden" id="edit-pin-id">
-    
-    <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Title:</label>
-    <input type="text" id="edit-title" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
-    
-    <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Note / Description:</label>
-    <textarea id="edit-note" rows="3" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;"></textarea>
-    
-   <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Pin Category / Color:</label>
-<select id="edit-color" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; background: white;">
-  <option value="purple">🟣 Purple (Default)</option>
-  <option value="blue">🔵 Blue (Water)</option>
-  <option value="red">🔴 Red (Electric)</option>
-  <option value="green">🟢 Green (Storm/Sewer)</option>
-  <option value="pink">🩷 Pink (Fiber Optic)</option>
-  <option value="yellow">🟡 Yellow (WE Energies)</option>
-</select>
-    
-    <label style="display: block; margin-top: 12px; font-size: 13px; font-weight: 500;">Current Photos:</label>
-    <div id="edit-photo-preview" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; margin-bottom: 10px;"></div>
-    
-    <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Add More Photos:</label>
-    <input type="file" id="edit-file-input" multiple accept="image/*" style="width: 100%; margin-top: 4px; font-size: 12px;">
-    <div id="upload-status-modal" style="font-size: 11px; color: #666; margin-top: 4px; display: none;"></div>
-    
-    <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
-      <button type="button" onclick="document.getElementById('edit-modal').style.display='none'" style="padding: 6px 12px; background: #e5e7eb; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
-      <button type="button" onclick="savePinEdits()" style="padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">Save Changes</button>
-    </div>
-  </div>
-</div>
-  <div id="login-choice-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
-  <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
-    <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Sign In Options</h3>
-    
-    <button type="button" onclick="closeLoginChoiceModal(); openLoginModal();" style="width: 100%; padding: 10px; margin-bottom: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #1e293b;">
-      🔐 App Login (Firebase)
-    </button>
-    
-    <!-- Sewer / Storm / Traffic ArcGIS Login -->
-    <button type="button" onclick="closeLoginChoiceModal(); openArcGISLoginModal();" style="width: 100%; padding: 10px; margin-bottom: 10px; background: #f0f9ff; border: 1px solid #0284c7; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #0284c7;">
-      🚽 Sewer / Storm / Traffic Login
-    </button>
 
-    <button type="button" onclick="closeLoginChoiceModal()" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
-  </div>
-</div>
-</div>
-<div id="arcgis-login-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
-  <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
-    <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">ArcGIS Secure Login</h3>
-    
-    <div style="margin-bottom: 12px;">
-      <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #475569;">Username</label>
-      <input type="text" id="arcgis-user" placeholder="Enter ArcGIS username" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
-    </div>
-
-    <div style="margin-bottom: 16px;">
-      <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #475569;">Password</label>
-      <input type="password" id="arcgis-pass" placeholder="Enter ArcGIS password" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
-    </div>
-
-    <button type="button" onclick="generateArcGISToken()" style="width: 100%; padding: 10px; margin-bottom: 8px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Sign In & Load Layers</button>
-    
-    <button type="button" onclick="closeArcGISLoginModal()" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
-  </div>
-</div>
-<!-- Marshfield Utilities ArcGIS Login Modal -->
-<div id="utility-login-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
-  <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
-    <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Marshfield Utilities Login</h3>
-    
-    <div style="margin-bottom: 12px;">
-      <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #475569;">Username</label>
-      <input type="text" id="utility-user" placeholder="Enter Utility username" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
-    </div>
-
-    <div style="margin-bottom: 16px;">
-      <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #475569;">Password</label>
-      <input type="password" id="utility-pass" placeholder="Enter Utility password" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
-    </div>
-
-    <button type="button" onclick="generateUtilityToken()" style="width: 100%; padding: 10px; margin-bottom: 8px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Sign In & Load Utility Layers</button>
-    <button type="button" onclick="document.getElementById('utility-login-modal').style.display='none'" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
-  </div>
-</div>
-
-</body>
-</html>
+  <!-- Edit Pin Modal -->
+  <div id="edit-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
+    <div class="modal-content" style="background: white; padding: 20px; border-radius: 8px; width: 360px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <h3>Edit Pin</h3>
+      <input type="hidden" id="edit-pin-id">
+      
+      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Title:</label>
+      <input type="text" id="edit-title" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+      
+      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Note / Description:</label>
+      <textarea id="edit-note" rows="3" style="width: 100%; padding: 8px; margin-top
