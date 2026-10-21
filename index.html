@@ -1442,7 +1442,7 @@
       alert("City ArcGIS layers loaded successfully!");
     }
 
-    // MARSHFIELD UTILITIES AUTH & LAYERS
+    // MARSHFIELD UTILITIES PORTAL AUTH & LAYERS (UPDATED TO MATCH WORKING PORTAL TOKEN ENDPOINT)
     let utilityLayerControl = null;
 
     async function generateUtilityToken() {
@@ -1454,13 +1454,14 @@
         return;
       }
 
-      const tokenUrl = "https://gis.marshfieldutilities.org/arcgisserver/tokens/generateToken";
+      const tokenUrl = "https://gis.marshfieldutilities.org/arcgisportal/sharing/rest/generateToken";
 
       const params = new URLSearchParams();
       params.append("username", username);
       params.append("password", password);
-      params.append("client", "requestip");
-      params.append("expiration", "60");
+      params.append("client", "referer");
+      params.append("referer", window.location.origin);
+      params.append("expiration", "20160");
       params.append("f", "json");
 
       try {
@@ -1468,7 +1469,7 @@
         const data = await response.json();
 
         if (data.error || !data.token) {
-          alert("Login failed: " + (data.error?.message || "Invalid credentials"));
+          alert("Utility Login failed: " + (data.error?.message || "Invalid credentials"));
           return;
         }
 
@@ -1477,12 +1478,12 @@
 
         loadUtilityLayers(token);
       } catch (err) {
-        alert("Connection error connecting to Utility server: " + err.message);
+        alert("Connection error connecting to Utility portal: " + err.message);
       }
     }
 
     async function loadUtilityLayers(token) {
-      const utilityServiceUrl = "https://gis.marshfieldutilities.org/arcgisserver/rest/services/UtilityLocating/UtilityLocator/MapServer";
+      const utilityServiceUrl = "https://gis.marshfieldutilities.org/arcgisportal/rest/services/UtilityLocating/UtilityLocator/MapServer";
 
       const utilityTree = {
         label: "<b>⚡ Marshfield Utilities</b>",
@@ -1651,7 +1652,7 @@
     </div>
   </div>
 
-  <!-- App Login Modal (Firebase) - NOW FIXED WITH PROPER CENTERING STYLES -->
+  <!-- App Login Modal (Firebase) -->
   <div id="login-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
     <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
       <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Editor Login</h3>
