@@ -1681,53 +1681,81 @@ const streetLabelsLayer = L.esri.dynamicMapLayer({
       });
     }, 200); // Small timeout ensures the DOM elements are fully rendered first
 	
+// 1. Define the custom control for KMZ overlays using your exact legend structure
+const KmzLegendControl = L.Control.extend({
+  options: { position: 'bottomleft' },
+  onAdd: function (map) {
+    const container = L.DomUtil.create('div', 'legend-panel');
+    container.id = 'kmz-legend-panel';
+    container.innerHTML = `
+      <div class="legend-header">
+        <h4 id="kmz-legend-title" onclick="toggleKmzCollapse()" style="cursor: pointer;">Map Overlays ▾</h4>
+        <button type="button" class="legend-toggle-all" onclick="toggleAllKmz()">Toggle</button>
+      </div>
+      <div class="legend-content" id="kmz-legend-content">
+        <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd03" checked> Wausau PBD03</label>
+        <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd07" checked> Spencer PBD07</label>
+        <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd09" checked> Loyal/Greenwood PBD09</label>
+      </div>
+    `;
+    L.DomEvent.disableClickPropagation(container);
+    return container;
+  }
+});
+
+// Add the custom panel to the map
+const kmzControl = new KmzLegendControl().addTo(map);
+
+// 2. Load layers and add them to the map by default
 const pbd03Layer = L.kmzLayer();
 pbd03Layer.load('./' + encodeURI('Wausau PBD03.kmz'));
+pbd03Layer.addTo(map);
 
 const pbd07Layer = L.kmzLayer();
 pbd07Layer.load('./KMZs/PBD07.kmz');
+pbd07Layer.addTo(map);
 
 const pbd09Layer = L.kmzLayer();
 pbd09Layer.load('./KMZs/PBD09.kmz');
+pbd09Layer.addTo(map);
 
-// Spare slot ready for your final layer whenever you need it
-// const spareLayer = L.kmzLayer();
-// spareLayer.load('./KMZs/YOUR_FINAL_FILE.kmz');
+// 3. Checkbox toggle logic
+document.addEventListener('change', function(e) {
+  if (e.target.classList.contains('kmz-checkbox')) {
+    const layerKey = e.target.getAttribute('data-layer');
+    let targetLayer;
+    if (layerKey === 'pbd03') targetLayer = pbd03Layer;
+    if (layerKey === 'pbd07') targetLayer = pbd07Layer;
+    if (layerKey === 'pbd09') targetLayer = pbd09Layer;
+    
+    if (e.target.checked) {
+      map.addLayer(targetLayer);
+    } else {
+      map.removeLayer(targetLayer);
+    }
+  }
+});
 
-// 1. Declare the overlays object ONCE
-const kmzOverlays = {
-  "Wausau PBD03": pbd03Layer,
-  "Spencer PBD07": pbd07Layer,
-  "Loyal/Greenwood PBD09": pbd09Layer
-  //, "Spare Slot": spareLayer
-};
+// 4. Collapse & Toggle-All functions matching your filter panel style
+function toggleKmzCollapse() {
+  const content = document.getElementById('kmz-legend-content');
+  const title = document.getElementById('kmz-legend-title');
+  if (content.style.display === 'none') {
+    content.style.display = 'block';
+    title.innerHTML = 'Map Overlays ▾';
+  } else {
+    content.style.display = 'none';
+    title.innerHTML = 'Map Overlays ▸';
+  }
+}
 
-// 2. Create the layer control ONCE and add it to the map
-const layerControl = L.control.layers(null, kmzOverlays, { 
-  position: 'bottomleft',
-  collapsed: true
-}).addTo(map);
-
-// 3. Style the main container to match your lower-right pin filter
-const controlContainer = layerControl.getContainer();
-controlContainer.style.backgroundColor = '#ffffff';
-controlContainer.style.padding = '4px';
-controlContainer.style.borderRadius = '8px';
-controlContainer.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-controlContainer.style.fontFamily = 'inherit';
-
-// 4. Inject a matching header into the expanded menu
-const listForm = controlContainer.querySelector('form');
-if (listForm) {
-  const header = document.createElement('div');
-  header.innerHTML = 'Map Overlays';
-  header.style.padding = '8px 10px 6px 10px';
-  header.style.borderBottom = '1px solid #eaeaea';
-  header.style.marginBottom = '6px';
-  header.style.fontWeight = '600';
-  header.style.fontSize = '13px';
-  header.style.color = '#333333';
-  listForm.prepend(header);
+function toggleAllKmz() {
+  const checkboxes = document.querySelectorAll('.kmz-checkbox');
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  checkboxes.forEach(cb => {
+    cb.checked = !allChecked;
+    cb.dispatchEvent(new Event('change'));
+  });
 }
 
   </script>
