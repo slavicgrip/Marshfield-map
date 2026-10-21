@@ -407,15 +407,20 @@
       <h4 id="legend-title" onclick="toggleLegendCollapse()" style="cursor: pointer;">Filter Pins ▾</h4>
       <button type="button" class="legend-toggle-all" onclick="toggleAllFilters()">Toggle</button>
     </div>
-    <div class="legend-content" id="legend-content">
-      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="purple" checked onchange="filterMarkers()"><span class="legend-dot dot-purple"></span> General</label>
-      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="blue" checked onchange="filterMarkers()"><span class="legend-dot dot-blue"></span> Water</label>
-      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="red" checked onchange="filterMarkers()"><span class="legend-dot dot-red"></span> Electric</label>
-      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="green" checked onchange="filterMarkers()"><span class="legend-dot dot-green"></span> Storm/Sewer</label>
-      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="pink" checked onchange="filterMarkers()"><span class="legend-dot dot-pink"></span> Fiber Optic</label>
-      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="yellow" checked onchange="filterMarkers()"><span class="legend-dot dot-yellow"></span> WE Energies</label>
-    </div>
+   <div class="legend-panel" id="legend-panel">
+  <div class="legend-header">
+    <h4 id="legend-title" onclick="toggleLegendCollapse()" style="cursor: pointer;">Filter Pins ▸</h4>
+    <button type="button" class="legend-toggle-all" onclick="toggleAllFilters()">Toggle</button>
   </div>
+  <div class="legend-content" id="legend-content" style="display: none;">
+    <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="purple" checked onchange="filterMarkers()"><span class="legend-dot dot-purple"></span> General</label>
+    <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="blue" checked onchange="filterMarkers()"><span class="legend-dot dot-blue"></span> Water</label>
+    <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="red" checked onchange="filterMarkers()"><span class="legend-dot dot-red"></span> Electric</label>
+    <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="green" checked onchange="filterMarkers()"><span class="legend-dot dot-green"></span> Storm/Sewer</label>
+    <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="pink" checked onchange="filterMarkers()"><span class="legend-dot dot-pink"></span> Fiber Optic</label>
+    <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="yellow" checked onchange="filterMarkers()"><span class="legend-dot dot-yellow"></span> WE Energies</label>
+  </div>
+</div>
   
 <div class="legend-panel" id="kmz-legend-panel" style="position: absolute; bottom: 20px; left: 20px; z-index: 1000;">
   <div class="legend-header">
