@@ -1529,74 +1529,19 @@ async function generateArcGISToken() {
       map.removeLayer(layer);
     });
     secureEsriLayers = [];
-	
-	// --- CALL THE LOADER HERE ONCE TOKEN IS READY ---
-    loadArcGISLayers(token);
 
     // Remove old layer control from map if it already exists
     if (typeof arcgisLayerControl !== 'undefined' && arcgisLayerControl) {
       map.removeControl(arcgisLayerControl);
     }
 
-async function loadArcGISLayers(token) {
-  // Build the tree structure for the accordion folders
-  const overlaysTree = {
-    label: "<b>Marshfield Utilities & Data</b>",
-    children: []
-  };
- }
+    // Call the loader once token is ready
+    loadArcGISLayers(token);
 
-async function generateArcGISToken() {
-  const username = document.getElementById("arcgis-user").value.trim();
-  const password = document.getElementById("arcgis-pass").value.trim();
-
-  if (!username || !password) {
-    alert("Please enter both username and password.");
-    return;
+  } catch (err) {
+    alert("Connection error connecting to ArcGIS server: " + err.message);
   }
-
-  const tokenUrl = "https://www.arcgis.com/sharing/rest/generateToken";
-
-  const params = new URLSearchParams();
-  params.append("username", username);
-  params.append("password", password);
-  params.append("client", "referer");
-  params.append("referer", window.location.origin);
-  params.append("expiration", 60);
-  params.append("f", "json");
-
-  try {
-    const response = await fetch(tokenUrl, {
-      method: "POST",
-      body: params
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      alert("Login failed: " + data.error.message);
-      return;
-    }
-
-    const token = data.token;
-    console.log("Token successfully generated!");
-
-    // Close your ArcGIS login modal
-    closeArcGISLoginModal();
-
-    // Clean up any previously loaded secure layers if re-logging in
-    secureEsriLayers.forEach(layer => {
-      map.removeLayer(layer);
-    });
-    secureEsriLayers = [];
-	
-	// --- CALL THE LOADER HERE ONCE TOKEN IS READY ---
-    loadArcGISLayers(token);
-
-    // Remove old layer control from map if it already exists
-    if (typeof arcgisLayerControl !== 'undefined' && arcgisLayerControl) {
-      map.removeControl(arcgisLayerControl);
-    }
+}
 
 async function loadArcGISLayers(token) {
   // Build the tree structure for the accordion folders
@@ -1604,35 +1549,29 @@ async function loadArcGISLayers(token) {
     label: "<b>Marshfield Utilities & Data</b>",
     children: []
   };
-  
-  
 
-const streetLabelsLayer = L.esri.dynamicMapLayer({
+  const streetLabelsLayer = L.esri.dynamicMapLayer({
     url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Street_Names_Annotation/MapServer",
-   // token: token,
     opacity: 1.0,
     format: "png24",
-    zIndex: 1000 // Keeps the text labels rendering cleanly on top of parcels and utilities
+    zIndex: 1000
   });
-  
-// --- SITE ADDRESS ANNOTATIONS LAYER ---
+
   const addressLabelsLayer = L.esri.dynamicMapLayer({
     url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Site_Address_Annotations/MapServer",
     opacity: 1.0,
     format: "png24",
-    zIndex: 1000 // Keeps address numbers sitting cleanly on top of parcel boundaries
+    zIndex: 1000
   });
 
-  // Turn site addresses on by default (or set to false if you prefer it toggled off initially)
   addressLabelsLayer.addTo(map);
 
   overlaysTree.children.push({
     label: "<b>Site Address Annotations</b>",
     layer: addressLabelsLayer,
     checked: true
-  });  
+  });
 
-  // Automatically turn street labels on upon login
   streetLabelsLayer.addTo(map);
 
   overlaysTree.children.push({
@@ -1640,6 +1579,8 @@ const streetLabelsLayer = L.esri.dynamicMapLayer({
     layer: streetLabelsLayer,
     checked: true
   });
+
+  // ... (the rest of your sublayers inside loadArcGISLayers go here)
 
  // --- 2. EXISTING UTILITY SERVICES LOOP ---
   for (const service of myBaseServices) {
