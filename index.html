@@ -1694,18 +1694,7 @@ pbd09Layer.load('./KMZs/PBD09.kmz');
 // const spareLayer = L.kmzLayer();
 // spareLayer.load('./KMZs/YOUR_FINAL_FILE.kmz');
 
-const kmzOverlays = {
-  "Wausau PBD03": pbd03Layer,
-  "Spencer PBD07": pbd07Layer,
-  "Loyal/Greenwood PBD09": pbd09Layer,
-// "Spare Slot": spareLayer
-};
-
-L.control.layers(null, kmzOverlays, { 
-  position: 'bottomleft',
-  collapsed: true
-}).addTo(map);
-
+// 1. Declare the overlays object ONCE
 const kmzOverlays = {
   "Wausau PBD03": pbd03Layer,
   "Spencer PBD07": pbd07Layer,
@@ -1713,13 +1702,13 @@ const kmzOverlays = {
   //, "Spare Slot": spareLayer
 };
 
-// 1. Create the layer control
+// 2. Create the layer control ONCE and add it to the map
 const layerControl = L.control.layers(null, kmzOverlays, { 
   position: 'bottomleft',
   collapsed: true
 }).addTo(map);
 
-// 2. Style the main container to match your lower-right pin filter
+// 3. Style the main container to match your lower-right pin filter
 const controlContainer = layerControl.getContainer();
 controlContainer.style.backgroundColor = '#ffffff';
 controlContainer.style.padding = '4px';
@@ -1727,7 +1716,7 @@ controlContainer.style.borderRadius = '8px';
 controlContainer.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
 controlContainer.style.fontFamily = 'inherit';
 
-// 3. Inject a matching header into the expanded menu
+// 4. Inject a matching header into the expanded menu
 const listForm = controlContainer.querySelector('form');
 if (listForm) {
   const header = document.createElement('div');
