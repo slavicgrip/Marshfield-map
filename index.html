@@ -1689,14 +1689,14 @@ const pbd09Layer = L.kmzLayer();
 pbd09Layer.load('./KMZs/PBD09.kmz');
 
 // Spare slot ready for your final layer whenever you need it
-const spareLayer = L.kmzLayer();
-spareLayer.load('./KMZs/YOUR_FINAL_FILE.kmz');
+// const spareLayer = L.kmzLayer();
+// spareLayer.load('./KMZs/YOUR_FINAL_FILE.kmz');
 
 const kmzOverlays = {
   "Wausau PBD03": pbd03Layer,
   "PBD07": pbd07Layer,
   "PBD09": pbd09Layer,
-  "Spare Slot": spareLayer
+// "Spare Slot": spareLayer
 };
 
 L.control.layers(null, kmzOverlays, { 
