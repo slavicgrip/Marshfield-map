@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Marshfield Area Pin Placement Editing Database [M.A.P.P.E.D.]</title>
   
-  <link rel="icon" type="image/png" href="globe.png">  // i'm an asshole and left the wrong name for the file here.
+  <link rel="icon" type="image/png" href="globe.png"> 
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -416,6 +416,18 @@
       <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="yellow" checked onchange="filterMarkers()"><span class="legend-dot dot-yellow"></span> WE Energies</label>
     </div>
   </div>
+  
+  <div class="legend-panel" id="kmz-legend-panel" style="position: absolute; bottom: 20px; left: 20px; z-index: 1000;">
+  <div class="legend-header">
+    <h4 id="kmz-legend-title" onclick="toggleKmzCollapse()" style="cursor: pointer;">Map Overlays ▾</h4>
+    <button type="button" class="legend-toggle-all" onclick="toggleAllKmz()">Toggle</button>
+  </div>
+  <div class="legend-content" id="kmz-legend-content">
+    <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd03" checked onchange="toggleKmzLayers()"> Wausau PBD03</label>
+    <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd07" checked onchange="toggleKmzLayers()"> Spencer PBD07</label>
+    <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd09" checked onchange="toggleKmzLayers()"> Loyal/Greenwood PBD09</label>
+  </div>
+</div>
 
   <div id="login-modal" class="modal-overlay">
     <div class="modal-card">
@@ -1681,32 +1693,7 @@ const streetLabelsLayer = L.esri.dynamicMapLayer({
       });
     }, 200); // Small timeout ensures the DOM elements are fully rendered first
 	
-// 1. Define the custom control for KMZ overlays using your exact legend structure
-const KmzLegendControl = L.Control.extend({
-  options: { position: 'bottomleft' },
-  onAdd: function (map) {
-    const container = L.DomUtil.create('div', 'legend-panel');
-    container.id = 'kmz-legend-panel';
-    container.innerHTML = `
-      <div class="legend-header">
-        <h4 id="kmz-legend-title" onclick="toggleKmzCollapse()" style="cursor: pointer;">Map Overlays ▾</h4>
-        <button type="button" class="legend-toggle-all" onclick="toggleAllKmz()">Toggle</button>
-      </div>
-      <div class="legend-content" id="kmz-legend-content">
-        <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd03" checked> Wausau PBD03</label>
-        <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd07" checked> Spencer PBD07</label>
-        <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd09" checked> Loyal/Greenwood PBD09</label>
-      </div>
-    `;
-    L.DomEvent.disableClickPropagation(container);
-    return container;
-  }
-});
-
-// Add the custom panel to the map
-const kmzControl = new KmzLegendControl().addTo(map);
-
-// 2. Load layers and add them to the map by default
+// 1. Load the KMZ layers and add them by default
 const pbd03Layer = L.kmzLayer();
 pbd03Layer.load('./' + encodeURI('Wausau PBD03.kmz'));
 pbd03Layer.addTo(map);
@@ -1719,24 +1706,30 @@ const pbd09Layer = L.kmzLayer();
 pbd09Layer.load('./KMZs/PBD09.kmz');
 pbd09Layer.addTo(map);
 
+// 2. Prevent map clicks from dragging through the panel
+const kmzPanel = document.getElementById('kmz-legend-panel');
+L.DomEvent.disableClickPropagation(kmzPanel);
+L.DomEvent.disableScrollPropagation(kmzPanel);
+
 // 3. Checkbox toggle logic
-document.addEventListener('change', function(e) {
-  if (e.target.classList.contains('kmz-checkbox')) {
-    const layerKey = e.target.getAttribute('data-layer');
+function toggleKmzLayers() {
+  const checkboxes = document.querySelectorAll('.kmz-checkbox');
+  checkboxes.forEach(cb => {
+    const layerKey = cb.getAttribute('data-layer');
     let targetLayer;
     if (layerKey === 'pbd03') targetLayer = pbd03Layer;
     if (layerKey === 'pbd07') targetLayer = pbd07Layer;
     if (layerKey === 'pbd09') targetLayer = pbd09Layer;
-    
-    if (e.target.checked) {
-      map.addLayer(targetLayer);
-    } else {
-      map.removeLayer(targetLayer);
-    }
-  }
-});
 
-// 4. Collapse & Toggle-All functions matching your filter panel style
+    if (cb.checked) {
+      if (!map.hasLayer(targetLayer)) map.addLayer(targetLayer);
+    } else {
+      if (map.hasLayer(targetLayer)) map.removeLayer(targetLayer);
+    }
+  });
+}
+
+// 4. Collapse & Toggle-All functions matching your filter panel
 function toggleKmzCollapse() {
   const content = document.getElementById('kmz-legend-content');
   const title = document.getElementById('kmz-legend-title');
@@ -1754,8 +1747,8 @@ function toggleAllKmz() {
   const allChecked = Array.from(checkboxes).every(cb => cb.checked);
   checkboxes.forEach(cb => {
     cb.checked = !allChecked;
-    cb.dispatchEvent(new Event('change'));
   });
+  toggleKmzLayers();
 }
 
   </script>
