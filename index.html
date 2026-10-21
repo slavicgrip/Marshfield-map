@@ -1704,6 +1704,41 @@ L.control.layers(null, kmzOverlays, {
   collapsed: true
 }).addTo(map);
 
+const kmzOverlays = {
+  "Wausau PBD03": pbd03Layer,
+  "Spencer PBD07": pbd07Layer,
+  "Loyal/Greenwood PBD09": pbd09Layer
+  //, "Spare Slot": spareLayer
+};
+
+// 1. Create the layer control
+const layerControl = L.control.layers(null, kmzOverlays, { 
+  position: 'bottomleft',
+  collapsed: true
+}).addTo(map);
+
+// 2. Style the main container to match your lower-right pin filter
+const controlContainer = layerControl.getContainer();
+controlContainer.style.backgroundColor = '#ffffff';
+controlContainer.style.padding = '4px';
+controlContainer.style.borderRadius = '8px';
+controlContainer.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+controlContainer.style.fontFamily = 'inherit';
+
+// 3. Inject a matching header into the expanded menu
+const listForm = controlContainer.querySelector('form');
+if (listForm) {
+  const header = document.createElement('div');
+  header.innerHTML = 'Map Overlays';
+  header.style.padding = '8px 10px 6px 10px';
+  header.style.borderBottom = '1px solid #eaeaea';
+  header.style.marginBottom = '6px';
+  header.style.fontWeight = '600';
+  header.style.fontSize = '13px';
+  header.style.color = '#333333';
+  listForm.prepend(header);
+}
+
   </script>
  <!-- Edit Pin Modal -->
 <div id="edit-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
