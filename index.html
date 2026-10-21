@@ -43,6 +43,13 @@
 <script src="https://unpkg.com/leaflet-kmz@latest/dist/leaflet-kmz.js"></script>
 
 <style>
+
+/* Allow a left-side variant of the legend panel */
+.legend-panel.legend-left {
+  left: 8px !important;
+  right: auto !important;
+}
+
   /* Force the Fiber panel to the bottom-left */
   #kmz-legend-panel {
     position: absolute !important;
@@ -439,7 +446,7 @@
   </div>
 </div>
   
-<div class="legend-panel" id="kmz-legend-panel" style="position: absolute; bottom: 20px; left: 20px !important; right: auto !important; z-index: 1000;">
+<div class="legend-panel legend-left" id="kmz-legend-panel">
   <div class="legend-header">
     <h4 id="kmz-legend-title" onclick="toggleKmzCollapse()" style="cursor: pointer;">Fiber ▸</h4>
     <button type="button" class="legend-toggle-all" onclick="toggleAllKmz()">Toggle</button>
