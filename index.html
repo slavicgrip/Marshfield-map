@@ -43,8 +43,6 @@
 <script src="https://unpkg.com/leaflet-kmz@latest/dist/leaflet-kmz.js"></script>
 
 <style>
-
-
   /* Force the Fiber panel to the bottom-left */
   #kmz-legend-panel {
     position: absolute !important;
@@ -61,7 +59,6 @@
     left: auto !important;
   }
 
-  <style>
   .zone-row {
       display: flex;
       align-items: center;
@@ -421,37 +418,34 @@
     </div>
   </div>
 
+<!-- Filter Pins Panel (Bottom-Right) -->
   <div class="legend-panel" id="legend-panel">
     <div class="legend-header">
-      <h4 id="legend-title" onclick="toggleLegendCollapse()" style="cursor: pointer;">Filter Pins ▾</h4>
+      <h4 id="legend-title" onclick="toggleLegendCollapse()" style="cursor: pointer;">Filter Pins ▸</h4>
       <button type="button" class="legend-toggle-all" onclick="toggleAllFilters()">Toggle</button>
     </div>
-   <div class="legend-panel" id="legend-panel">
-  <div class="legend-header">
-    <h4 id="legend-title" onclick="toggleLegendCollapse()" style="cursor: pointer;">Filter Pins ▸</h4>
-    <button type="button" class="legend-toggle-all" onclick="toggleAllFilters()">Toggle</button>
+    <div class="legend-content" id="legend-content" style="display: none;">
+      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="purple" checked onchange="filterMarkers()"><span class="legend-dot dot-purple"></span> General</label>
+      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="blue" checked onchange="filterMarkers()"><span class="legend-dot dot-blue"></span> Water</label>
+      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="red" checked onchange="filterMarkers()"><span class="legend-dot dot-red"></span> Electric</label>
+      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="green" checked onchange="filterMarkers()"><span class="legend-dot dot-green"></span> Storm/Sewer</label>
+      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="pink" checked onchange="filterMarkers()"><span class="legend-dot dot-pink"></span> Fiber Optic</label>
+      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="yellow" checked onchange="filterMarkers()"><span class="legend-dot dot-yellow"></span> WE Energies</label>
+    </div>
   </div>
-  <div class="legend-content" id="legend-content" style="display: none;">
-    <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="purple" checked onchange="filterMarkers()"><span class="legend-dot dot-purple"></span> General</label>
-    <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="blue" checked onchange="filterMarkers()"><span class="legend-dot dot-blue"></span> Water</label>
-    <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="red" checked onchange="filterMarkers()"><span class="legend-dot dot-red"></span> Electric</label>
-    <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="green" checked onchange="filterMarkers()"><span class="legend-dot dot-green"></span> Storm/Sewer</label>
-    <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="pink" checked onchange="filterMarkers()"><span class="legend-dot dot-pink"></span> Fiber Optic</label>
-    <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="yellow" checked onchange="filterMarkers()"><span class="legend-dot dot-yellow"></span> WE Energies</label>
-  </div>
-</div>
   
-<div class="legend-panel" id="kmz-legend-panel" style="position: absolute !important; bottom: 12px !important; left: 8px !important; right: auto !important; z-index: 999;">
-  <div class="legend-header">
-    <h4 id="kmz-legend-title" onclick="toggleKmzCollapse()" style="cursor: pointer;">Fiber ▸</h4>
-    <button type="button" class="legend-toggle-all" onclick="toggleAllKmz()">Toggle</button>
+  <!-- Fiber Panel (Bottom-Left) -->
+  <div class="legend-panel" id="kmz-legend-panel">
+    <div class="legend-header">
+      <h4 id="kmz-legend-title" onclick="toggleKmzCollapse()" style="cursor: pointer;">Fiber ▸</h4>
+      <button type="button" class="legend-toggle-all" onclick="toggleAllKmz()">Toggle</button>
+    </div>
+    <div class="legend-content" id="kmz-legend-content" style="display: none;">
+      <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd03" checked onchange="toggleKmzLayers()"> Wausau PBD03</label>
+      <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd07" checked onchange="toggleKmzLayers()"> Spencer PBD07</label>
+      <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd09" checked onchange="toggleKmzLayers()"> Loyal/Greenwood PBD09</label>
+    </div>
   </div>
-  <div class="legend-content" id="kmz-legend-content" style="display: none;">
-    <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd03" checked onchange="toggleKmzLayers()"> Wausau PBD03</label>
-    <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd07" checked onchange="toggleKmzLayers()"> Spencer PBD07</label>
-    <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd09" checked onchange="toggleKmzLayers()"> Loyal/Greenwood PBD09</label>
-  </div>
-</div>
 
   <div id="login-modal" class="modal-overlay">
     <div class="modal-card">
