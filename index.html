@@ -417,12 +417,12 @@
     </div>
   </div>
   
-  <div class="legend-panel" id="kmz-legend-panel" style="position: absolute; bottom: 20px; left: 20px; z-index: 1000;">
+<div class="legend-panel" id="kmz-legend-panel" style="position: absolute; bottom: 20px; left: 20px; z-index: 1000;">
   <div class="legend-header">
-    <h4 id="kmz-legend-title" onclick="toggleKmzCollapse()" style="cursor: pointer;">Map Overlays ▾</h4>
+    <h4 id="kmz-legend-title" onclick="toggleKmzCollapse()" style="cursor: pointer;">Map Overlays ▸</h4>
     <button type="button" class="legend-toggle-all" onclick="toggleAllKmz()">Toggle</button>
   </div>
-  <div class="legend-content" id="kmz-legend-content">
+  <div class="legend-content" id="kmz-legend-content" style="display: none;">
     <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd03" checked onchange="toggleKmzLayers()"> Wausau PBD03</label>
     <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd07" checked onchange="toggleKmzLayers()"> Spencer PBD07</label>
     <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd09" checked onchange="toggleKmzLayers()"> Loyal/Greenwood PBD09</label>
