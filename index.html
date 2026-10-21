@@ -1545,6 +1545,65 @@ async function loadArcGISLayers(token) {
     children: []
   };
 
+async function generateArcGISToken() {
+  const username = document.getElementById("arcgis-user").value.trim();
+  const password = document.getElementById("arcgis-pass").value.trim();
+
+  if (!username || !password) {
+    alert("Please enter both username and password.");
+    return;
+  }
+
+  const tokenUrl = "https://www.arcgis.com/sharing/rest/generateToken";
+
+  const params = new URLSearchParams();
+  params.append("username", username);
+  params.append("password", password);
+  params.append("client", "referer");
+  params.append("referer", window.location.origin);
+  params.append("expiration", 60);
+  params.append("f", "json");
+
+  try {
+    const response = await fetch(tokenUrl, {
+      method: "POST",
+      body: params
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      alert("Login failed: " + data.error.message);
+      return;
+    }
+
+    const token = data.token;
+    console.log("Token successfully generated!");
+
+    // Close your ArcGIS login modal
+    closeArcGISLoginModal();
+
+    // Clean up any previously loaded secure layers if re-logging in
+    secureEsriLayers.forEach(layer => {
+      map.removeLayer(layer);
+    });
+    secureEsriLayers = [];
+	
+	// --- CALL THE LOADER HERE ONCE TOKEN IS READY ---
+    loadArcGISLayers(token);
+
+    // Remove old layer control from map if it already exists
+    if (typeof arcgisLayerControl !== 'undefined' && arcgisLayerControl) {
+      map.removeControl(arcgisLayerControl);
+    }
+
+async function loadArcGISLayers(token) {
+  // Build the tree structure for the accordion folders
+  const overlaysTree = {
+    label: "<b>Marshfield Utilities & Data</b>",
+    children: []
+  };
+
 const streetLabelsLayer = L.esri.dynamicMapLayer({
     url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Street_Names_Annotation/MapServer",
    // token: token,
@@ -1838,5 +1897,25 @@ function toggleAllKmz() {
     <button type="button" onclick="closeArcGISLoginModal()" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
   </div>
 </div>
+<!-- Marshfield Utilities ArcGIS Login Modal -->
+<div id="utility-login-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
+  <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
+    <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Marshfield Utilities Login</h3>
+    
+    <div style="margin-bottom: 12px;">
+      <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #475569;">Username</label>
+      <input type="text" id="utility-user" placeholder="Enter Utility username" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #475569;">Password</label>
+      <input type="password" id="utility-pass" placeholder="Enter Utility password" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
+    </div>
+
+    <button type="button" onclick="generateUtilityToken()" style="width: 100%; padding: 10px; margin-bottom: 8px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Sign In & Load Utility Layers</button>
+    <button type="button" onclick="document.getElementById('utility-login-modal').style.display='none'" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
+  </div>
+</div>
+
 </body>
 </html>
