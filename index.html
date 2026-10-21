@@ -1544,6 +1544,7 @@ async function loadArcGISLayers(token) {
     label: "<b>Marshfield Utilities & Data</b>",
     children: []
   };
+ }
 
 async function generateArcGISToken() {
   const username = document.getElementById("arcgis-user").value.trim();
@@ -1603,6 +1604,8 @@ async function loadArcGISLayers(token) {
     label: "<b>Marshfield Utilities & Data</b>",
     children: []
   };
+  
+  
 
 const streetLabelsLayer = L.esri.dynamicMapLayer({
     url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Street_Names_Annotation/MapServer",
