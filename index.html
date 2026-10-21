@@ -1680,18 +1680,22 @@ const streetLabelsLayer = L.esri.dynamicMapLayer({
     }, 200); // Small timeout ensures the DOM elements are fully rendered first
 	
 const pbd03Layer = L.kmzLayer();
-pbd03Layer.load(encodeURI('Wausau PBD03.kmz'));
+pbd03Layer.load('./' + encodeURI('Wausau PBD03.kmz')); // Or './KMZs/...' depending on where it lives
 
-const pbd08Layer = L.kmzLayer();
-pbd08Layer.load('./KMZs/PBD08.kmz');
+const pbd07Layer = L.kmzLayer();
+pbd07Layer.load('./PBD07.kmz');
 
 const pbd09Layer = L.kmzLayer();
 pbd09Layer.load('./KMZs/PBD09.kmz');
 
+//const newLayer = L.kmzLayer();  where you add a new layer
+// newLayer.load('./KMZs/PBD07.kmz.kmz'); file path for the new layer
+
 const kmzOverlays = {
   "Wausau PBD03": pbd03Layer,
-  "PBD08 Overlay": pbd08Layer,
-  "PBD09 Overlay": pbd09Layer
+  "PBD07": pbd07Layer,
+  "PBD09": pbd09Layer,
+  "Your New Layer Label": newLayer
 };
 
 L.control.layers(null, kmzOverlays, { 
