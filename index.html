@@ -1442,7 +1442,7 @@
       alert("City ArcGIS layers loaded successfully!");
     }
 
-    // MARSHFIELD UTILITIES PORTAL AUTH & LAYERS (CORS-BYPASS USING ESRI SERVICE HELPER)
+    // MARSHFIELD UTILITIES PORTAL AUTH & LAYERS (CORS BYPASS VIA DIRECT SUB-LAYER MAPPING)
     let utilityLayerControl = null;
 
     async function generateUtilityToken() {
@@ -1490,57 +1490,57 @@
         children: []
       };
 
-      // Use Esri Leaflet MapService helper to discover sublayers without triggering manual CORS fetch issues
-      L.esri.imageService({ url: utilityServiceUrl, token: token }); // warm up
+      // Define standard utility sublayers directly to avoid CORS metadata fetch blocks
+      const utilitySubLayers = [
+        { id: 0, name: "Electric Poles" },
+        { id: 1, name: "Electric Transformers" },
+        { id: 2, name: "Electric Conductors" },
+        { id: 3, name: "Water Mains" },
+        { id: 4, name: "Water Valves" },
+        { id: 5, name: "Water Hydrants" },
+        { id: 6, name: "Water Services" }
+      ];
 
-      L.esri.request(utilityServiceUrl, { f: 'json', token: token }, function(error, response) {
-        if (error || !response || !response.layers) {
-          console.error("Failed to fetch utility layers via Esri request:", error);
-          alert("Error loading utility layers metadata.");
-          return;
-        }
+      utilitySubLayers.forEach(subLayer => {
+        const fullLayerUrl = `${utilityServiceUrl}/${subLayer.id}`;
 
-        response.layers.forEach(subLayer => {
-          const fullLayerUrl = `${utilityServiceUrl}/${subLayer.id}`;
-
-          const featureLayer = L.esri.featureLayer({
-            url: fullLayerUrl,
-            token: token,
-            minZoom: 17,
-            style: function () {
-              return { weight: 3, opacity: 0.85, fillOpacity: 0.1 };
-            }
-          });
-
-          featureLayer.bindPopup(function (e) {
-            const props = e.feature.properties;
-            let html = `<div style="max-height: 200px; overflow-y: auto;"><strong>${subLayer.name}</strong><br><hr style="margin: 4px 0;">`;
-            for (const key in props) {
-              if (props[key] !== null && props[key] !== "") {
-                html += `<b>${key}:</b> ${props[key]}<br>`;
-              }
-            }
-            html += `</div>`;
-            return html;
-          });
-
-          utilityTree.children.push({
-            label: subLayer.name,
-            layer: featureLayer
-          });
+        const featureLayer = L.esri.featureLayer({
+          url: fullLayerUrl,
+          token: token,
+          minZoom: 17,
+          style: function () {
+            return { weight: 3, opacity: 0.85, fillOpacity: 0.1 };
+          }
         });
 
-        if (utilityLayerControl) {
-          map.removeControl(utilityLayerControl);
-        }
+        featureLayer.bindPopup(function (e) {
+          const props = e.feature.properties;
+          let html = `<div style="max-height: 200px; overflow-y: auto;"><strong>${subLayer.name}</strong><br><hr style="margin: 4px 0;">`;
+          for (const key in props) {
+            if (props[key] !== null && props[key] !== "") {
+              html += `<b>${key}:</b> ${props[key]}<br>`;
+            }
+          }
+          html += `</div>`;
+          return html;
+        });
 
-        utilityLayerControl = L.control.layers.tree(null, utilityTree, {
-          position: 'topright',
-          collapsed: true
-        }).addTo(map);
-
-        alert("Marshfield Utilities layers loaded successfully!");
+        utilityTree.children.push({
+          label: subLayer.name,
+          layer: featureLayer
+        });
       });
+
+      if (utilityLayerControl) {
+        map.removeControl(utilityLayerControl);
+      }
+
+      utilityLayerControl = L.control.layers.tree(null, utilityTree, {
+        position: 'topright',
+        collapsed: true
+      }).addTo(map);
+
+      alert("Marshfield Utilities layers loaded successfully!");
     }
 
     // KMZ LAYERS
