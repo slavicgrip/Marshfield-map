@@ -378,9 +378,16 @@
     <div class="header-left">
       <div class="header-title">M.A.P.P.E.D.</div>
       <div id="search-container">
-        <input type="search" id="map-search-box" placeholder="Search address..." autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');">
-        <div id="search-results" class="search-results"></div>
-      </div>
+  <!-- Decoy hidden inputs to trick Chrome's autofill target -->
+  <input type="text" style="display:none" autocomplete="username">
+  <input type="password" style="display:none" autocomplete="current-password">
+
+  <form autocomplete="off" onsubmit="return false;" style="margin: 0; padding: 0;">
+    <input type="search" id="map-search-box" placeholder="Search address..." autocomplete="off" data-lpignore="true" readonly onfocus="this.removeAttribute('readonly');">
+  </form>
+  
+  <div id="search-results" class="search-results"></div>
+</div>
     </div>
     <div class="header-right">
       <div class="status-badge">
