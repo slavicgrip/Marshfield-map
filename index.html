@@ -696,11 +696,11 @@
     }
 
     async function performAddressSearch(query) {
-      // Midwest bounding box (minLon, minLat, maxLon, maxLat) covering WI, MN, IA, IL, MI, IN
-      const viewbox = "-97.5,36.5,-82.0,50.0";
+      // Central WI / Marshfield bounding box for priority biasing (minLon, minLat, maxLon, maxLat)
+      const centralWiViewbox = "-90.8,44.2,-89.5,45.2";
       
-      // bounded=1 strictly restricts search server-side to your 6-state region for instant speed
-      const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=us&viewbox=${viewbox}&bounded=1&q=${encodeURIComponent(query)}&limit=10`;
+      // Without bounded=1, viewbox prioritizes Central WI first while allowing regional matches
+      const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=us&viewbox=${centralWiViewbox}&q=${encodeURIComponent(query)}&limit=10`;
 
       try {
         const response = await fetch(url, { 
