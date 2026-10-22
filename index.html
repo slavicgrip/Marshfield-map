@@ -583,6 +583,32 @@
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
     });
 
+    // Statewide Wisconsin Parcel Boundary & Address Layer
+    const wiParcelsLayer = L.esri.featureLayer({
+      url: 'https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels_DB/FeatureServer/0',
+      minZoom: 15,
+      style: function () {
+        return {
+          color: '#e67e22',
+          weight: 1.5,
+          fillColor: '#34495e',
+          fillOpacity: 0.05
+        };
+      }
+    });
+
+    wiParcelsLayer.bindPopup(function (layer) {
+      const props = layer.feature.properties;
+      return `
+        <div style="font-size: 12px;">
+          <strong>WI Tax Parcel</strong><br><hr style="margin: 4px 0;">
+          <b>Address:</b> ${props.SITEADRESS || props.FullPhysicalAddress || 'N/A'}<br>
+          <b>Parcel ID:</b> ${props.PARCELID || props.ParcelID || 'N/A'}<br>
+          <b>Owner:</b> ${props.OWNERNME1 || props.PrimaryOwnerName || 'N/A'}
+        </div>
+      `;
+    });
+
     const map = L.map('map', { 
       zoomControl: false,
       maxZoom: 21,
@@ -607,7 +633,8 @@
 
     const baseMaps = {
       "OpenStreetMap": osmLayer,
-      "Satellite Imagery": satelliteLayer
+      "Satellite Imagery": satelliteLayer,
+      "WI Parcels & Lot Lines": wiParcelsLayer
     };
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
     L.control.zoom({ position: 'topright' }).addTo(map);
