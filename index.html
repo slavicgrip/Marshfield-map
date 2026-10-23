@@ -597,7 +597,7 @@
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
     });
 
-    // Statewide Wisconsin Parcel Boundary & Address Layer (Toggleable Overlay)
+    // Statewide Wisconsin Parcel Boundary Layer (Toggleable Overlay)
     const wiParcelsLayer = L.esri.featureLayer({
       url: 'https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels_DB/FeatureServer/0',
       minZoom: 15,
@@ -637,11 +637,27 @@
       }
     });
 
-    // Initialize Map with OSM and WI Parcels checked by default
+    // Public City of Marshfield Address & Street Name Annotations (Loaded by default for Marshfield proper - No Login Needed!)
+    const addressLabelsLayer = L.esri.dynamicMapLayer({
+      url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Site_Address_Annotations/MapServer",
+      opacity: 1.0,
+      format: "png24",
+      zIndex: 1000,
+      minZoom: 14
+    });
+
+    const streetLabelsLayer = L.esri.dynamicMapLayer({
+      url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Street_Names_Annotation/MapServer",
+      opacity: 1.0,
+      format: "png24",
+      zIndex: 1000
+    });
+
+    // Initialize Map with OSM, WI Parcels, and Marshfield Public Addresses checked by default
     const map = L.map('map', { 
       zoomControl: false,
       maxZoom: 21,
-      layers: [osmLayer, wiParcelsLayer] 
+      layers: [osmLayer, wiParcelsLayer, addressLabelsLayer, streetLabelsLayer] 
     }).setView(MARSHFIELD_CENTER, MARSHFIELD_ZOOM);
 	
     const mapContainer = map.getContainer();
@@ -667,7 +683,9 @@
     };
 
     const overlayMaps = {
-      "WI Parcels & Lot Lines": wiParcelsLayer
+      "WI Parcels & Lot Lines": wiParcelsLayer,
+      "Marshfield Site Addresses": addressLabelsLayer,
+      "Marshfield Street Names": streetLabelsLayer
     };
 
     L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
@@ -1365,7 +1383,7 @@
       }
     }
 
-    // CITY ARCGIS AUTH & LAYERS
+    // CITY ARCGIS AUTH & SECURE LAYERS
     async function generateArcGISToken() {
       const username = document.getElementById("arcgis-user").value.trim();
       const password = document.getElementById("arcgis-pass").value.trim();
@@ -1422,36 +1440,6 @@
         label: "<b>Marshfield Utilities & Data</b>",
         children: []
       };
-
-      const streetLabelsLayer = L.esri.dynamicMapLayer({
-        url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Street_Names_Annotation/MapServer",
-        opacity: 1.0,
-        format: "png24",
-        zIndex: 1000
-      });
-
-      const addressLabelsLayer = L.esri.dynamicMapLayer({
-        url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Site_Address_Annotations/MapServer",
-        opacity: 1.0,
-        format: "png24",
-        zIndex: 1000
-      });
-
-      addressLabelsLayer.addTo(map);
-
-      overlaysTree.children.push({
-        label: "<b>Site Address Annotations</b>",
-        layer: addressLabelsLayer,
-        checked: true
-      });
-
-      streetLabelsLayer.addTo(map);
-
-      overlaysTree.children.push({
-        label: "<b>Street Names & Annotations</b>",
-        layer: streetLabelsLayer,
-        checked: true
-      });
 
       for (const service of myBaseServices) {
         const serviceBranch = {
@@ -1530,7 +1518,7 @@
       const arcDot = document.getElementById("arcgis-status-dot");
       if (arcDot) arcDot.style.backgroundColor = "#2ecc71";
 
-      alert("City ArcGIS layers loaded successfully!");
+      alert("City ArcGIS secure utility layers loaded successfully!");
     }
 
     // KMZ LAYERS
