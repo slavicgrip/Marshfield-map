@@ -43,6 +43,20 @@
   <script src="https://unpkg.com/leaflet-kmz@latest/dist/leaflet-kmz.js"></script>
 
   <style>
+    /* Parcel Address Label Styling */
+    .parcel-address-label {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      font-size: 10px;
+      font-weight: bold;
+      color: #c0392b;
+      text-shadow: 1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white;
+    }
+    .parcel-address-label::before {
+      display: none;
+    }
+
     /* Force the Fiber panel to the bottom-left */
     #kmz-legend-panel {
       position: absolute !important;
@@ -96,7 +110,7 @@
       flex-direction: column;
     }
 
-    /* PIN POPUP IMAGE GALLERY THUMBNAILS (ADDED FIX) */
+    /* PIN POPUP IMAGE GALLERY THUMBNAILS */
     .image-gallery {
       display: flex;
       flex-wrap: wrap;
@@ -609,6 +623,20 @@
       `;
     });
 
+    // Automatically bind permanent address labels to features when created
+    wiParcelsLayer.on('createfeature', function (e) {
+      const props = e.feature.properties;
+      const address = props.SITEADRESS || props.FullPhysicalAddress;
+      
+      if (address) {
+        e.layer.bindTooltip(address, {
+          permanent: true,
+          direction: 'center',
+          className: 'parcel-address-label'
+        });
+      }
+    });
+
     // Initialize Map with OSM and WI Parcels checked by default
     const map = L.map('map', { 
       zoomControl: false,
@@ -632,7 +660,7 @@
 	
     map.addLayer(geofenceLayerGroup);
 
-    // UNIFIED LAYER CONTROL BOX (Base maps + Overlays in one box)
+    // UNIFIED LAYER CONTROL BOX
     const baseMaps = {
       "OpenStreetMap": osmLayer,
       "Satellite Imagery": satelliteLayer
@@ -729,10 +757,7 @@
     }
 
     async function performAddressSearch(query) {
-      // Central WI / Marshfield bounding box for priority biasing (minLon, minLat, maxLon, maxLat)
       const centralWiViewbox = "-90.8,44.2,-89.5,45.2";
-      
-      // Without bounded=1, viewbox prioritizes Central WI first while allowing regional matches
       const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=us&viewbox=${centralWiViewbox}&q=${encodeURIComponent(query)}&limit=10`;
 
       try {
