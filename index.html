@@ -597,7 +597,7 @@
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
     });
 
-    // Statewide Wisconsin Parcel Boundary Layer (Universal Standard across all counties)
+    // Statewide Wisconsin Parcel Boundary Layer
     const wiParcelsLayer = L.esri.featureLayer({
       url: 'https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels_DB/FeatureServer/0',
       minZoom: 15,
@@ -623,10 +623,8 @@
       `;
     });
 
-    // Standardized feature labeling with fallback for blank county records
     wiParcelsLayer.on('createfeature', function (e) {
       const props = e.feature.properties;
-      // Uses address if available, otherwise falls back to Parcel ID so every parcel has a label standard
       const labelText = props.SITEADRESS || props.FullPhysicalAddress || props.PARCELID || props.ParcelID || "";
       
       if (labelText) {
@@ -638,11 +636,27 @@
       }
     });
 
-    // Initialize Map with OSM and WI Parcels as the universal standard base
+    // Public City of Marshfield Address & Street Name Annotations (Instant Server-Rendered Tiles, No Login Needed)
+    const addressLabelsLayer = L.esri.dynamicMapLayer({
+      url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Site_Address_Annotations/MapServer",
+      opacity: 1.0,
+      format: "png24",
+      zIndex: 1000,
+      minZoom: 14
+    });
+
+    const streetLabelsLayer = L.esri.dynamicMapLayer({
+      url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Street_Names_Annotation/MapServer",
+      opacity: 1.0,
+      format: "png24",
+      zIndex: 1000
+    });
+
+    // Initialize Map with OSM, Parcels, and Public Address/Street Layers active on startup
     const map = L.map('map', { 
       zoomControl: false,
       maxZoom: 21,
-      layers: [osmLayer, wiParcelsLayer] 
+      layers: [osmLayer, wiParcelsLayer, addressLabelsLayer, streetLabelsLayer] 
     }).setView(MARSHFIELD_CENTER, MARSHFIELD_ZOOM);
 	
     const mapContainer = map.getContainer();
@@ -661,14 +675,16 @@
 	
     map.addLayer(geofenceLayerGroup);
 
-    // UNIFIED LAYER CONTROL BOX (Streamlined to Statewide Standard)
+    // UNIFIED LAYER CONTROL BOX
     const baseMaps = {
       "OpenStreetMap": osmLayer,
       "Satellite Imagery": satelliteLayer
     };
 
     const overlayMaps = {
-      "WI Parcels & Lot Lines": wiParcelsLayer
+      "WI Parcels & Lot Lines": wiParcelsLayer,
+      "Marshfield Site Addresses": addressLabelsLayer,
+      "Marshfield Street Names": streetLabelsLayer
     };
 
     L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
