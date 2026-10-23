@@ -347,32 +347,6 @@
     .delete-img-btn:hover {
       background: #b91c1c;
     }
-
-    .leaflet-control-layers-group-name {
-      font-weight: bold;
-      cursor: pointer;
-      padding: 4px 6px;
-      background: #f4f4f4;
-      border-radius: 4px;
-      margin-top: 5px;
-      display: block;
-      user-select: none;
-    }
-
-    .leaflet-control-layers-group-name:hover {
-      background: #e2e2e2;
-    }
-
-    .leaflet-control-layers-group.collapsed label:not(:first-child),
-    .leaflet-control-layers-group.collapsed .leaflet-control-layers-separator {
-      display: none !important;
-    }
-
-    .leaflet-control-layers-expanded {
-      max-height: 350px;
-      overflow-y: auto;
-      scrollbar-width: thin;
-    }
   </style>
 
   <!-- CRITICAL GLOBAL MODAL FUNCTIONS DEFINED EARLY -->
@@ -491,10 +465,10 @@
     let secureEsriLayers = [];
 
     const myBaseServices = [
-      { name: "Parcel Info", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/ArcGIS/rest/services/Parcel_Info_Online/FeatureServer" },	
-      { name: "Storm Utility", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/arcgis/rest/services/Storm_Utility/FeatureServer" },
-      { name: "Sanitary Utility", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/arcgis/rest/services/Sanitary_Utility/FeatureServer" },
-      { name: "Traffic & WW", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/arcgis/rest/services/Traffic_Controls_and_WW_Utilities/FeatureServer" }
+      { name: "Parcel Info", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/ArcGIS/rest/services/Parcel_Info_Online/MapServer" },	
+      { name: "Storm Utility", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/arcgis/rest/services/Storm_Utility/MapServer" },
+      { name: "Sanitary Utility", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/arcgis/rest/services/Sanitary_Utility/MapServer" },
+      { name: "Traffic & WW", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/arcgis/rest/services/Traffic_Controls_and_WW_Utilities/MapServer" }
     ];
 
     // FIREBASE INITIALIZATION CHECK
@@ -1406,7 +1380,7 @@
       }
     }
 
-    // CITY ARCGIS AUTH & SECURE LAYERS (Optimized Opt-In to Prevent Molasses Lag)
+    // CITY ARCGIS AUTH & SECURE DYNAMIC LAYERS (High Performance & Flawless Culling)
     async function generateArcGISToken() {
       const username = document.getElementById("arcgis-user").value.trim();
       const password = document.getElementById("arcgis-pass").value.trim();
@@ -1442,12 +1416,10 @@
         const token = data.token;
         closeArcGISLoginModal();
 
-        secureEsriLayers.forEach(layer => {
-          map.removeLayer(layer);
-        });
+        secureEsriLayers.forEach(layer => map.removeLayer(layer));
         secureEsriLayers = [];
 
-        if (typeof arcgisLayerControl !== 'undefined' && arcgisLayerControl) {
+        if (arcgisLayerControl) {
           map.removeControl(arcgisLayerControl);
         }
 
@@ -1458,74 +1430,28 @@
       }
     }
 
-    async function loadArcGISLayers(token) {
-      const overlaysTree = {
-        label: "<b>Marshfield Utilities & Data</b>",
-        children: []
-      };
+    function loadArcGISLayers(token) {
+      const utilityOverlays = {};
 
-      for (const service of myBaseServices) {
-        const serviceBranch = {
-          label: `<b>${service.name}</b>`,
-          children: []
-        };
+      myBaseServices.forEach(service => {
+        // High-performance server-rendered dynamic map layers with automatic zoom culling
+        const dynamicLayer = L.esri.dynamicMapLayer({
+          url: service.url,
+          token: token,
+          opacity: 0.85,
+          format: "png24",
+          minZoom: 16 // Automatically hides completely when zoomed out, eliminating all lag
+        });
 
-        try {
-          const response = await fetch(`${service.url}?f=json&token=${token}`);
-          const data = await response.json();
-
-          if (data.layers && Array.isArray(data.layers)) {
-            data.layers.forEach(subLayer => {
-              const fullLayerUrl = `${service.url}/${subLayer.id}`;
-              
-              let displayName = subLayer.name;
-              if (displayName.toLowerCase().includes("parcelinformation")) {
-                displayName = "Parcel Information";
-              }
-
-              const featureLayer = L.esri.featureLayer({
-                url: fullLayerUrl,
-                token: token,
-                minZoom: 16, // Locked deep so layers never clutter or lag wide views
-                style: function (feature) {
-                  return { weight: 2, opacity: 0.8, fillOpacity: 0.1 };
-                }
-              });
-              
-              featureLayer.bindPopup(function (e) {
-                const props = e.feature.properties;
-                let html = `<div style="max-height: 200px; overflow-y: auto;"><strong>${displayName}</strong><br><hr style="margin: 4px 0;">`;
-                for (const key in props) {
-                  if (props[key] !== null && props[key] !== "") {
-                    html += `<b>${key}:</b> ${props[key]}<br>`;
-                  }
-                }
-                html += `</div>`;
-                return html;
-              });
-
-              // NOTE: .addTo(map) removed by default. 
-              // Layers only render when explicitly checked in the layer tree control, keeping speed blazing fast!
-              secureEsriLayers.push(featureLayer);
-
-              serviceBranch.children.push({
-                label: displayName,
-                layer: featureLayer
-              });
-            });
-          }
-        } catch (error) {
-          console.error(`Failed to load layers for ${service.name}:`, error);
-        }
-
-        overlaysTree.children.push(serviceBranch);
-      }
+        secureEsriLayers.push(dynamicLayer);
+        utilityOverlays[`🔒 ${service.name}`] = dynamicLayer;
+      });
 
       if (arcgisLayerControl) {
         map.removeControl(arcgisLayerControl);
       }
 
-      arcgisLayerControl = L.control.layers.tree(null, overlaysTree, { 
+      arcgisLayerControl = L.control.layers(null, utilityOverlays, { 
         position: 'topright', 
         collapsed: true 
       }).addTo(map);
@@ -1533,7 +1459,7 @@
       const arcDot = document.getElementById("arcgis-status-dot");
       if (arcDot) arcDot.style.backgroundColor = "#2ecc71";
 
-      alert("City ArcGIS secure utility tree loaded successfully! Check layers to render them on demand.");
+      alert("City ArcGIS secure utility layers loaded successfully! They will appear automatically when you zoom in close.");
     }
 
     // LAZY-LOADED KMZ FIBER LAYERS
@@ -1635,7 +1561,7 @@
     </div>
   </div>
 
-  <!-- Sign In Choice Modal (2 Options - Utilities Hidden) -->
+  <!-- Sign In Choice Modal -->
   <div id="login-choice-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
     <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
       <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Sign In Options</h3>
@@ -1652,7 +1578,7 @@
     </div>
   </div>
 
-  <!-- Account Menu Modal (When Logged Into Firebase) -->
+  <!-- Account Menu Modal -->
   <div id="account-menu-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
     <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
       <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Account & Utilities</h3>
