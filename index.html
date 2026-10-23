@@ -583,7 +583,7 @@
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
     });
 
-    // Statewide Wisconsin Parcel Boundary & Address Layer
+    // Statewide Wisconsin Parcel Boundary & Address Layer (Toggleable Overlay)
     const wiParcelsLayer = L.esri.featureLayer({
       url: 'https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels_DB/FeatureServer/0',
       minZoom: 15,
@@ -609,10 +609,11 @@
       `;
     });
 
+    // Initialize Map with OSM and WI Parcels checked by default
     const map = L.map('map', { 
       zoomControl: false,
       maxZoom: 21,
-      layers: [osmLayer] 
+      layers: [osmLayer, wiParcelsLayer] 
     }).setView(MARSHFIELD_CENTER, MARSHFIELD_ZOOM);
 	
     const mapContainer = map.getContainer();
@@ -631,12 +632,17 @@
 	
     map.addLayer(geofenceLayerGroup);
 
+    // UNIFIED LAYER CONTROL BOX (Base maps + Overlays in one box)
     const baseMaps = {
       "OpenStreetMap": osmLayer,
-      "Satellite Imagery": satelliteLayer,
+      "Satellite Imagery": satelliteLayer
+    };
+
+    const overlayMaps = {
       "WI Parcels & Lot Lines": wiParcelsLayer
     };
-    L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
+
+    L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
     L.control.zoom({ position: 'topright' }).addTo(map);
 	
     let arcgisLayerControl = null;
