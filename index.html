@@ -1521,15 +1521,18 @@
       alert("City ArcGIS secure utility layers loaded successfully!");
     }
 
-    // KMZ LAYERS
-    const pbd03Layer = L.kmzLayer();
-    pbd03Layer.load('./' + encodeURI('Wausau PBD03.kmz'));
+    // LAZY-LOADED KMZ FIBER LAYERS (Zero Startup Lag)
+    const kmzLayersCache = {
+      pbd03: null,
+      pbd07: null,
+      pbd09: null
+    };
 
-    const pbd07Layer = L.kmzLayer();
-    pbd07Layer.load('./KMZs/PBD07.kmz');
-
-    const pbd09Layer = L.kmzLayer();
-    pbd09Layer.load('./KMZs/PBD09.kmz');
+    const kmzFilePaths = {
+      pbd03: './' + encodeURI('Wausau PBD03.kmz'),
+      pbd07: './KMZs/PBD07.kmz',
+      pbd09: './KMZs/PBD09.kmz'
+    };
 
     const kmzPanel = document.getElementById('kmz-legend-panel');
     L.DomEvent.disableClickPropagation(kmzPanel);
@@ -1539,15 +1542,23 @@
       const checkboxes = document.querySelectorAll('.kmz-checkbox');
       checkboxes.forEach(cb => {
         const layerKey = cb.getAttribute('data-layer');
-        let targetLayer;
-        if (layerKey === 'pbd03') targetLayer = pbd03Layer;
-        if (layerKey === 'pbd07') targetLayer = pbd07Layer;
-        if (layerKey === 'pbd09') targetLayer = pbd09Layer;
-
+        
         if (cb.checked) {
-          if (!map.hasLayer(targetLayer)) map.addLayer(targetLayer);
+          if (!kmzLayersCache[layerKey]) {
+            // Lazy-load on first check
+            const targetLayer = L.kmzLayer();
+            targetLayer.load(kmzFilePaths[layerKey]);
+            kmzLayersCache[layerKey] = targetLayer;
+            targetLayer.addTo(map);
+          } else {
+            if (!map.hasLayer(kmzLayersCache[layerKey])) {
+              map.addLayer(kmzLayersCache[layerKey]);
+            }
+          }
         } else {
-          if (map.hasLayer(targetLayer)) map.removeLayer(targetLayer);
+          if (kmzLayersCache[layerKey] && map.hasLayer(kmzLayersCache[layerKey])) {
+            map.removeLayer(kmzLayersCache[layerKey]);
+          }
         }
       });
     }
