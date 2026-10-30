@@ -848,12 +848,32 @@
     const markerClusterGroup = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40 });
     map.addLayer(markerClusterGroup);
 
-    map.on('click', async function(e) {
+   map.on('click', async function(e) {
+      // If the measurement tool is active, let the ruler handle the click and ignore pin creation
+      if (isMeasuring) return;
+
       if (!currentUser) return;
       if (!isWithinAllowedGeofences(e.latlng.lat, e.latlng.lng)) {
         alert("Action blocked: This location is outside your allowed editing geofence.");
         return;
       }
+
+      try {
+        const newDocRef = db.collection("marshfield_pins").doc();
+        await newDocRef.set({
+          lat: e.latlng.lat,
+          lng: e.latlng.lng,
+          title: "",
+          note: "",
+          color: "purple",
+          imageUrls: [],
+          userId: auth.currentUser.uid,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (err) {
+        console.error("Error creating pin:", err);
+      }
+    });
 
       try {
         const newDocRef = db.collection("marshfield_pins").doc();
