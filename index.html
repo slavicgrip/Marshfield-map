@@ -877,23 +877,6 @@
 
     // (The accidental stray block that was here has been removed)
 
-      try {
-        const newDocRef = db.collection("marshfield_pins").doc();
-        await newDocRef.set({
-          lat: e.latlng.lat,
-          lng: e.latlng.lng,
-          title: "",
-          note: "",
-          color: "purple",
-          imageUrls: [],
-          userId: auth.currentUser.uid,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } catch (err) {
-        console.error("Error creating pin:", err);
-      }
-    });
-
     const searchInput = document.getElementById("map-search-box");
     const searchResults = document.getElementById("search-results");
     let searchDebounceTimeout = null;
