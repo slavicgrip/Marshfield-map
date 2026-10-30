@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Marshfield Area Pin Placement Editing Database [M.A.P.P.E.D.]</title>
   
+  <!-- Leaflet.Measure CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-measure@3.1.0/dist/leaflet-measure.css" />
+  <script src="https://unpkg.com/leaflet-measure@3.1.0/dist/leaflet-measure.js"></script>
+  
   <link rel="icon" type="image/png" href="globe.png"> 
 
   <!-- Leaflet CSS -->
@@ -581,44 +585,71 @@
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
     });
 
-    // Statewide Wisconsin Parcel Boundary Layer (Optimized culling at zoom 15)
-    const wiParcelsLayer = L.esri.featureLayer({
-      url: 'https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels_DB/FeatureServer/0',
-      minZoom: 15,
-      style: function () {
-        return {
-          color: '#e67e22',
-          weight: 1.5,
-          fillColor: '#34495e',
-          fillOpacity: 0.05
-        };
+    // Dynamic View-Based Parcel Container Layer
+    const wiParcelsLayer = L.layerGroup();
+    let parcelFetchTimeout = null;
+
+    function fetchParcelsForCurrentView() {
+      // Only query parcels when zoomed in close enough to avoid overwhelming browser memory
+      if (map.getZoom() < 15) {
+        wiParcelsLayer.clearLayers();
+        return;
       }
-    });
 
-    wiParcelsLayer.bindPopup(function (layer) {
-      const props = layer.feature.properties;
-      return `
-        <div style="font-size: 12px;">
-          <strong>WI Tax Parcel</strong><br><hr style="margin: 4px 0;">
-          <b>Address:</b> ${props.SITEADRESS || props.FullPhysicalAddress || 'N/A'}<br>
-          <b>Parcel ID:</b> ${props.PARCELID || props.ParcelID || 'N/A'}<br>
-          <b>Owner:</b> ${props.OWNERNME1 || props.PrimaryOwnerName || 'N/A'}
-        </div>
-      `;
-    });
+      clearTimeout(parcelFetchTimeout);
+      parcelFetchTimeout = setTimeout(() => {
+        if (!map.hasLayer(wiParcelsLayer)) return;
 
-    wiParcelsLayer.on('createfeature', function (e) {
-      const props = e.feature.properties;
-      const labelText = props.SITEADRESS || props.FullPhysicalAddress || props.PARCELID || props.ParcelID || "";
-      
-      if (labelText) {
-        e.layer.bindTooltip(labelText, {
-          permanent: true,
-          direction: 'center',
-          className: 'parcel-address-label'
+        L.esri.query({
+          url: 'https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels_DB/FeatureServer/0'
+        })
+        .bounds(map.getBounds())
+        .run(function (error, featureCollection) {
+          if (error) {
+            console.error("V12 Parcel query error:", error);
+            return;
+          }
+
+          wiParcelsLayer.clearLayers();
+
+          const geoJsonGroup = L.geoJSON(featureCollection, {
+            style: function () {
+              return {
+                color: '#e67e22',
+                weight: 1.5,
+                fillColor: '#34495e',
+                fillOpacity: 0.05
+              };
+            },
+            onEachFeature: function (feature, layer) {
+              const props = feature.properties || {};
+              const address = props.SITEADRESS || props.FullPhysicalAddress || props.address || 'N/A';
+              const parcelId = props.PARCELID || props.ParcelID || 'N/A';
+              const owner = props.OWNERNME1 || props.PrimaryOwnerName || 'N/A';
+
+              layer.bindPopup(`
+                <div style="font-size: 12px;">
+                  <strong>WI Tax Parcel (V12)</strong><br><hr style="margin: 4px 0;">
+                  <b>Address:</b> ${address}<br>
+                  <b>Parcel ID:</b> ${parcelId}<br>
+                  <b>Owner:</b> ${owner}
+                </div>
+              `);
+
+              if (address && address !== 'N/A') {
+                layer.bindTooltip(address, {
+                  permanent: true,
+                  direction: 'center',
+                  className: 'parcel-address-label'
+                });
+              }
+            }
+          });
+
+          wiParcelsLayer.addLayer(geoJsonGroup);
         });
-      }
-    });
+      }, 300);
+    }
 
     // Public City of Marshfield Address & Street Name Annotations
     const addressLabelsLayer = L.esri.dynamicMapLayer({
@@ -642,7 +673,14 @@
       maxZoom: 21,
       layers: [osmLayer, wiParcelsLayer, addressLabelsLayer, streetLabelsLayer] 
     }).setView(MARSHFIELD_CENTER, MARSHFIELD_ZOOM);
-	
+
+    map.on('moveend', fetchParcelsForCurrentView);
+    map.on('layeradd', function(e) {
+      if (e.layer === wiParcelsLayer) {
+        fetchParcelsForCurrentView();
+      }
+    });
+
     const mapContainer = map.getContainer();
 
     mapContainer.addEventListener('mouseover', (e) => {
@@ -672,6 +710,18 @@
 
     L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
     L.control.zoom({ position: 'topright' }).addTo(map);
+	
+	// Add Leaflet Measure Control
+    const measureControl = new L.Control.Measure({
+      position: 'topright',
+      primaryLengthUnit: 'feet',
+      secondaryLengthUnit: 'miles',
+      primaryAreaUnit: 'sqfeet',
+      secondaryAreaUnit: 'acres',
+      activeColor: '#3498db',
+      completedColor: '#e67e22'
+    });
+    measureControl.addTo(map);
 	
     let arcgisLayerControl = null;
 
@@ -1633,7 +1683,7 @@
         <input type="password" id="arcgis-pass" placeholder="Enter ArcGIS password" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
       </div>
 
-      <button type="button" onclick="generateArcGISToken()" style="width: 100%; padding: 10px; margin-bottom: 8px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Sign In & Load Layers</button>
+      <button type="button" onclick="generateArcGISToken()" style="width: 100%; padding: 10px; margin-bottom: 8px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: font-weight: 500;">Sign In & Load Layers</button>
       
       <button type="button" onclick="closeArcGISLoginModal()" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
     </div>
