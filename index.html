@@ -892,8 +892,13 @@
     }
 
     async function performAddressSearch(query) {
-      const centralWiViewbox = "-90.8,44.2,-89.5,45.2";
-      const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=us&viewbox=${centralWiViewbox}&q=${encodeURIComponent(query)}&limit=10`;
+      const bounds = map.getBounds();
+      const southWest = bounds.getSouthWest();
+      const northEast = bounds.getNorthEast();
+      const center = map.getCenter();
+
+      const viewbox = `${southWest.lng},${southWest.lat},${northEast.lng},${northEast.lat}`;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=us&lat=${center.lat}&lon=${center.lng}&viewbox=${viewbox}&bounded=0&q=${encodeURIComponent(query)}&limit=10`;
 
       try {
         const response = await fetch(url, { 
