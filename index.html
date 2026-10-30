@@ -1493,4 +1493,268 @@
         await auth.sendPasswordResetEmail(email);
         alert("Password reset email sent! Check your inbox.");
       } catch (err) {
-        alert("Error sending password reset email:
+        alert("Error sending password reset email: " + err.message);
+      }
+    }
+
+    // CITY ARCGIS AUTH & SECURE DYNAMIC LAYERS (High Performance & Flawless Culling)
+    async function generateArcGISToken() {
+      const username = document.getElementById("arcgis-user").value.trim();
+      const password = document.getElementById("arcgis-pass").value.trim();
+
+      if (!username || !password) {
+        alert("Please enter both username and password.");
+        return;
+      }
+
+      const tokenUrl = "https://www.arcgis.com/sharing/rest/generateToken";
+
+      const params = new URLSearchParams();
+      params.append("username", username);
+      params.append("password", password);
+      params.append("client", "referer");
+      params.append("referer", window.location.origin);
+      params.append("expiration", 60);
+      params.append("f", "json");
+
+      try {
+        const response = await fetch(tokenUrl, {
+          method: "POST",
+          body: params
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+          alert("Login failed: " + data.error.message);
+          return;
+        }
+
+        const token = data.token;
+        closeArcGISLoginModal();
+
+        secureEsriLayers.forEach(layer => map.removeLayer(layer));
+        secureEsriLayers = [];
+
+        if (arcgisLayerControl) {
+          map.removeControl(arcgisLayerControl);
+        }
+
+        loadArcGISLayers(token);
+
+      } catch (err) {
+        alert("Connection error connecting to ArcGIS server: " + err.message);
+      }
+    }
+
+    function loadArcGISLayers(token) {
+      const utilityOverlays = {};
+
+      myBaseServices.forEach(service => {
+        // High-performance server-rendered dynamic map layers with automatic zoom culling
+        const dynamicLayer = L.esri.dynamicMapLayer({
+          url: service.url,
+          token: token,
+          opacity: 0.85,
+          format: "png24",
+          minZoom: 16 // Automatically hides completely when zoomed out, eliminating all lag
+        });
+
+        secureEsriLayers.push(dynamicLayer);
+        utilityOverlays[`🔒 ${service.name}`] = dynamicLayer;
+      });
+
+      if (arcgisLayerControl) {
+        map.removeControl(arcgisLayerControl);
+      }
+
+      arcgisLayerControl = L.control.layers(null, utilityOverlays, { 
+        position: 'topright', 
+        collapsed: true 
+      }).addTo(map);
+
+      const arcDot = document.getElementById("arcgis-status-dot");
+      if (arcDot) arcDot.style.backgroundColor = "#2ecc71";
+
+      alert("City ArcGIS secure utility layers loaded successfully! They will appear automatically when you zoom in close.");
+    }
+
+    // LAZY-LOADED KMZ FIBER LAYERS
+    const kmzLayersCache = {
+      pbd03: null,
+      pbd07: null,
+      pbd09: null
+    };
+
+    const kmzFilePaths = {
+      pbd03: './' + encodeURI('Wausau PBD03.kmz'),
+      pbd07: './KMZs/PBD07.kmz',
+      pbd09: './KMZs/PBD09.kmz'
+    };
+
+    const kmzPanel = document.getElementById('kmz-legend-panel');
+    L.DomEvent.disableClickPropagation(kmzPanel);
+    L.DomEvent.disableScrollPropagation(kmzPanel);
+
+    function toggleKmzLayers() {
+      const checkboxes = document.querySelectorAll('.kmz-checkbox');
+      checkboxes.forEach(cb => {
+        const layerKey = cb.getAttribute('data-layer');
+        
+        if (cb.checked) {
+          if (!kmzLayersCache[layerKey]) {
+            const targetLayer = L.kmzLayer();
+            targetLayer.load(kmzFilePaths[layerKey]);
+            kmzLayersCache[layerKey] = targetLayer;
+            targetLayer.addTo(map);
+          } else {
+            if (!map.hasLayer(kmzLayersCache[layerKey])) {
+              map.addLayer(kmzLayersCache[layerKey]);
+            }
+          }
+        } else {
+          if (kmzLayersCache[layerKey] && map.hasLayer(kmzLayersCache[layerKey])) {
+            map.removeLayer(kmzLayersCache[layerKey]);
+          }
+        }
+      });
+    }
+
+    function toggleKmzCollapse() {
+      const content = document.getElementById('kmz-legend-content');
+      const title = document.getElementById('kmz-legend-title');
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        title.innerHTML = 'Fiber ▾';
+      } else {
+        content.style.display = 'none';
+        title.innerHTML = 'Fiber ▸';
+      }
+    }
+
+    function toggleAllKmz() {
+      const checkboxes = document.querySelectorAll('.kmz-checkbox');
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      checkboxes.forEach(cb => {
+        cb.checked = !allChecked;
+      });
+      toggleKmzLayers();
+    }
+  </script>
+
+  <!-- Edit Pin Modal -->
+  <div id="edit-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 3000;">
+    <div class="modal-content" style="background: white; padding: 20px; border-radius: 8px; width: 360px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <h3>Edit Pin</h3>
+      <input type="hidden" id="edit-pin-id">
+      
+      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Title:</label>
+      <input type="text" id="edit-title" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+      
+      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Note / Description:</label>
+      <textarea id="edit-note" rows="3" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+      
+      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Pin Category / Color:</label>
+      <select id="edit-color" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; background: white;">
+        <option value="purple">🟣 Purple (Default)</option>
+        <option value="blue">🔵 Blue (Water)</option>
+        <option value="red">🔴 Red (Electric)</option>
+        <option value="green">🟢 Green (Storm/Sewer)</option>
+        <option value="pink">🩷 Pink (Fiber Optic)</option>
+        <option value="yellow">🟡 Yellow (WE Energies)</option>
+      </select>
+      
+      <label style="display: block; margin-top: 12px; font-size: 13px; font-weight: 500;">Current Photos:</label>
+      <div id="edit-photo-preview" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; margin-bottom: 10px;"></div>
+      
+      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Add More Photos:</label>
+      <input type="file" id="edit-file-input" multiple accept="image/*" style="width: 100%; margin-top: 4px; font-size: 12px;">
+      <div id="upload-status-modal" style="font-size: 11px; color: #666; margin-top: 4px; display: none;"></div>
+      
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+        <button type="button" onclick="document.getElementById('edit-modal').style.display='none'" style="padding: 6px 12px; background: #e5e7eb; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+        <button type="button" onclick="savePinEdits()" style="padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sign In Choice Modal -->
+  <div id="login-choice-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
+      <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Sign In Options</h3>
+      
+      <button type="button" onclick="window.closeLoginChoiceModal(); window.openLoginModal();" style="width: 100%; padding: 10px; margin-bottom: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #1e293b;">
+        🔐 App Login (Firebase)
+      </button>
+      
+      <button type="button" onclick="window.closeLoginChoiceModal(); window.openArcGISLoginModal();" style="width: 100%; padding: 10px; margin-bottom: 16px; background: #f0f9ff; border: 1px solid #0284c7; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #0284c7;">
+        🚽 Sewer / Storm / Traffic Login
+      </button>
+
+      <button type="button" onclick="window.closeLoginChoiceModal()" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Account Menu Modal -->
+  <div id="account-menu-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
+      <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Account & Utilities</h3>
+      
+      <button type="button" onclick="window.closeAccountMenuModal(); window.openArcGISLoginModal();" style="width: 100%; padding: 10px; margin-bottom: 10px; background: #f0f9ff; border: 1px solid #0284c7; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #0284c7;">
+        🚽 ArcGIS Utility Login
+      </button>
+      
+      <button type="button" onclick="window.closeAccountMenuModal(); logoutUser();" style="width: 100%; padding: 10px; margin-bottom: 16px; background: #fef2f2; border: 1px solid #dc2626; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #dc2626;">
+        🚪 Log Out of Firebase
+      </button>
+
+      <button type="button" onclick="window.closeAccountMenuModal()" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- App Login Modal (Firebase) -->
+  <div id="login-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
+      <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Editor Login</h3>
+      <form id="login-form" onsubmit="event.preventDefault(); loginUser();" style="display: flex; flex-direction: column; gap: 10px;">
+        <input type="email" id="login-email" placeholder="Email address" autocomplete="username" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;">
+        <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+          <label for="login-remember" style="display: flex; align-items: center; gap: 8px; color: #555; cursor: pointer;">
+            <input type="checkbox" id="login-remember" checked> Remember me
+          </label>
+          <a href="#" onclick="event.preventDefault(); forgotPassword();" style="color: #3498db; text-decoration: none;">Forgot Password?</a>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+          <button type="button" class="btn" style="background-color: #95a5a6; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer;" onclick="closeLoginModal()">Cancel</button>
+          <button type="submit" class="btn" style="background-color: #3498db; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer;">Log In</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ArcGIS Secure Login Modal -->
+  <div id="arcgis-login-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
+      <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">ArcGIS Secure Login</h3>
+      
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #475569;">Username</label>
+        <input type="text" id="arcgis-user" placeholder="Enter ArcGIS username" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #475569;">Password</label>
+        <input type="password" id="arcgis-pass" placeholder="Enter ArcGIS password" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
+      </div>
+
+      <button type="button" onclick="generateArcGISToken()" style="width: 100%; padding: 10px; margin-bottom: 8px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Sign In & Load Layers</button>
+      
+      <button type="button" onclick="closeArcGISLoginModal()" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
+    </div>
+  </div>
+
+</body>
+</html>
