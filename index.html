@@ -848,7 +848,7 @@
     const markerClusterGroup = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40 });
     map.addLayer(markerClusterGroup);
 
-   map.on('click', async function(e) {
+  map.on('click', async function(e) {
       // If the measurement tool is active, let the ruler handle the click and ignore pin creation
       if (isMeasuring) return;
 
@@ -874,6 +874,8 @@
         console.error("Error creating pin:", err);
       }
     });
+
+    // (The accidental stray block that was here has been removed)
 
       try {
         const newDocRef = db.collection("marshfield_pins").doc();
