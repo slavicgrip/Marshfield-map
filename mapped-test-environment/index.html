@@ -581,10 +581,10 @@
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
     });
 
-    // Statewide Wisconsin Parcel Boundary Layer (Optimized culling at zoom 15)
+    // Statewide Wisconsin Parcel Boundary Layer (Optimized culling at zoom 17)
     const wiParcelsLayer = L.esri.featureLayer({
       url: 'https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels_DB/FeatureServer/0',
-      minZoom: 13,
+      minZoom: 173,
       style: function () {
         return {
           color: '#e67e22',
