@@ -581,12 +581,31 @@
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
     });
 
-    // Dynamic View-Based Parcel Container Layer (Using standard reliable fetch)
+    // Dynamic View-Based Parcel Container Layer (Restricted by distance & zoom to prevent crashes)
     const wiParcelsLayer = L.layerGroup();
     let parcelFetchTimeout = null;
 
     function fetchParcelsForCurrentView() {
-      if (map.getZoom() < 15) {
+      // 1. Zoom level check (must be at least zoom level 16)
+      if (map.getZoom() < 16) {
+        wiParcelsLayer.clearLayers();
+        return;
+      }
+
+      const bounds = map.getBounds();
+      const southWest = bounds.getSouthWest();
+      const northEast = bounds.getNorthEast();
+
+      // 2. Calculate physical distance across the visible map view (West to East)
+      const viewWidthMeters = getDistanceMeters(
+        southWest.lat, southWest.lng,
+        southWest.lat, northEast.lng
+      );
+
+      // 3. Restrict loading if the view width exceeds 1000 meters (~0.6 miles)
+      const MAX_VIEW_DISTANCE_METERS = 1000;
+
+      if (viewWidthMeters > MAX_VIEW_DISTANCE_METERS) {
         wiParcelsLayer.clearLayers();
         return;
       }
@@ -595,7 +614,6 @@
       parcelFetchTimeout = setTimeout(() => {
         if (!map.hasLayer(wiParcelsLayer)) return;
 
-        const bounds = map.getBounds();
         const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
         const queryUrl = `https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels_DB/FeatureServer/0/query?geometry=${bbox}&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&outFields=*&f=geojson`;
 
@@ -642,7 +660,7 @@
             wiParcelsLayer.addLayer(geoJsonGroup);
           })
           .catch(err => console.error("Parcel fetch error:", err));
-      }, 300);
+      }, 400);
     }
 
     // Public City of Marshfield Address & Street Name Annotations
