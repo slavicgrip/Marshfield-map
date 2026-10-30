@@ -586,8 +586,8 @@
     let parcelFetchTimeout = null;
 
     function fetchParcelsForCurrentView() {
-      // 1. Zoom level check (must be at least zoom level 16)
-      if (map.getZoom() < 17) {
+      // 1. Zoom level check (must be at least zoom level 18)
+      if (map.getZoom() < 18) {
         wiParcelsLayer.clearLayers();
         return;
       }
