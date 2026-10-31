@@ -580,6 +580,14 @@
       maxNativeZoom: 19,
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
     });
+	
+	// Wisconsin DNR Statewide Leaf-Off Imagery Layer
+    const leafOffLayer = L.esri.tiledMapLayer({
+      url: 'https://dnrmaps.wi.gov/arcgis_image/rest/services/DW_Imagery/EN_Image_Basemap_Latest_Leaf_Off_Raster_Tile/MapServer',
+      maxZoom: 21,
+      maxNativeZoom: 19,
+      attribution: 'Tiles &copy; WI DNR / WROC Leaf-Off Aerial Photography'
+    });
 
     // Dynamic View-Based Parcel Container Layer (Restricted by distance & zoom to prevent crashes)
     const wiParcelsLayer = L.layerGroup();
@@ -690,6 +698,26 @@
     map.on('layeradd', function(e) {
       if (e.layer === wiParcelsLayer) {
         fetchParcelsForCurrentView();
+      }
+    });
+	
+	// Automatic basemap switching based on zoom level
+    map.on('zoomend', function() {
+      const currentZoom = map.getZoom();
+      const SWITCH_ZOOM_THRESHOLD = 17;
+
+      if (currentZoom >= SWITCH_ZOOM_THRESHOLD) {
+        if (map.hasLayer(satelliteLayer) && !map.hasLayer(leafOffLayer)) {
+          map.removeLayer(satelliteLayer);
+          map.addLayer(leafOffLayer);
+        }
+      } else {
+        if (map.hasLayer(leafOffLayer)) {
+          map.removeLayer(leafOffLayer);
+          if (!map.hasLayer(satelliteLayer)) {
+            map.addLayer(satelliteLayer);
+          }
+        }
       }
     });
 
