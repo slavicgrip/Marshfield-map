@@ -581,11 +581,12 @@
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
     });
 	
-	// Wisconsin DNR Statewide Leaf-Off Imagery Layer
-    const leafOffLayer = L.esri.tiledMapLayer({
+	// Wisconsin DNR Statewide Leaf-Off Imagery Layer (Dynamic & Auto-Reprojected)
+    const leafOffLayer = L.esri.dynamicMapLayer({
       url: 'https://dnrmaps.wi.gov/arcgis_image/rest/services/DW_Imagery/EN_Image_Basemap_Latest_Leaf_Off_Raster_Tile/MapServer',
+      opacity: 1.0,
+      format: 'png24',
       maxZoom: 21,
-      maxNativeZoom: 19,
       attribution: 'Tiles &copy; WI DNR / WROC Leaf-Off Aerial Photography'
     });
 
