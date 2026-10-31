@@ -702,26 +702,6 @@
       }
     });
 	
-	// Automatic basemap switching based on zoom level
-    map.on('zoomend', function() {
-      const currentZoom = map.getZoom();
-      const SWITCH_ZOOM_THRESHOLD = 17;
-
-      if (currentZoom >= SWITCH_ZOOM_THRESHOLD) {
-        if (map.hasLayer(satelliteLayer) && !map.hasLayer(leafOffLayer)) {
-          map.removeLayer(satelliteLayer);
-          map.addLayer(leafOffLayer);
-        }
-      } else {
-        if (map.hasLayer(leafOffLayer)) {
-          map.removeLayer(leafOffLayer);
-          if (!map.hasLayer(satelliteLayer)) {
-            map.addLayer(satelliteLayer);
-          }
-        }
-      }
-    });
-
     const mapContainer = map.getContainer();
 
     mapContainer.addEventListener('mouseover', (e) => {
@@ -740,7 +720,9 @@
 
     const baseMaps = {
       "OpenStreetMap": osmLayer,
-      "Satellite Imagery": satelliteLayer
+      "Satellite (Leaf-On)": satelliteLayer
+	  "Satellite (Leaf-Off)": leafOffLayer
+	  
     };
 
     const overlayMaps = {
