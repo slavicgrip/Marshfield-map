@@ -582,14 +582,21 @@
     });
 	
 	// Wisconsin DNR Statewide Leaf-Off Imagery Layer (Dynamic & Auto-Reprojected)
-    const leafOffLayer = L.esri.dynamicMapLayer({
-      url: 'https://dnrmaps.wi.gov/arcgis_image/rest/services/DW_Imagery/EN_Image_Basemap_Latest_Leaf_Off_Raster_Tile/MapServer',
-      opacity: 1.0,
-      format: 'png24',
-      maxZoom: 21,
-	  maxNativeZoom: 15,
-      attribution: 'Tiles &copy; WI DNR / WROC Leaf-Off Aerial Photography'
-    });
+    //const leafOffLayer = L.esri.dynamicMapLayer({
+    //  url: 'https://dnrmaps.wi.gov/arcgis_image/rest/services/DW_Imagery/EN_Image_Basemap_Latest_Leaf_Off_Raster_Tile/MapServer',
+    //  opacity: 1.0,
+    //  format: 'png24',
+    //  maxZoom: 21,
+	//  maxNativeZoom: 15,
+    //  attribution: 'Tiles &copy; WI DNR / WROC Leaf-Off Aerial Photography'
+    // });
+	
+	// Updated alternative tile layer definition
+var leafOffLayer = L.tileLayer('https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/{z}/{y}/{x}', {
+  maxZoom: 20,
+  maxNativeZoom: 19,
+  attribution: 'Esri, DigitalGlobe, GeoEye, Earthstar Geographics'
+});
 
     // Dynamic View-Based Parcel Container Layer (Restricted by distance & zoom to prevent crashes)
     const wiParcelsLayer = L.layerGroup();
