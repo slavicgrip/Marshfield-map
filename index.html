@@ -591,12 +591,12 @@
     //  attribution: 'Tiles &copy; WI DNR / WROC Leaf-Off Aerial Photography'
     // });
 	
-// var leafOffLayer = L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-  // Alternatively, if connecting to the dedicated Esri Leaf-Off archive service:
-  // maxZoom: 20,
-  // maxNativeZoom: 19,
-  // attribution: 'Esri, DigitalGlobe, GeoEye, Earthstar Geographics, and the GIS User Community (Leaf-Off)'
-// });
+ var leafOffLayer = L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+   Alternatively, if connecting to the dedicated Esri Leaf-Off archive service:
+   maxZoom: 20,
+   maxNativeZoom: 19,
+   attribution: 'Esri, DigitalGlobe, GeoEye, Earthstar Geographics, and the GIS User Community (Leaf-Off)'
+ });
 
     // Dynamic View-Based Parcel Container Layer (Restricted by distance & zoom to prevent crashes)
     const wiParcelsLayer = L.layerGroup();
