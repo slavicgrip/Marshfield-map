@@ -595,8 +595,8 @@
     let parcelFetchTimeout = null;
 
     function fetchParcelsForCurrentView() {
-      // 1. Zoom level check (must be at least zoom level 19)
-      if (map.getZoom() < 19) {
+      // 1. Zoom level check (must be at least zoom level 18)
+      if (map.getZoom() < 18) {
         wiParcelsLayer.clearLayers();
         return;
       }
@@ -860,8 +860,8 @@
     map.addLayer(markerClusterGroup);
 
   map.on('click', async function(e) {
-      // If the measurement tool is active, let the ruler handle the click and ignore pin creation
-      if (isMeasuring) return;
+      // If the measurement tool or polygon drawing mode is active, ignore pin creation
+      if (isMeasuring || activeDrawingPinId !== null) return;
 
       if (!currentUser) return;
       if (!isWithinAllowedGeofences(e.latlng.lat, e.latlng.lng)) {
