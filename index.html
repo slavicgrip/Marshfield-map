@@ -878,6 +878,7 @@
           note: "",
           color: "purple",
           imageUrls: [],
+          polygonCoords: [], // 👈 ADDED: Optional polygon boundary array
           userId: auth.currentUser.uid,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -985,6 +986,7 @@
         }
         if (change.type === "removed" && activeMarkers[id]) {
           markerClusterGroup.removeLayer(activeMarkers[id].marker);
+          if (activeMarkers[id].polygon) map.removeLayer(activeMarkers[id].polygon); // 👈 Added
           delete activeMarkers[id];
         }
       });
@@ -1042,14 +1044,42 @@
             e.target.setLatLng([pinLat, pinLng]);
           }
         });
+		
+		// 📍 RENDER POLYGON FOR NEW PIN
+        var polygonLayer = null;
+        if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
+          polygonLayer = L.polygon(data.polygonCoords, {
+            color: colorHexMap[pinColor] || '#8e44ad',
+            fillColor: colorHexMap[pinColor] || '#9b59b6',
+            fillOpacity: 0.3,
+            weight: 2
+          }).addTo(map);
+          polygonLayer.on('click', function() { marker.openPopup(); });
+        }
 
-        entry = { marker: marker, data: data };
+        entry = { marker: marker, polygon: polygonLayer, data: data };
         activeMarkers[id] = entry;
         markerClusterGroup.addLayer(marker);
       } else {
         entry.data = data;
         entry.marker.setIcon(chosenIcon);
         entry.marker.setLatLng([pinLat, pinLng]);
+
+        // 📍 UPDATE OR REFRESH POLYGON ON EXISTING PIN
+        if (entry.polygon) {
+          map.removeLayer(entry.polygon);
+          entry.polygon = null;
+        }
+        if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
+          var polygonLayer = L.polygon(data.polygonCoords, {
+            color: colorHexMap[pinColor] || '#8e44ad',
+            fillColor: colorHexMap[pinColor] || '#9b59b6',
+            fillOpacity: 0.3,
+            weight: 2
+          }).addTo(map);
+          polygonLayer.on('click', function() { entry.marker.openPopup(); });
+          entry.polygon = polygonLayer;
+        }
       }
 
       if (entry.marker.dragging) {
@@ -1259,16 +1289,18 @@
       const checkedColors = Array.from(document.querySelectorAll('.filter-checkbox:checked')).map(cb => cb.value);
 
       Object.keys(activeMarkers).forEach(id => {
-        const { marker, data } = activeMarkers[id];
+        const { marker, polygon, data } = activeMarkers[id];
         const pinColor = data.color && markerIcons[data.color] ? data.color : 'purple';
 
         if (checkedColors.includes(pinColor)) {
           if (!markerClusterGroup.hasLayer(marker)) markerClusterGroup.addLayer(marker);
+          if (polygon && !map.hasLayer(polygon)) polygon.addTo(map); // 👈 Added
         } else {
           if (markerClusterGroup.hasLayer(marker)) {
             marker.closePopup();
             markerClusterGroup.removeLayer(marker);
           }
+          if (polygon && map.hasLayer(polygon)) map.removeLayer(polygon); // 👈 Added
         }
       });
     };
