@@ -1048,7 +1048,10 @@
 		// 📍 RENDER POLYGON FOR NEW PIN
         var polygonLayer = null;
         if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
-          polygonLayer = L.polygon(data.polygonCoords, {
+          // Convert stored objects back to [lat, lng] format for Leaflet
+          var leafletCoords = data.polygonCoords.map(pt => Array.isArray(pt) ? pt : [pt.lat, pt.lng]);
+
+          polygonLayer = L.polygon(leafletCoords, {
             color: colorHexMap[pinColor] || '#8e44ad',
             fillColor: colorHexMap[pinColor] || '#9b59b6',
             fillOpacity: 0.3,
@@ -1269,8 +1272,11 @@
 
       if (tempPolygonCoords.length >= 3 && activeDrawingPinId) {
         try {
+          // 📍 Convert [[lat, lng], ...] into [{lat, lng}, ...] for Firestore
+          const firestoreCoords = tempPolygonCoords.map(pt => ({ lat: pt[0], lng: pt[1] }));
+
           await db.collection("marshfield_pins").doc(activeDrawingPinId).update({
-            polygonCoords: tempPolygonCoords,
+            polygonCoords: firestoreCoords,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           });
           alert("Polygon boundary saved successfully!");
