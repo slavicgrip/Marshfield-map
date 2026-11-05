@@ -1463,10 +1463,15 @@
           radiusMeters: null 
         };
 
-        await userRef.update({
+        // Use set with merge: true so it creates the user document on the fly if it doesn't exist
+        await userRef.set({
           allowedGeofences: firebase.firestore.FieldValue.arrayUnion(newLocation)
-        });
+        }, { merge: true });
 
+        // Safely initialize profile structure if null
+        if (!currentUserProfile) {
+          currentUserProfile = {};
+        }
         if (!currentUserProfile.allowedGeofences) {
           currentUserProfile.allowedGeofences = [];
         }
