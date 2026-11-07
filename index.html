@@ -110,6 +110,11 @@
       flex-direction: column;
     }
 
+    /* Ensure the popup container is wide enough for 3 columns */
+    .pin-popup {
+      min-width: 210px;
+    }
+
     /* PIN POPUP IMAGE GALLERY THUMBNAILS */
     .image-gallery {
       display: flex;
@@ -126,7 +131,7 @@
       position: relative;
       width: 60px;
       height: 60px;
-      flex: 0 0 60px;    /* Forces each thumbnail to maintain its exact 60px width without shrinking */
+      flex: 0 0 60px;    /* Forces each thumbnail to maintain its exact 60px width */
     }
     .image-thumb-container img {
       width: 100%;
