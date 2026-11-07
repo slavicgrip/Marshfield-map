@@ -115,23 +115,22 @@
       min-width: 210px;
     }
 
-    /* PIN POPUP IMAGE GALLERY THUMBNAILS */
+    /* PIN POPUP IMAGE GALLERY THUMBNAILS - CSS GRID */
     .image-gallery {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(3, 60px); /* Strictly forces exactly 3 columns of 60px */
       gap: 6px;
       margin-top: 8px;
-      width: 198px;      /* Exactly 3 columns wide (60px * 3 + 12px gaps) */
       max-height: 126px; /* Exactly 2 rows high (60px * 2 + 6px gap) */
       overflow-y: auto;  /* Vertical scrollbar for more than 6 photos */
       box-sizing: border-box;
+      padding-right: 4px; /* Prevents scrollbar from clipping thumbnails */
     }
     
     .image-thumb-container {
       position: relative;
       width: 60px;
       height: 60px;
-      flex: 0 0 60px;    /* Forces each thumbnail to maintain its exact 60px width */
     }
     .image-thumb-container img {
       width: 100%;
