@@ -116,7 +116,10 @@
       flex-wrap: wrap;
       gap: 6px;
       margin-top: 8px;
-      max-width: 240px;
+      width: 198px;      /* Forces exactly 3 thumbnails across (60px * 3 + 2 gaps of 6px) */
+      max-height: 126px; /* Caps the height at 2 rows (60px * 2 + 1 gap of 6px) */
+      overflow-y: auto;  /* Adds a clean vertical scrollbar for extra photos */
+      padding-right: 2px;
     }
     .image-thumb-container {
       position: relative;
