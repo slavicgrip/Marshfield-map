@@ -116,16 +116,17 @@
       flex-wrap: wrap;
       gap: 6px;
       margin-top: 8px;
-      width: 198px;      /* Forces exactly 3 thumbnails across (60px * 3 + 2 gaps of 6px) */
-      max-height: 126px; /* Caps the height at 2 rows (60px * 2 + 1 gap of 6px) */
-      overflow-y: auto;  /* Adds a clean vertical scrollbar for extra photos */
-      padding-right: 2px;
+      width: 198px;      /* Exactly 3 columns wide (60px * 3 + 12px gaps) */
+      max-height: 126px; /* Exactly 2 rows high (60px * 2 + 6px gap) */
+      overflow-y: auto;  /* Vertical scrollbar for more than 6 photos */
+      box-sizing: border-box;
     }
+    
     .image-thumb-container {
       position: relative;
       width: 60px;
       height: 60px;
-      flex-shrink: 0;
+      flex: 0 0 60px;    /* Forces each thumbnail to maintain its exact 60px width without shrinking */
     }
     .image-thumb-container img {
       width: 100%;
