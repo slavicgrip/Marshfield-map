@@ -694,14 +694,15 @@
       opacity: 1.0,
       format: "png24",
       zIndex: 1000,
-      minZoom: 14
+      minZoom: 19
     });
 
     const streetLabelsLayer = L.esri.dynamicMapLayer({
       url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Street_Names_Annotation/MapServer",
       opacity: 1.0,
       format: "png24",
-      zIndex: 1000
+      zIndex: 1000,
+	  minZoom: 19
     });
 
     // Initialize Map
