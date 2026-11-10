@@ -913,78 +913,65 @@
         clearTimeout(searchDebounceTimeout);
         const query = searchInput.value.trim();
 
-        if (query.length < 3) {
+        if (query.length < 2) {
           searchResults.style.display = "none";
           searchResults.innerHTML = "";
           return;
         }
 
-        searchDebounceTimeout = setTimeout(() => { performAddressSearch(query); }, 350);
+        searchDebounceTimeout = setTimeout(() => { performAddressSearch(query); }, 300);
       });
     }
 
     async function performAddressSearch(query) {
-      const bounds = map.getBounds();
-      const southWest = bounds.getSouthWest();
-      const northEast = bounds.getNorthEast();
-      const center = map.getCenter();
-
-      const viewbox = `${southWest.lng},${southWest.lat},${northEast.lng},${northEast.lat}`;
-      const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=us&lat=${center.lat}&lon=${center.lng}&viewbox=${viewbox}&bounded=0&q=${encodeURIComponent(query)}&limit=10`;
+      searchResults.innerHTML = `<div class="search-result-item" style="color: #777;">Searching addresses...</div>`;
+      searchResults.style.display = "block";
 
       try {
-        const response = await fetch(url, { 
-          headers: { 
-            'Accept-Language': 'en',
-            'User-Agent': 'MAPPED-Editor-App/1.0'
-          } 
-        });
-        const results = await response.json();
+        const center = map.getCenter();
+        const geocodeUrl = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&text=${encodeURIComponent(query)}&maxSuggestions=6&location=${center.lng},${center.lat}&searchExtent=${map.getBounds().toBBoxString()}`;
 
-        const allowedStates = [
-          "Wisconsin"
-        ];
+        const response = await fetch(geocodeUrl);
+        const data = await response.json();
 
-        const filteredResults = results.filter(result => {
-          const state = result.address && result.address.state;
-          return state && allowedStates.some(allowed => 
-            state.toLowerCase() === allowed.toLowerCase()
-          );
-        });
-
-        if (filteredResults.length === 0) {
-          searchResults.innerHTML = `<div class="search-result-item" style="color: #777;">No addresses found in allowed states</div>`;
-          searchResults.style.display = "block";
-          return;
+        if (data.candidates && data.candidates.length > 0) {
+          searchResults.innerHTML = "";
+          
+          data.candidates.forEach(candidate => {
+            const lat = candidate.location.y;
+            const lon = candidate.location.x;
+            const name = candidate.address;
+            
+            const item = document.createElement("div");
+            item.className = "search-result-item";
+            item.innerHTML = `🔍 ${escapeHtml(name)}`;
+            item.onclick = () => selectAddressResult(lat, lon, name);
+            searchResults.appendChild(item);
+          });
+        } else {
+          searchResults.innerHTML = `<div class="search-result-item" style="color: #777;">No matching addresses found.</div>`;
         }
-
-        searchResults.innerHTML = "";
-        filteredResults.forEach(result => {
-          const item = document.createElement("div");
-          item.className = "search-result-item";
-          item.innerText = result.display_name;
-          item.onclick = () => selectSearchResult(result);
-          searchResults.appendChild(item);
-        });
-        searchResults.style.display = "block";
       } catch (err) {
-        console.error("Search failed:", err);
+        console.error("Geocoding error:", err);
+        searchResults.innerHTML = `<div class="search-result-item" style="color: #777;">Error searching addresses.</div>`;
       }
     }
 
-    function selectSearchResult(result) {
-      const lat = parseFloat(result.lat);
-      const lon = parseFloat(result.lon);
+    function selectAddressResult(lat, lon, displayName) {
       searchResults.style.display = "none";
-      if (searchInput) searchInput.value = result.display_name.split(',')[0];
-      map.setView([lat, lon], 17);
+      if (searchInput) searchInput.value = displayName.split(',')[0];
+      map.setView([lat, lon], 17, { animate: true });
 
       if (searchResultMarker) map.removeLayer(searchResultMarker);
 
       searchResultMarker = L.marker([lat, lon], { icon: markerIcons.purple })
         .addTo(map)
-        .bindPopup(`<b>Search Location</b><br>${result.display_name}`, { closeButton: false })
+        .bindPopup(`<b>Search Location</b><br>${escapeHtml(displayName)}`, { closeButton: false })
         .openPopup();
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
     // REAL-TIME FIRESTORE SYNC
