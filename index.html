@@ -902,8 +902,6 @@
       }
     });
 
-    // (The accidental stray block that was here has been removed)
-
     const searchInput = document.getElementById("map-search-box");
     const searchResults = document.getElementById("search-results");
     let searchDebounceTimeout = null;
@@ -928,8 +926,9 @@
       searchResults.style.display = "block";
 
       try {
+        // Use singleLine parameter with location bias for Marshfield area
         const center = map.getCenter();
-        const geocodeUrl = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&text=${encodeURIComponent(query)}&maxSuggestions=6&location=${center.lng},${center.lat}&searchExtent=${map.getBounds().toBBoxString()}`;
+        const geocodeUrl = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&singleLine=${encodeURIComponent(query)}&maxLocations=6&location=${center.lng},${center.lat}`;
 
         const response = await fetch(geocodeUrl);
         const data = await response.json();
