@@ -1278,13 +1278,28 @@ let currentLightboxImages = [];
         counterEl.innerText = `Photo ${currentLightboxIndex + 1} of ${currentLightboxImages.length}`;
       }
       if (thumbsEl) {
-        thumbsEl.innerHTML = currentLightboxImages.map((url, idx) => {
-          const isActive = idx === currentLightboxIndex;
-          const borderStyle = isActive 
-            ? 'border: 2px solid #3498db; opacity: 1; transform: scale(1.05);' 
-            : 'border: 1px solid #555; opacity: 0.6;';
-          return `<img src="${url}" onclick="jumpToLightboxImage(${idx})" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer; ${borderStyle} transition: all 0.2s;">`;
-        }).join('');
+        // Build thumbnails only if they haven't been generated yet for this set
+        if (!thumbsEl.dataset.initialized || thumbsEl.dataset.count !== String(currentLightboxImages.length)) {
+          thumbsEl.dataset.initialized = "true";
+          thumbsEl.dataset.count = currentLightboxImages.length;
+          thumbsEl.innerHTML = currentLightboxImages.map((url, idx) => {
+            return `<img src="${url}" onclick="jumpToLightboxImage(${idx})" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer; transition: all 0.2s;">`;
+          }).join('');
+        }
+
+        // Just update active styling on the fly instead of wiping HTML
+        const thumbImgs = thumbsEl.querySelectorAll("img");
+        thumbImgs.forEach((thumb, idx) => {
+          if (idx === currentLightboxIndex) {
+            thumb.style.border = "2px solid #3498db";
+            thumb.style.opacity = "1";
+            thumb.style.transform = "scale(1.05)";
+          } else {
+            thumb.style.border = "1px solid #555";
+            thumb.style.opacity = "0.6";
+            thumb.style.transform = "scale(1)";
+          }
+        });
       }
     }
 
@@ -2207,7 +2222,7 @@ let currentLightboxImages = [];
     
     <div style="position: relative; max-width: 90vw; max-height: 65vh; display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
       <button type="button" onclick="changeLightboxImage(-1)" style="position: absolute; left: -50px; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; padding: 10px 15px; cursor: pointer; border-radius: 4px;">❮</button>
-      <img id="lightbox-img" src="" style="max-width: 100%; max-height: 65vh; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); cursor: zoom-in; transition: transform 0.1s ease; transform-origin: center center; touch-action: none;" />
+      <img id="lightbox-img" src="" style="max-width: 100%; max-height: 65vh; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); cursor: zoom-in; transition: transform 0.1s ease; transform-origin: center center; touch-action: none; will-change: transform;" />
       <button type="button" onclick="changeLightboxImage(1)" style="position: absolute; right: -50px; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; padding: 10px 15px; cursor: pointer; border-radius: 4px;">❯</button>
     </div>
     
