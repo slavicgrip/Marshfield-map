@@ -1213,16 +1213,28 @@
 
 let currentLightboxImages = [];
     let currentLightboxIndex = 0;
+    let currentZoom = 1;
+    let panX = 0;
+    let panY = 0;
+    
+    // Interaction tracking states
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let initialPinchDistance = null;
+    let baseZoom = 1;
 
     window.openLightbox = function(encodedImages, index) {
       currentLightboxImages = JSON.parse(decodeURIComponent(encodedImages));
       currentLightboxIndex = index;
+      resetZoom();
       updateLightboxView();
       document.getElementById("lightbox-modal").style.display = "flex";
     };
 
     window.closeLightbox = function() {
       document.getElementById("lightbox-modal").style.display = "none";
+      resetZoom();
     };
 
     window.changeLightboxImage = function(direction) {
@@ -1232,13 +1244,26 @@ let currentLightboxImages = [];
       } else if (currentLightboxIndex >= currentLightboxImages.length) {
         currentLightboxIndex = 0;
       }
+      resetZoom();
       updateLightboxView();
     };
 
     window.jumpToLightboxImage = function(index) {
       currentLightboxIndex = index;
+      resetZoom();
       updateLightboxView();
     };
+
+    function resetZoom() {
+      currentZoom = 1;
+      panX = 0;
+      panY = 0;
+      const imgEl = document.getElementById("lightbox-img");
+      if (imgEl) {
+        imgEl.style.transform = `translate(0px, 0px) scale(1)`;
+        imgEl.style.cursor = "zoom-in";
+      }
+    }
 
     function updateLightboxView() {
       const imgEl = document.getElementById("lightbox-img");
@@ -1260,6 +1285,154 @@ let currentLightboxImages = [];
           return `<img src="${url}" onclick="jumpToLightboxImage(${idx})" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer; ${borderStyle} transition: all 0.2s;">`;
         }).join('');
       }
+    }
+
+    // Attach Desktop & Mobile Event Listeners after DOM loads
+    document.addEventListener("DOMContentLoaded", () => {
+      const imgEl = document.getElementById("lightbox-img");
+      if (!imgEl) return;
+
+      // 1. DESKTOP: Mouse wheel zoom
+      imgEl.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const zoomIntensity = 0.15;
+        if (e.deltaY < 0) {
+          currentZoom = Math.min(currentZoom + zoomIntensity, 4);
+        } else {
+          currentZoom = Math.max(currentZoom - zoomIntensity, 1);
+        }
+        applyTransform(imgEl);
+      }, { passive: false });
+
+      // 2. DESKTOP & MOBILE: Click / Tap to toggle zoom
+      imgEl.addEventListener("click", () => {
+        if (currentZoom === 1) {
+          currentZoom = 2.5;
+        } else {
+          resetZoom();
+        }
+        applyTransform(imgEl);
+      });
+
+      // 3. DESKTOP: Mouse Drag to Pan
+      imgEl.addEventListener("mousedown", (e) => {
+        if (currentZoom > 1) {
+          isDragging = true;
+          startX = e.clientX - panX;
+          startY = e.clientY - panY;
+          imgEl.style.cursor = "grabbing";
+          e.preventDefault();
+        }
+      });
+
+      window.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        panX = e.clientX - startX;
+        panY = e.clientY - startY;
+        applyTransform(imgEl);
+      });
+
+      window.addEventListener("mouseup", () => {
+        if (isDragging) {
+          isDragging = false;
+          if (currentZoom > 1) imgEl.style.cursor = "grab";
+        }
+      });
+
+      // 4. MOBILE: Touch Events (Swipe, Pinch-to-zoom & Finger Dragging)
+      let touchStartX = 0;
+      let touchStartY = 0;
+
+      imgEl.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 1) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          
+          if (currentZoom > 1) {
+            // Single finger pan when zoomed in
+            isDragging = true;
+            startX = touchStartX - panX;
+            startY = touchStartY - panY;
+          }
+        } else if (e.touches.length === 2) {
+          // Two finger pinch start
+          isDragging = false;
+          initialPinchDistance = getTouchDistance(e.touches[0], e.touches[1]);
+          baseZoom = currentZoom;
+        }
+      }, { passive: true });
+
+      imgEl.addEventListener("touchmove", (e) => {
+        if (isDragging && e.touches.length === 1 && currentZoom > 1) {
+          panX = e.touches[0].clientX - startX;
+          panY = e.touches[0].clientY - startY;
+          applyTransform(imgEl);
+        } else if (e.touches.length === 2 && initialPinchDistance !== null) {
+          // Pinch-to-zoom calculation
+          const currentDistance = getTouchDistance(e.touches[0], e.touches.1);
+          const scaleFactor = currentDistance / initialPinchDistance;
+          currentZoom = Math.min(Math.max(baseZoom * scaleFactor, 1), 4);
+          applyTransform(imgEl);
+        }
+      }, { passive: true });
+
+      imgEl.addEventListener("touchend", (e) => {
+        // Check for swipe if we are at normal zoom (1x) and it was a single touch release
+        if (currentZoom === 1 && e.changedTouches.length === 1) {
+          const touchEndX = e.changedTouches[0].clientX;
+          const touchEndY = e.changedTouches[0].clientY;
+          const diffX = touchEndX - touchStartX;
+          const diffY = touchEndY - touchStartY;
+
+          // Minimum swipe distance threshold (50px) and ensure it's a horizontal swipe
+          if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
+            if (diffX < 0) {
+              changeLightboxImage(1);  // Swiped left -> Next photo
+            } else {
+              changeLightboxImage(-1); // Swiped right -> Previous photo
+            }
+          }
+        }
+
+        isDragging = false;
+        initialPinchDistance = null;
+        if (currentZoom === 1) {
+          panX = 0;
+          panY = 0;
+        }
+      });
+	  
+	  // 5. DESKTOP: Keyboard Navigation (Arrow keys & Escape)
+      window.addEventListener("keydown", (e) => {
+        const modal = document.getElementById("lightbox-modal");
+        // Only trigger if the lightbox is currently open
+        if (!modal || modal.style.display === "none" || modal.style.display === "") return;
+
+        if (e.key === "Escape") {
+          closeLightbox();
+        } else if (e.key === "ArrowRight") {
+          changeLightboxImage(1); // Next photo
+        } else if (e.key === "ArrowLeft") {
+          changeLightboxImage(-1); // Previous photo
+        }
+      });
+	});  
+
+    function getTouchDistance(t1, t2) {
+      const dx = t1.clientX - t2.clientX;
+      const dy = t1.clientY - t2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function applyTransform(imgEl) {
+      if (currentZoom === 1) {
+        panX = 0;
+        panY = 0;
+        imgEl.style.cursor = "zoom-in";
+      } else {
+        imgEl.style.cursor = "grab";
+      }
+      imgEl.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
     }
 
 	let activeDrawingPinId = null;
@@ -2025,7 +2198,7 @@ let currentLightboxImages = [];
     
     <div style="position: relative; max-width: 90vw; max-height: 65vh; display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
       <button type="button" onclick="changeLightboxImage(-1)" style="position: absolute; left: -50px; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; padding: 10px 15px; cursor: pointer; border-radius: 4px;">❮</button>
-      <img id="lightbox-img" src="" style="max-width: 100%; max-height: 65vh; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+      <img id="lightbox-img" src="" style="max-width: 100%; max-height: 65vh; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); cursor: zoom-in; transition: transform 0.1s ease; transform-origin: center center; touch-action: none;" />
       <button type="button" onclick="changeLightboxImage(1)" style="position: absolute; right: -50px; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; padding: 10px 15px; cursor: pointer; border-radius: 4px;">❯</button>
     </div>
     
