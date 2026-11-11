@@ -1219,6 +1219,7 @@ let currentLightboxImages = [];
     
     // Interaction tracking states
     let isDragging = false;
+	let hasDragged = false;
     let startX = 0;
     let startY = 0;
     let initialPinchDistance = null;
@@ -1304,8 +1305,12 @@ let currentLightboxImages = [];
         applyTransform(imgEl);
       }, { passive: false });
 
-      // 2. DESKTOP & MOBILE: Click / Tap to toggle zoom
+      // 2. DESKTOP & MOBILE: Click / Tap to toggle zoom (only if not dragging)
       imgEl.addEventListener("click", () => {
+        if (hasDragged) {
+          hasDragged = false; // Reset flag and ignore click after drag
+          return;
+        }
         if (currentZoom === 1) {
           currentZoom = 2.5;
         } else {
@@ -1318,6 +1323,7 @@ let currentLightboxImages = [];
       imgEl.addEventListener("mousedown", (e) => {
         if (currentZoom > 1) {
           isDragging = true;
+          hasDragged = false;
           startX = e.clientX - panX;
           startY = e.clientY - panY;
           imgEl.style.cursor = "grabbing";
@@ -1327,6 +1333,7 @@ let currentLightboxImages = [];
 
       window.addEventListener("mousemove", (e) => {
         if (!isDragging) return;
+        hasDragged = true; // Mark that movement occurred
         panX = e.clientX - startX;
         panY = e.clientY - startY;
         applyTransform(imgEl);
@@ -1364,11 +1371,12 @@ let currentLightboxImages = [];
 
       imgEl.addEventListener("touchmove", (e) => {
         if (isDragging && e.touches.length === 1 && currentZoom > 1) {
+          hasDragged = true; // Mark movement
           panX = e.touches[0].clientX - startX;
           panY = e.touches[0].clientY - startY;
           applyTransform(imgEl);
         } else if (e.touches.length === 2 && initialPinchDistance !== null) {
-          // Pinch-to-zoom calculation
+          hasDragged = true;
           const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
           const scaleFactor = currentDistance / initialPinchDistance;
           currentZoom = Math.min(Math.max(baseZoom * scaleFactor, 1), 4);
