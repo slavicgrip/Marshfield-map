@@ -1426,19 +1426,31 @@ let currentLightboxImages = [];
       });
 	  
 	  // 5. DESKTOP: Keyboard Navigation (Arrow keys & Escape)
-      window.addEventListener("keydown", (e) => {
-        const modal = document.getElementById("lightbox-modal");
-        // Only trigger if the lightbox is currently open
-        if (!modal || modal.style.display === "none" || modal.style.display === "") return;
+    window.addEventListener("keydown", (e) => {
+      const modal = document.getElementById("lightbox-modal");
+      if (!modal) return;
 
-        if (e.key === "Escape") {
-          closeLightbox();
-        } else if (e.key === "ArrowRight") {
-          changeLightboxImage(1); // Next photo
-        } else if (e.key === "ArrowLeft") {
-          changeLightboxImage(-1); // Previous photo
-        }
-      }, true);	
+      // Check computed style to see if the modal is actually visible on screen
+      const computedDisplay = window.getComputedStyle(modal).display;
+      if (computedDisplay === "none" || computedDisplay === "") return;
+
+      if (e.key === "Escape" || e.key === "Esc") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        closeLightbox();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        changeLightboxImage(1);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        changeLightboxImage(-1);
+      }
+    }, true); // Capture phase + stopImmediatePropagation locks out Leaflet completely
     });
 	  
 
