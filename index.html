@@ -1369,7 +1369,7 @@ let currentLightboxImages = [];
           applyTransform(imgEl);
         } else if (e.touches.length === 2 && initialPinchDistance !== null) {
           // Pinch-to-zoom calculation
-          const currentDistance = getTouchDistance(e.touches[0], e.touches.[1]);
+          const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
           const scaleFactor = currentDistance / initialPinchDistance;
           currentZoom = Math.min(Math.max(baseZoom * scaleFactor, 1), 4);
           applyTransform(imgEl);
