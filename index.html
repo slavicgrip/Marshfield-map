@@ -996,46 +996,47 @@
     }
 
   map.on('click', async function(e) {
-      // 1. Keep your existing safety and tool guards
       if (isMeasuring || activeDrawingPinId !== null) return;
       if (!currentUser) return;
       if (!isWithinAllowedGeofences(e.latlng.lat, e.latlng.lng)) {
-        alert("Action blocked: This location is outside your allowed editing geofence.");
+        showAppModal("Action Blocked", "This location is outside your allowed editing geofence.");
         return;
       }
 
       const lat = e.latlng.lat;
       const lng = e.latlng.lng;
 
-      // 2. Automatically look up the town/city name for these coordinates
+      // 1. Fetch the dynamic municipality name
       const placeName = await getMunicipalityName(lat, lng);
       const defaultPinTitle = `${placeName} Pin`;
 
-      // 3. Open your edit modal pre-filled with the dynamic municipality title
-      openEditModal({
-        lat: lat,
-        lng: lng,
-        title: defaultPinTitle, // 👈 Dynamically populated (e.g., "Marshfield Pin", "Auburndale Pin", etc.)
-        color: 'purple',
-        notes: ''
-      });
-    });
-	map.on('click', async function(e) {
       try {
+        // 2. Create the new document reference in Firestore
         const newDocRef = db.collection("marshfield_pins").doc();
-        await newDocRef.set({
-          lat: e.latlng.lat,
-          lng: e.latlng.lng,
-          title: "",
+        const pinData = {
+          lat: lat,
+          lng: lng,
+          title: defaultPinTitle,
           note: "",
           color: "purple",
           imageUrls: [],
-          polygonCoords: [], // 👈 ADDED: Optional polygon boundary array
+          polygonCoords: [],
           userId: auth.currentUser.uid,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        };
+
+        // 3. Save it to Firestore
+        await newDocRef.set(pinData);
+
+        // 4. Open your edit modal using the newly created pin's ID and data
+        // (Replace openEditModal with whatever function name your app uses to open the editor)
+        if (typeof openEditModal === 'function') {
+          openEditModal(newDocRef.id, pinData);
+        }
+
       } catch (err) {
         console.error("Error creating pin:", err);
+        showAppModal("Error", "Could not create pin data.");
       }
     });
 
