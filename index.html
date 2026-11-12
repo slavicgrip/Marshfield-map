@@ -299,6 +299,7 @@
     .dot-green { background-color: #27ae60; }
     .dot-pink { background-color: #e91e63; }
     .dot-yellow { background-color: #f39c12; }
+	.dot-copper { background-color: #b87333; }
 
     /* RESET BUTTON */
     .leaflet-control-reset {
@@ -452,6 +453,7 @@
       <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="green" checked onchange="filterMarkers()"><span class="legend-dot dot-green"></span> Storm/Sewer</label>
       <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="pink" checked onchange="filterMarkers()"><span class="legend-dot dot-pink"></span> Fiber Optic</label>
       <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="yellow" checked onchange="filterMarkers()"><span class="legend-dot dot-yellow"></span> WE Energies</label>
+	  <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="copper" checked onchange="filterMarkers()"><span class="legend-dot dot-copper"></span> Telecom/Copper</label>
     </div>
   </div>
   
@@ -548,7 +550,8 @@
 
     const colorHexMap = {
       purple: '#8e44ad', blue: '#2980b9', red: '#c0392b',
-      green: '#27ae60', pink: '#e91e63', yellow: '#f39c12'
+      green: '#27ae60', pink: '#e91e63', yellow: '#f39c12',
+	  copper: '#b87333'
     };
 
     function createSvgPinIcon(colorName) {
@@ -2223,6 +2226,7 @@ let currentLightboxImages = [];
         <option value="green">🟢 Green (Storm/Sewer)</option>
         <option value="pink">🩷 Pink (Fiber Optic)</option>
         <option value="yellow">🟡 Yellow (WE Energies)</option>
+		<option value="copper">🟤 Copper (Telecom/Copper)</option>
       </select>
       
       <label style="display: block; margin-top: 12px; font-size: 13px; font-weight: 500;">Current Photos:</label>
