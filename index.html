@@ -974,6 +974,27 @@
     const markerClusterGroup = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40 });
     map.addLayer(markerClusterGroup);
 
+// 1. Define getMunicipalityName globally so any function can call it
+    async function getMunicipalityName(lat, lng) {
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`, {
+          headers: {
+            'User-Agent': 'MarshfieldWebMappingApp/1.0'
+          }
+        });
+        
+        if (!response.ok) throw new Error('Geocoding failed');
+        
+        const data = await response.json();
+        const address = data.address || {};
+        
+        return address.city || address.town || address.village || address.municipality || address.county || 'Dropped Pin';
+      } catch (error) {
+        console.error("Reverse geocoding error:", error);
+        return 'Dropped Pin';
+      }
+    }
+
   map.on('click', async function(e) {
       // 1. Keep your existing safety and tool guards
       if (isMeasuring || activeDrawingPinId !== null) return;
