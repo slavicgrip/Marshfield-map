@@ -1,0 +1,2256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Marshfield Area Pin Placement Editing Database [M.A.P.P.E.D.]</title>
+  
+  <link rel="icon" type="image/png" href="globe.png"> 
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- Leaflet MarkerCluster CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
+  <!-- Firebase Compatibility SDKs (Loaded once) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+ 
+  <!-- Load Esri Leaflet plugin right after regular Leaflet -->
+  <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
+
+  <!-- Load Esri Leaflet Renderers plugin to preserve ArcGIS styling -->
+  <script src="https://unpkg.com/esri-leaflet-renderers@3.0.0/dist/esri-leaflet-renderers.js"></script>
+
+  <!-- Leaflet Grouped Layer Control CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-groupedlayercontrol/0.6.1/leaflet.groupedlayercontrol.min.css" />
+
+  <!-- Leaflet Grouped Layer Control JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-groupedlayercontrol/0.6.1/leaflet.groupedlayercontrol.min.js"></script>
+
+  <!-- Leaflet Control Layers Tree CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.control.layers.tree/L.Control.Layers.Tree.css" />
+  <script src="https://unpkg.com/leaflet.control.layers.tree/L.Control.Layers.Tree.js"></script>
+
+  <script src="https://unpkg.com/leaflet-kmz@latest/dist/leaflet-kmz.js"></script>
+
+  <!-- EXIF-JS for browser metadata extraction -->
+  <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+
+  <style>
+    /* Parcel Address Label Styling */
+    .parcel-address-label {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      font-size: 10px;
+      font-weight: bold;
+      color: #c0392b;
+      text-shadow: 1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white;
+    }
+    .parcel-address-label::before {
+      display: none;
+    }
+
+    /* Force the Fiber panel to the bottom-left */
+    #kmz-legend-panel {
+      position: absolute !important;
+      bottom: 20px !important;
+      left: 20px !important;
+      right: auto !important;
+    }
+
+    /* Force the Filter Pins panel to the bottom-right */
+    #legend-panel {
+      position: absolute !important;
+      bottom: 20px !important;
+      right: 20px !important;
+      left: auto !important;
+    }
+
+    .zone-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .zone-row .zone-btn {
+      flex: 1;
+    }
+    .zone-delete-btn {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      width: 28px;
+      height: 28px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+    .zone-delete-btn:hover {
+      background: #c0392b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      width: 100vw;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Ensure the popup container is wide enough for 3 columns */
+    .pin-popup {
+      min-width: 210px;
+    }
+
+    /* PIN POPUP IMAGE GALLERY THUMBNAILS - CSS GRID */
+    .image-gallery {
+      display: grid;
+      grid-template-columns: repeat(3, 60px); /* Strictly forces exactly 3 columns of 60px */
+      gap: 6px;
+      margin-top: 8px;
+      max-height: 126px; /* Exactly 2 rows high (60px * 2 + 6px gap) */
+      overflow-y: auto;  /* Vertical scrollbar for more than 6 photos */
+      box-sizing: border-box;
+      padding-right: 4px; /* Prevents scrollbar from clipping thumbnails */
+    }
+    
+    .image-thumb-container {
+      position: relative;
+      width: 60px;
+      height: 60px;
+    }
+    .image-thumb-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+
+    /* RESPONSIVE HEADER */
+    header {
+      background-color: #2c3e50;
+      color: white;
+      padding: 8px 10px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      gap: 6px;
+    }
+
+    .header-left { 
+      display: flex; 
+      align-items: center; 
+      gap: 8px; 
+      flex: 1; 
+      min-width: 0; 
+    }
+    
+    .header-title { 
+      font-size: 0.9rem; 
+      font-weight: bold; 
+      white-space: nowrap; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+    }
+
+    #search-container { position: relative; flex: 1; min-width: 140px; max-width: 280px; }
+    #map-search-box {
+      width: 100%;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #4a6278;
+      background-color: #34495e;
+      color: white;
+      font-size: 16px;
+    }
+    #map-search-box::placeholder { color: #bdc3c7; }
+    #map-search-box:focus { outline: none; background-color: #3d566e; border-color: #3498db; }
+
+    .search-results {
+      position: absolute;
+      top: 100%; left: 0; right: 0;
+      background: white; color: #333;
+      border-radius: 0 0 6px 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      max-height: 180px; overflow-y: auto;
+      z-index: 2000; display: none; margin-top: 4px;
+    }
+    .search-result-item { padding: 10px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+    .search-result-item:hover { background-color: #f5f7fa; color: #3498db; }
+
+    .header-right { 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+    }
+    
+    .status-badge { 
+      display: flex; 
+      align-items: center; 
+      gap: 6px; 
+    }
+    
+    .status-dot { 
+      width: 10px; 
+      height: 10px; 
+      border-radius: 50%; 
+      background-color: #f1c40f; 
+      display: inline-block;
+    }
+    .status-dot.online { background-color: #2ecc71; }
+
+    .auth-btn {
+      background-color: #34495e; color: white;
+      border: 1px solid #7f8c8d; padding: 6px 12px;
+      border-radius: 6px; cursor: pointer;
+      font-size: 12px; font-weight: 600; white-space: nowrap; min-height: 32px;
+    }
+    .auth-btn:hover { background-color: #3d566e; border-color: #a0aec0; }
+
+    #map { flex: 1; width: 100%; height: 100%; position: relative; }
+
+    /* ZONES PANEL - FLOATING TOP LEFT */
+    .zones-panel {
+      position: absolute;
+      top: 50px;
+      left: 12px;
+      z-index: 999;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(4px);
+      padding: 8px 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      width: 300px;
+      display: none;
+    }
+    
+    .zones-panel.collapsed .zones-body,
+    .zones-panel.collapsed .zones-list {
+      display: none;
+    }
+
+    .zones-header { 
+      font-size: 11px; 
+      color: #2c3e50; 
+      text-transform: uppercase; 
+      font-weight: bold; 
+      border-bottom: 1px solid #eee; 
+      padding-bottom: 4px; 
+      margin-bottom: 6px; 
+      letter-spacing: 0.5px; 
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .zones-list { display: flex; flex-direction: column; gap: 5px; max-height: 150px; overflow-y: auto; }
+    
+    .zone-btn {
+      background: #f8f9fa; border: 1px solid #cbd5e1; border-radius: 4px;
+      padding: 6px 8px; font-size: 12px; text-align: left; cursor: pointer; color: #1e293b;
+      font-weight: 500; display: flex; justify-content: space-between; align-items: center;
+    }
+    .zone-btn:hover { background: #e2e8f0; border-color: #3498db; color: #2980b9; }
+
+    /* LEGEND PANEL - MOBILE SAFE */
+    .legend-panel {
+      position: absolute; 
+      bottom: 12px; 
+      right: 8px; 
+      z-index: 999;
+      background: rgba(255, 255, 255, 0.95); 
+      backdrop-filter: blur(4px);
+      padding: 8px 10px; 
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2); 
+      width: 170px;
+      max-height: calc(100dvh - 120px); 
+      overflow-y: auto;
+      transition: all 0.2s ease-in-out;
+    }
+    .legend-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 4px; margin-bottom: 4px; }
+    .legend-panel h4 { font-size: 11px; color: #2c3e50; text-transform: uppercase; letter-spacing: 0.5px; }
+    .legend-toggle-all { font-size: 10px; color: #3498db; cursor: pointer; background: none; border: none; padding: 2px; }
+    .legend-content { display: flex; flex-direction: column; gap: 5px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #444; cursor: pointer; user-select: none; padding: 2px 0; }
+    .legend-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #3498db; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .dot-purple { background-color: #8e44ad; }
+    .dot-blue { background-color: #2980b9; }
+    .dot-red { background-color: #c0392b; }
+    .dot-green { background-color: #27ae60; }
+    .dot-pink { background-color: #e91e63; }
+    .dot-yellow { background-color: #f39c12; }
+
+    /* RESET BUTTON */
+    .leaflet-control-reset {
+      background-color: white; width: 34px; height: 34px;
+      line-height: 34px; text-align: center; font-size: 16px;
+      cursor: pointer; border-radius: 4px; box-shadow: 0 1px 5px rgba(0,0,0,0.4); user-select: none;
+    }
+
+    .pin-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .pin-actions button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .pin-actions button:hover {
+      background-color: #1d4ed8;
+    }
+
+    .pin-actions button:nth-child(2) {
+      background-color: #dc2626;
+    }
+    .pin-actions button:nth-child(2):hover {
+      background-color: #b91c1c;
+    }
+
+    .delete-img-btn {
+      background: rgba(220, 38, 38, 0.9);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      top: 4px;
+      right: 4px;
+    }
+    .delete-img-btn:hover {
+      background: #b91c1c;
+    }
+  </style>
+
+  <!-- CRITICAL GLOBAL MODAL FUNCTIONS DEFINED EARLY -->
+  <script>
+    window.openLoginChoiceModal = function() {
+      const modal = document.getElementById("login-choice-modal");
+      if (modal) modal.style.display = "flex";
+    };
+
+    window.closeLoginChoiceModal = function() {
+      const modal = document.getElementById("login-choice-modal");
+      if (modal) modal.style.display = "none";
+    };
+
+    window.openAccountMenuModal = function() {
+      const modal = document.getElementById("account-menu-modal");
+      if (modal) modal.style.display = "flex";
+    };
+
+    window.closeAccountMenuModal = function() {
+      const modal = document.getElementById("account-menu-modal");
+      if (modal) modal.style.display = "none";
+    };
+
+    window.openArcGISLoginModal = function() {
+      const modal = document.getElementById("arcgis-login-modal");
+      if (modal) modal.style.display = "flex";
+    };
+
+    window.closeArcGISLoginModal = function() {
+      const modal = document.getElementById("arcgis-login-modal");
+      if (modal) modal.style.display = "none";
+    };
+
+    window.openLoginModal = function() {
+      const modal = document.getElementById("login-modal");
+      if (modal) modal.style.display = "flex";
+    };
+
+    window.closeLoginModal = function() {
+      const modal = document.getElementById("login-modal");
+      if (modal) modal.style.display = "none";
+    };
+  </script>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <div class="header-title">M.A.P.P.E.D.</div>
+      <div id="search-container">
+        <!-- Hidden decoy inputs to capture Chrome's autofill engine without affecting search -->
+        <input type="text" name="prevent_autofill_user" style="display:none !important;" tabindex="-1" aria-hidden="true" autocomplete="username">
+        <input type="password" name="prevent_autofill_pass" style="display:none !important;" tabindex="-1" aria-hidden="true" autocomplete="current-password">
+
+        <input type="search" id="map-search-box" name="search_address_location_q" placeholder="Search address..." autocomplete="off" spellcheck="false" data-lpignore="true" data-form-type="other">
+        <div id="search-results" class="search-results"></div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-badge">
+        <span id="status-dot" class="status-dot" title="Database Connection (Offline/Connecting)"></span>
+        <span id="arcgis-status-dot" class="status-dot" style="background-color: #f39c12;" title="ArcGIS / Utility Services (Idle/Connecting)"></span>
+      </div>
+      <button id="auth-btn" class="auth-btn" type="button" onclick="window.openLoginChoiceModal()">Login</button>
+    </div>
+  </header>
+
+  <div id="map"></div>
+
+  <!-- ZONES OVERLAY PANEL -->
+  <div class="zones-panel" id="zones-panel">
+    <div class="zones-header" onclick="toggleZonesPanel()">
+      <span>Jump To...</span>
+      <span>▼</span>
+    </div>
+    <div class="zones-body">
+      <div class="zones-list" id="zones-list"></div>
+      <button type="button" class="zone-btn" onclick="addNewUserLocation()" style="margin-top: 6px; background: #e2e8f0; justify-content: center; font-weight: bold; width: 100%;">
+        ➕ Save Current View
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter Pins Panel (Bottom-Right) -->
+  <div class="legend-panel" id="legend-panel">
+    <div class="legend-header">
+      <h4 id="legend-title" onclick="toggleLegendCollapse()" style="cursor: pointer;">Filter Pins ▸</h4>
+      <button type="button" class="legend-toggle-all" onclick="toggleAllFilters()">Toggle</button>
+    </div>
+    <div class="legend-content" id="legend-content" style="display: none;">
+      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="purple" checked onchange="filterMarkers()"><span class="legend-dot dot-purple"></span> General</label>
+      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="blue" checked onchange="filterMarkers()"><span class="legend-dot dot-blue"></span> Water</label>
+      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="red" checked onchange="filterMarkers()"><span class="legend-dot dot-red"></span> Electric</label>
+      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="green" checked onchange="filterMarkers()"><span class="legend-dot dot-green"></span> Storm/Sewer</label>
+      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="pink" checked onchange="filterMarkers()"><span class="legend-dot dot-pink"></span> Fiber Optic</label>
+      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="yellow" checked onchange="filterMarkers()"><span class="legend-dot dot-yellow"></span> WE Energies</label>
+    </div>
+  </div>
+  
+  <!-- Fiber Panel (Bottom-Left) -->
+  <div class="legend-panel" id="kmz-legend-panel">
+    <div class="legend-header">
+      <h4 id="kmz-legend-title" onclick="toggleKmzCollapse()" style="cursor: pointer;">Fiber ▸</h4>
+      <button type="button" class="legend-toggle-all" onclick="toggleAllKmz()">Toggle</button>
+    </div>
+    <div class="legend-content" id="kmz-legend-content" style="display: none;">
+      <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd03" onchange="toggleKmzLayers()"> Wausau PBD03</label>
+      <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd07" onchange="toggleKmzLayers()"> Spencer PBD07</label>
+      <label class="legend-item"><input type="checkbox" class="kmz-checkbox" data-layer="pbd09" onchange="toggleKmzLayers()"> Loyal/Greenwood PBD09</label>
+    </div>
+  </div>
+
+  <script>
+    // SINGLE DECLARED INSTANCE
+    let secureEsriLayers = [];
+
+    const myBaseServices = [
+      { name: "Parcel Info", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/ArcGIS/rest/services/Parcel_Info_Online/MapServer" },	
+      { name: "Storm Utility", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/arcgis/rest/services/Storm_Utility/MapServer" },
+      { name: "Sanitary Utility", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/arcgis/rest/services/Sanitary_Utility/MapServer" },
+      { name: "Traffic & WW", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/arcgis/rest/services/Traffic_Controls_and_WW_Utilities/MapServer" }
+    ];
+
+    // FIREBASE INITIALIZATION CHECK
+    if (!firebase.apps.length) {
+      firebase.initializeApp({
+        apiKey: "AIzaSyBrAnUfutqF33QJUKwRHXZHk9JRPHDGEr8",
+        authDomain: "marshfield-map-b7ff6.firebaseapp.com",
+        projectId: "marshfield-map-b7ff6",
+        storageBucket: "marshfield-map-b7ff6.firebasestorage.app",
+        messagingSenderId: "338193954075",
+        appId: "1:338193954075:web:44c9864fb7ea00099b8fbe"
+      });
+    }
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    let currentUser = null;
+    let currentUserProfile = null;
+    let activeMarkers = {}; 
+    let searchResultMarker = null;
+    let geofenceLayerGroup = L.layerGroup();
+
+    const MARSHFIELD_CENTER = [44.6688, -90.1718];
+    const MARSHFIELD_ZOOM = 13;
+
+    function getDistanceMeters(lat1, lon1, lat2, lon2) {
+      const R = 6371e3;
+      const rad = Math.PI / 180;
+      const dLat = (lat2 - lat1) * rad;
+      const dLon = (lon2 - lon1) * rad;
+      const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * 
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function isWithinAllowedGeofences(lat, lng) {
+      if (!currentUserProfile || !currentUserProfile.allowedGeofences || currentUserProfile.allowedGeofences.length === 0) {
+        return true;
+      }
+      
+      const strictFences = currentUserProfile.allowedGeofences.filter(fence => {
+        const radius = fence.radiusMeters || fence.radius;
+        return radius != null && Number(radius) > 0;
+      });
+
+      if (strictFences.length === 0) {
+        return true; 
+      }
+
+      for (const fence of strictFences) {
+        const loc = fence.location || fence.geopoint || fence.coords || fence.point || fence;
+        const centerLat = loc.latitude ?? loc.lat;
+        const centerLng = loc.longitude ?? loc.lng;
+        const radius = fence.radiusMeters || fence.radius;
+
+        if (centerLat == null || centerLng == null) continue;
+
+        if (getDistanceMeters(centerLat, centerLng, lat, lng) <= radius) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    const colorHexMap = {
+      purple: '#8e44ad', blue: '#2980b9', red: '#c0392b',
+      green: '#27ae60', pink: '#e91e63', yellow: '#f39c12'
+    };
+
+    function createSvgPinIcon(colorName) {
+      const hex = colorHexMap[colorName] || colorHexMap.purple;
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="30" height="45">
+          <path fill="${hex}" stroke="#ffffff" stroke-width="1.5" d="M12 0C5.37 0 0 5.37 0 12c0 9 12 24 12 24s12-15 12-24c0-6.63-5.37-12-12-12z"/>
+          <circle cx="12" cy="11" r="4.5" fill="#ffffff"/>
+        </svg>`;
+
+      return L.divIcon({
+        className: 'custom-svg-pin',
+        html: svg,
+        iconSize: [30, 45],
+        iconAnchor: [15, 45],
+        popupAnchor: [0, -40]
+      });
+    }
+
+    const markerIcons = {
+      purple: createSvgPinIcon('purple'),
+      blue: createSvgPinIcon('blue'),
+      red: createSvgPinIcon('red'),
+      green: createSvgPinIcon('green'),
+      pink: createSvgPinIcon('pink'),
+      yellow: createSvgPinIcon('yellow')
+    };
+
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 21,
+      maxNativeZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    });
+
+    const satelliteLayer = L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 21,
+      maxNativeZoom: 19,
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DigitalGlobe, GeoEye, Earthstar Geographics, and the GIS User Community'
+    });
+	
+ var leafOffLayer = L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+   maxZoom: 21,
+   maxNativeZoom: 19,
+   attribution: 'Esri, DigitalGlobe, GeoEye, Earthstar Geographics, and the GIS User Community (Leaf-Off)'
+ });
+
+    // Dynamic View-Based Parcel Container Layer (Restricted by distance & zoom to prevent crashes)
+    const wiParcelsLayer = L.layerGroup();
+    let parcelFetchTimeout = null;
+
+    function fetchParcelsForCurrentView() {
+      if (map.getZoom() < 19) {
+        wiParcelsLayer.clearLayers();
+        return;
+      }
+
+      const bounds = map.getBounds();
+      const southWest = bounds.getSouthWest();
+      const northEast = bounds.getNorthEast();
+
+      const viewWidthMeters = getDistanceMeters(
+        southWest.lat, southWest.lng,
+        southWest.lat, northEast.lng
+      );
+
+      const MAX_VIEW_DISTANCE_METERS = 1000;
+
+      if (viewWidthMeters > MAX_VIEW_DISTANCE_METERS) {
+        wiParcelsLayer.clearLayers();
+        return;
+      }
+
+      clearTimeout(parcelFetchTimeout);
+      parcelFetchTimeout = setTimeout(() => {
+        if (!map.hasLayer(wiParcelsLayer)) return;
+
+        const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+        const queryUrl = `https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels_DB/FeatureServer/0/query?geometry=${bbox}&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&outFields=*&f=geojson`;
+
+        fetch(queryUrl)
+          .then(response => response.json())
+          .then(data => {
+            wiParcelsLayer.clearLayers();
+            if (!data.features) return;
+
+            const geoJsonGroup = L.geoJSON(data, {
+              style: function () {
+                return {
+                  color: '#e67e22',
+                  weight: 1.5,
+                  fillColor: '#34495e',
+                  fillOpacity: 0.05
+                };
+              },
+              onEachFeature: function (feature, layer) {
+                const props = feature.properties || {};
+                const address = props.SITEADRESS || props.FullPhysicalAddress || props.address || 'N/A';
+                const parcelId = props.PARCELID || props.ParcelID || 'N/A';
+                const owner = props.OWNERNME1 || props.PrimaryOwnerName || 'N/A';
+
+                layer.bindPopup(`
+                  <div style="font-size: 12px;">
+                    <strong>WI Tax Parcel (V12)</strong><br><hr style="margin: 4px 0;">
+                    <b>Address:</b> ${address}<br>
+                    <b>Parcel ID:</b> ${parcelId}<br>
+                    <b>Owner:</b> ${owner}
+                  </div>
+                `);
+
+                if (address && address !== 'N/A') {
+                  layer.bindTooltip(address, {
+                    permanent: true,
+                    direction: 'center',
+                    className: 'parcel-address-label'
+                  });
+                }
+              }
+            });
+
+            wiParcelsLayer.addLayer(geoJsonGroup);
+          })
+          .catch(err => console.error("Parcel fetch error:", err));
+      }, 400);
+    }
+
+    // Public City of Marshfield Address & Street Name Annotations
+    const addressLabelsLayer = L.esri.dynamicMapLayer({
+      url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Site_Address_Annotations/MapServer",
+      opacity: 1.0,
+      format: "png24",
+      zIndex: 1000,
+      minZoom: 19
+    });
+
+    const streetLabelsLayer = L.esri.dynamicMapLayer({
+      url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Street_Names_Annotation/MapServer",
+      opacity: 1.0,
+      format: "png24",
+      zIndex: 1000,
+	  minZoom: 19
+    });
+
+    // Initialize Map
+    const map = L.map('map', { 
+      zoomControl: false,
+      maxZoom: 21,
+      layers: [osmLayer, wiParcelsLayer, addressLabelsLayer, streetLabelsLayer] 
+    }).setView(MARSHFIELD_CENTER, MARSHFIELD_ZOOM);
+
+    map.on('moveend', fetchParcelsForCurrentView);
+    map.on('layeradd', function(e) {
+      if (e.layer === wiParcelsLayer) {
+        fetchParcelsForCurrentView();
+      }
+    });
+	
+    const mapContainer = map.getContainer();
+
+    mapContainer.addEventListener('mouseover', (e) => {
+      if (e.target.closest('.leaflet-control-layers')) {
+        map.scrollWheelZoom.disable();
+      }
+    });
+
+    mapContainer.addEventListener('mouseout', (e) => {
+      if (e.target.closest('.leaflet-control-layers')) {
+        map.scrollWheelZoom.enable();
+      }
+    });
+	
+    map.addLayer(geofenceLayerGroup);
+
+    const baseMaps = {
+      "OpenStreetMap": osmLayer,
+      "Satellite (Leaf-On)": leafOffLayer
+    };
+
+    const overlayMaps = {
+      "WI Parcels & Lot Lines": wiParcelsLayer,
+      "Marshfield Site Addresses": addressLabelsLayer,
+      "Marshfield Street Names": streetLabelsLayer
+    };
+
+    L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
+    L.control.zoom({ position: 'topright' }).addTo(map);
+	
+    // Safe, Built-in Distance Measurement Tool Control
+    let isMeasuring = false;
+    let measurePoints = [];
+    let measureLine = null;
+    let measureTooltip = null;
+
+    const MeasureControl = L.Control.extend({
+      options: { position: 'topright' },
+      onAdd: function (map) {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+        const button = L.DomUtil.create('a', 'leaflet-control-measure-btn', container);
+        button.innerHTML = '📏';
+        button.title = 'Measure Distance';
+        button.href = '#';
+        button.style.fontSize = '16px';
+        button.style.lineHeight = '34px';
+        button.style.textAlign = 'center';
+        button.style.backgroundColor = 'white';
+        button.style.width = '34px';
+        button.style.height = '34px';
+        button.style.display = 'block';
+
+        L.DomEvent.disableClickPropagation(container);
+
+        button.onclick = function (e) {
+          e.preventDefault();
+          isMeasuring = !isMeasuring;
+
+          if (isMeasuring) {
+            button.style.backgroundColor = '#2ecc71';
+            map.getContainer().style.cursor = 'crosshair';
+          } else {
+            resetMeasurement();
+          }
+        };
+        return container;
+      }
+    });
+
+    map.addControl(new MeasureControl());
+
+    function resetMeasurement() {
+      isMeasuring = false;
+      measurePoints = [];
+      if (measureLine) map.removeLayer(measureLine);
+      if (measureTooltip) map.removeLayer(measureTooltip);
+      measureLine = null;
+      measureTooltip = null;
+      map.getContainer().style.cursor = '';
+      const btn = document.querySelector('.leaflet-control-measure-btn');
+      if (btn) btn.style.backgroundColor = 'white';
+    }
+
+    map.on('click', function (e) {
+      if (!isMeasuring) return;
+
+      measurePoints.push(e.latlng);
+
+      if (measurePoints.length === 1) {
+        measureLine = L.polyline(measurePoints, { color: '#e74c3c', weight: 3, dashArray: '5, 10' }).addTo(map);
+      } else {
+        measureLine.setLatLngs(measurePoints);
+
+        let totalDistanceMeters = 0;
+        for (let i = 0; i < measurePoints.length - 1; i++) {
+          totalDistanceMeters += measurePoints[i].distanceTo(measurePoints[i + 1]);
+        }
+        const feet = (totalDistanceMeters * 3.28084).toFixed(1);
+        const miles = (totalDistanceMeters * 0.000621371).toFixed(2);
+
+        const labelText = feet > 5280 ? `${miles} mi (${feet} ft)` : `${feet} ft`;
+
+        if (!measureTooltip) {
+          measureTooltip = L.tooltip({ permanent: true, direction: 'top', className: 'parcel-address-label' })
+            .setLatLng(e.latlng)
+            .addTo(map);
+        }
+        measureTooltip.setLatLng(e.latlng).setContent(`<b>Distance:</b> ${labelText}`);
+      }
+    });
+
+    map.on('dblclick', function () {
+      if (isMeasuring) resetMeasurement();
+    });
+	
+    let arcgisLayerControl = null;
+
+    const ResetViewControl = L.Control.extend({
+      options: { position: 'topright' },
+      onAdd: function (map) {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+        const button = L.DomUtil.create('a', 'leaflet-control-reset', container);
+        button.innerHTML = '🏠';
+        button.title = 'Reset to Primary Location';
+        button.href = '#';
+        L.DomEvent.disableClickPropagation(container);
+        
+        button.onclick = function (e) {
+          e.preventDefault();
+          const primaryZone = currentUserProfile?.allowedGeofences?.[0];
+          
+          if (primaryZone) {
+            const loc = primaryZone.location || primaryZone.geopoint || primaryZone.coords || primaryZone.point || primaryZone;
+            const lat = loc.latitude ?? loc.lat;
+            const lng = loc.longitude ?? loc.lng;
+
+            if (lat != null && lng != null) {
+              map.flyTo([lat, lng], 15, { duration: 1 });
+              return;
+            }
+          }
+
+          map.flyTo(MARSHFIELD_CENTER, MARSHFIELD_ZOOM, { duration: 1 });
+        };
+        return container;
+      }
+    });
+    map.addControl(new ResetViewControl());
+
+    window.addEventListener('resize', () => map.invalidateSize());
+    window.addEventListener('orientationchange', () => setTimeout(() => map.invalidateSize(), 200));
+
+    const markerClusterGroup = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40 });
+    map.addLayer(markerClusterGroup);
+
+    map.on('click', async function(e) {
+      if (isMeasuring || activeDrawingPinId !== null) return;
+
+      if (!currentUser) return;
+      if (!isWithinAllowedGeofences(e.latlng.lat, e.latlng.lng)) {
+        alert("Action blocked: This location is outside your allowed editing geofence.");
+        return;
+      }
+
+      try {
+        const newDocRef = db.collection("marshfield_pins").doc();
+        await newDocRef.set({
+          lat: e.latlng.lat,
+          lng: e.latlng.lng,
+          title: "",
+          note: "",
+          color: "purple",
+          imageUrls: [],
+          polygonCoords: [],
+          userId: auth.currentUser.uid,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (err) {
+        console.error("Error creating pin:", err);
+      }
+    });
+
+    const searchInput = document.getElementById("map-search-box");
+    const searchResults = document.getElementById("search-results");
+    let searchDebounceTimeout = null;
+
+    if (searchInput) {
+      searchInput.addEventListener("input", function() {
+        clearTimeout(searchDebounceTimeout);
+        const query = searchInput.value.trim();
+
+        if (query.length < 2) {
+          searchResults.style.display = "none";
+          searchResults.innerHTML = "";
+          return;
+        }
+
+        searchDebounceTimeout = setTimeout(() => { performAddressSearch(query); }, 300);
+      });
+    }
+
+    async function performAddressSearch(query) {
+      searchResults.innerHTML = `<div class="search-result-item" style="color: #777;">Searching addresses...</div>`;
+      searchResults.style.display = "block";
+
+      try {
+        const center = map.getCenter();
+        const geocodeUrl = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&singleLine=${encodeURIComponent(query)}&maxLocations=6&location=${center.lng},${center.lat}`;
+
+        const response = await fetch(geocodeUrl);
+        const data = await response.json();
+
+        if (data.candidates && data.candidates.length > 0) {
+          searchResults.innerHTML = "";
+          
+          data.candidates.forEach(candidate => {
+            const lat = candidate.location.y;
+            const lon = candidate.location.x;
+            const name = candidate.address;
+            
+            const item = document.createElement("div");
+            item.className = "search-result-item";
+            item.innerHTML = `🔍 ${escapeHtml(name)}`;
+            item.onclick = () => selectAddressResult(lat, lon, name);
+            searchResults.appendChild(item);
+          });
+        } else {
+          searchResults.innerHTML = `<div class="search-result-item" style="color: #777;">No matching addresses found.</div>`;
+        }
+      } catch (err) {
+        console.error("Geocoding error:", err);
+        searchResults.innerHTML = `<div class="search-result-item" style="color: #777;">Error searching addresses.</div>`;
+      }
+    }
+
+    function selectAddressResult(lat, lon, displayName) {
+      searchResults.style.display = "none";
+      if (searchInput) searchInput.value = displayName.split(',')[0];
+      map.setView([lat, lon], 17, { animate: true });
+
+      if (searchResultMarker) map.removeLayer(searchResultMarker);
+
+      searchResultMarker = L.marker([lat, lon], { icon: markerIcons.purple })
+        .addTo(map)
+        .bindPopup(`<b>Search Location</b><br>${escapeHtml(displayName)}`, { closeButton: false })
+        .openPopup();
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // REAL-TIME FIRESTORE SYNC
+    db.collection("marshfield_pins").onSnapshot(function(snapshot) {
+      var statusDot = document.getElementById("status-dot");
+      if (statusDot) statusDot.classList.add("online");
+
+      snapshot.docChanges().forEach(function(change) {
+        var id = change.doc.id;
+        var data = change.doc.data();
+
+        if (change.type === "added" || change.type === "modified") {
+          renderPinMarker(id, data);
+        }
+        if (change.type === "removed" && activeMarkers[id]) {
+          markerClusterGroup.removeLayer(activeMarkers[id].marker);
+          if (activeMarkers[id].polygon) map.removeLayer(activeMarkers[id].polygon);
+          delete activeMarkers[id];
+        }
+      });
+    }, function(error) {
+      console.error("Firestore sync error:", error);
+    });
+
+    function renderPinMarker(id, data) {
+      var currentUser = auth.currentUser;
+      var isOwner = currentUser && data.userId === currentUser.uid;
+      var isSuperAdmin = typeof currentUserProfile !== 'undefined' && currentUserProfile && currentUserProfile.role === "super_admin";
+      
+      var pinLat = data.lat ?? data.latitude;
+      var pinLng = data.lng ?? data.longitude;
+      var isGeofenceAllowed = typeof isWithinAllowedGeofences === 'function' && isWithinAllowedGeofences(pinLat, pinLng);
+      
+      var canEditPin = currentUser && (isOwner || isSuperAdmin || isGeofenceAllowed);
+
+      var pinColor = data.color && markerIcons[data.color] ? data.color : 'purple';
+      var chosenIcon = markerIcons[pinColor];
+      var isDraggable = !!canEditPin;
+
+      var entry = activeMarkers[id];
+
+      if (!entry) {
+        var marker = L.marker([pinLat, pinLng], { 
+          icon: chosenIcon,
+          draggable: isDraggable
+        });
+
+        marker.on('dragstart', function() {
+          markerClusterGroup.removeLayer(marker);
+          marker.addTo(map);
+        });
+
+        marker.on('dragend', async function(e) {
+          var newLatLng = e.target.getLatLng();
+          map.removeLayer(marker);
+          markerClusterGroup.addLayer(marker);
+
+          if (!isWithinAllowedGeofences(newLatLng.lat, newLatLng.lng)) {
+            alert("Action blocked: This location is outside your allowed editing geofence.");
+            e.target.setLatLng([pinLat, pinLng]);
+            return;
+          }
+
+          try {
+            await db.collection("marshfield_pins").doc(id).update({
+              lat: newLatLng.lat,
+              lng: newLatLng.lng,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } catch (err) {
+            alert("Error updating position: " + err.message);
+            e.target.setLatLng([pinLat, pinLng]);
+          }
+        });
+		
+        var polygonLayer = null;
+        if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
+          var leafletCoords = data.polygonCoords.map(pt => Array.isArray(pt) ? pt : [pt.lat, pt.lng]);
+
+          polygonLayer = L.polygon(leafletCoords, {
+            color: colorHexMap[pinColor] || '#8e44ad',
+            fillColor: colorHexMap[pinColor] || '#9b59b6',
+            fillOpacity: 0.3,
+            weight: 2
+          }).addTo(map);
+          polygonLayer.on('click', function() { marker.openPopup(); });
+        }
+
+        entry = { marker: marker, polygon: polygonLayer, data: data };
+        activeMarkers[id] = entry;
+        markerClusterGroup.addLayer(marker);
+      } else {
+        entry.data = data;
+        entry.marker.setIcon(chosenIcon);
+        entry.marker.setLatLng([pinLat, pinLng]);
+
+        if (entry.polygon) {
+          map.removeLayer(entry.polygon);
+          entry.polygon = null;
+        }
+        if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
+          var polygonLayer = L.polygon(data.polygonCoords, {
+            color: colorHexMap[pinColor] || '#8e44ad',
+            fillColor: colorHexMap[pinColor] || '#9b59b6',
+            fillOpacity: 0.3,
+            weight: 2
+          }).addTo(map);
+          polygonLayer.on('click', function() { entry.marker.openPopup(); });
+          entry.polygon = polygonLayer;
+        }
+      }
+
+      if (entry.marker.dragging) {
+        isDraggable ? entry.marker.dragging.enable() : entry.marker.dragging.disable();
+      }
+
+      var images = data.imageUrls || (data.imageUrl ? [data.imageUrl] : []);
+      var imageGalleryHtml = "";
+      if (images.length > 0) {
+        var encodedImages = encodeURIComponent(JSON.stringify(images));
+        imageGalleryHtml = '<div class="image-gallery">' + 
+          images.map(function(url, idx) {
+            var deleteBtn = canEditPin ? '<button type="button" class="delete-img-btn" onclick="removePinImage(\'' + id + '\',' + idx + ')" title="Remove photo">✕</button>' : '';
+            return '<div class="image-thumb-container"><img src="' + url + '" alt="photo" onclick="openLightbox(\'' + encodedImages + '\', ' + idx + ')" style="cursor: pointer;">' + deleteBtn + '</div>';
+          }).join('') + '</div>';
+      }
+
+      var editDeleteBtns = canEditPin ? '<div class="pin-actions"><button onclick="openEditModal(\'' + id + '\')">Edit Pin</button><button onclick="deletePin(\'' + id + '\')">Delete Pin</button></div>' : '';
+      var popupContent = '<div class="pin-popup"><h3>' + (data.title || 'Marshfield Pin') + '</h3><p>' + (data.description || data.note || '') + '</p>' + imageGalleryHtml + editDeleteBtns + '</div>';
+      entry.marker.bindPopup(popupContent);
+
+      var tooltipTitle = data.title && data.title.trim() !== '' ? data.title : 'Untitled Pin';
+      if (entry.marker.getTooltip()) {
+        entry.marker.setTooltipContent(tooltipTitle);
+      } else {
+        entry.marker.bindTooltip(tooltipTitle, { direction: 'top', offset: [0, -40], opacity: 0.9 });
+      }
+
+      var checkedColors = Array.from(document.querySelectorAll('.filter-checkbox:checked')).map(function(cb) { return cb.value; });
+      if (checkedColors.includes(pinColor)) {
+        if (!markerClusterGroup.hasLayer(entry.marker)) markerClusterGroup.addLayer(entry.marker);
+      } else {
+        if (markerClusterGroup.hasLayer(entry.marker)) {
+          entry.marker.closePopup();
+          markerClusterGroup.removeLayer(entry.marker);
+        }
+      }
+    }
+
+    window.openEditModal = function(id) {
+      const entry = activeMarkers[id];
+      if (!entry || !entry.data) {
+        alert("Could not load pin data for editing.");
+        return;
+      }
+      
+      const pinData = entry.data;
+
+      const idField = document.getElementById("edit-pin-id");
+      const titleField = document.getElementById("edit-title");
+      const noteField = document.getElementById("edit-note");
+      const colorField = document.getElementById("edit-color");
+      
+      if (idField) idField.value = id;
+      if (titleField) titleField.value = pinData.title || "";
+      if (noteField) noteField.value = pinData.note || pinData.description || "";
+      if (colorField) colorField.value = pinData.color || "purple";
+
+      const previewContainer = document.getElementById("edit-photo-preview");
+      if (previewContainer) {
+        const urls = pinData.imageUrls || (pinData.imageUrl ? [pinData.imageUrl] : []);
+        if (urls.length === 0) {
+          previewContainer.innerHTML = '<span style="font-size: 12px; color: #888;">No photos attached.</span>';
+        } else {
+          previewContainer.innerHTML = urls.map((url, index) => `
+            <div style="position: relative; width: 60px; height: 60px;">
+              <img src="${url}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px; border: 1px solid #ccc;">
+              <button type="button" onclick="window.removePinImageFromModal('${id}', ${index})" style="position: absolute; top: 2px; right: 2px; background: rgba(220,38,38,0.9); color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;">×</button>
+            </div>
+          `).join('');
+        }
+      }
+
+      const fileInput = document.getElementById("edit-file-input");
+      if (fileInput) fileInput.value = "";
+
+      const modal = document.getElementById("edit-modal");
+      if (modal) modal.style.display = "flex";
+    };
+
+    window.savePinEdits = async function() {
+      const idField = document.getElementById("edit-pin-id");
+      const titleField = document.getElementById("edit-title");
+      const noteField = document.getElementById("edit-note");
+      const colorField = document.getElementById("edit-color");
+      const fileInput = document.getElementById("edit-file-input");
+
+      if (!idField || !titleField || !noteField) return;
+
+      const id = idField.value;
+      const title = titleField.value.trim();
+      const note = noteField.value.trim();
+      const color = colorField ? colorField.value : "purple";
+
+      if (!id) return;
+
+      try {
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+          await window.uploadPhotos(id, fileInput.files);
+        }
+
+        await db.collection("marshfield_pins").doc(id).update({
+          title: title,
+          note: note,
+          description: note,
+          color: color,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        const modal = document.getElementById("edit-modal");
+        if (modal) modal.style.display = "none";
+      } catch (err) {
+        alert("Error updating pin: " + err.message);
+      }
+    };
+
+    window.deletePin = async function(id) {
+      if (!confirm("Are you sure you want to delete this pin?")) return;
+      try {
+        await db.collection("marshfield_pins").doc(id).delete();
+      } catch (err) {
+        alert("Error deleting pin: " + err.message);
+      }
+    };
+
+    let currentLightboxImages = [];
+    let currentLightboxIndex = 0;
+    let currentZoom = 1;
+    let panX = 0;
+    let panY = 0;
+    
+    let isDragging = false;
+    let hasDragged = false;
+    let startX = 0;
+    let startY = 0;
+    let initialPinchDistance = null;
+    let baseZoom = 1;
+
+    window.openLightbox = function(encodedImages, index) {
+      currentLightboxImages = JSON.parse(decodeURIComponent(encodedImages));
+      currentLightboxIndex = index;
+      resetZoom();
+      updateLightboxView();
+      document.getElementById("lightbox-modal").style.display = "flex";
+    };
+
+    window.closeLightbox = function() {
+      document.getElementById("lightbox-modal").style.display = "none";
+      resetZoom();
+    };
+
+    window.changeLightboxImage = function(direction) {
+      currentLightboxIndex += direction;
+      if (currentLightboxIndex < 0) {
+        currentLightboxIndex = currentLightboxImages.length - 1;
+      } else if (currentLightboxIndex >= currentLightboxImages.length) {
+        currentLightboxIndex = 0;
+      }
+      resetZoom();
+      updateLightboxView();
+    };
+
+    window.jumpToLightboxImage = function(index) {
+      currentLightboxIndex = index;
+      resetZoom();
+      updateLightboxView();
+    };
+
+    function resetZoom() {
+      currentZoom = 1;
+      panX = 0;
+      panY = 0;
+      const imgEl = document.getElementById("lightbox-img");
+      if (imgEl) {
+        imgEl.style.transform = `translate(0px, 0px) scale(1)`;
+        imgEl.style.cursor = "zoom-in";
+      }
+    }
+
+    function updateLightboxView() {
+      const imgEl = document.getElementById("lightbox-img");
+      const counterEl = document.getElementById("lightbox-counter");
+      const thumbsEl = document.getElementById("lightbox-thumbnails");
+
+      if (imgEl && currentLightboxImages.length > 0) {
+        imgEl.src = currentLightboxImages[currentLightboxIndex];
+      }
+      if (counterEl) {
+        counterEl.innerText = `Photo ${currentLightboxIndex + 1} of ${currentLightboxImages.length}`;
+      }
+      if (thumbsEl) {
+        if (!thumbsEl.dataset.initialized || thumbsEl.dataset.count !== String(currentLightboxImages.length)) {
+          thumbsEl.dataset.initialized = "true";
+          thumbsEl.dataset.count = currentLightboxImages.length;
+          thumbsEl.innerHTML = currentLightboxImages.map((url, idx) => {
+            return `<img src="${url}" onclick="jumpToLightboxImage(${idx})" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer; transition: all 0.2s;">`;
+          }).join('');
+        }
+
+        const thumbImgs = thumbsEl.querySelectorAll("img");
+        thumbImgs.forEach((thumb, idx) => {
+          if (idx === currentLightboxIndex) {
+            thumb.style.border = "2px solid #3498db";
+            thumb.style.opacity = "1";
+            thumb.style.transform = "scale(1.05)";
+          } else {
+            thumb.style.border = "1px solid #555";
+            thumb.style.opacity = "0.6";
+            thumb.style.transform = "scale(1)";
+          }
+        });
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const imgEl = document.getElementById("lightbox-img");
+      if (!imgEl) return;
+
+      imgEl.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const zoomIntensity = 0.15;
+        if (e.deltaY < 0) {
+          currentZoom = Math.min(currentZoom + zoomIntensity, 4);
+        } else {
+          currentZoom = Math.max(currentZoom - zoomIntensity, 1);
+        }
+        applyTransform(imgEl);
+      }, { passive: false });
+
+      imgEl.addEventListener("click", () => {
+        if (hasDragged) {
+          hasDragged = false; 
+          return;
+        }
+        if (currentZoom === 1) {
+          currentZoom = 2.5;
+        } else {
+          resetZoom();
+        }
+        applyTransform(imgEl);
+      });
+
+      imgEl.addEventListener("mousedown", (e) => {
+        if (currentZoom > 1) {
+          isDragging = true;
+          hasDragged = false;
+          startX = e.clientX - panX;
+          startY = e.clientY - panY;
+          imgEl.style.cursor = "grabbing";
+          e.preventDefault();
+        }
+      });
+
+      window.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        hasDragged = true;
+        panX = e.clientX - startX;
+        panY = e.clientY - startY;
+        applyTransform(imgEl);
+      });
+
+      window.addEventListener("mouseup", () => {
+        if (isDragging) {
+          isDragging = false;
+          if (currentZoom > 1) imgEl.style.cursor = "grab";
+        }
+      });
+
+      let touchStartX = 0;
+      let touchStartY = 0;
+
+      imgEl.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 1) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          
+          if (currentZoom > 1) {
+            isDragging = true;
+            startX = touchStartX - panX;
+            startY = touchStartY - panY;
+          }
+        } else if (e.touches.length === 2) {
+          isDragging = false;
+          initialPinchDistance = getTouchDistance(e.touches[0], e.touches[1]);
+          baseZoom = currentZoom;
+        }
+      }, { passive: true });
+
+      imgEl.addEventListener("touchmove", (e) => {
+        if (isDragging && e.touches.length === 1 && currentZoom > 1) {
+          hasDragged = true;
+          panX = e.touches[0].clientX - startX;
+          panY = e.touches[0].clientY - startY;
+          applyTransform(imgEl);
+        } else if (e.touches.length === 2 && initialPinchDistance !== null) {
+          hasDragged = true;
+          const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
+          const scaleFactor = currentDistance / initialPinchDistance;
+          currentZoom = Math.min(Math.max(baseZoom * scaleFactor, 1), 4);
+          applyTransform(imgEl);
+        }
+      }, { passive: true });
+
+      imgEl.addEventListener("touchend", (e) => {
+        if (currentZoom === 1 && e.changedTouches.length === 1) {
+          const touchEndX = e.changedTouches[0].clientX;
+          const touchEndY = e.changedTouches[0].clientY;
+          const diffX = touchEndX - touchStartX;
+          const diffY = touchEndY - touchStartY;
+
+          if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
+            if (diffX < 0) {
+              changeLightboxImage(1);
+            } else {
+              changeLightboxImage(-1);
+            }
+          }
+        }
+
+        isDragging = false;
+        initialPinchDistance = null;
+        if (currentZoom === 1) {
+          panX = 0;
+          panY = 0;
+        }
+      });
+	  
+      window.addEventListener("keydown", (e) => {
+        const modal = document.getElementById("lightbox-modal");
+        if (!modal) return;
+
+        const computedDisplay = window.getComputedStyle(modal).display;
+        if (computedDisplay === "none" || computedDisplay === "") return;
+
+        if (e.key === "Escape" || e.key === "Esc") {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          closeLightbox();
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          changeLightboxImage(1);
+        } else if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          changeLightboxImage(-1);
+        }
+      }, true);
+    });
+
+    function getTouchDistance(t1, t2) {
+      const dx = t1.clientX - t2.clientX;
+      const dy = t1.clientY - t2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function applyTransform(imgEl) {
+      if (currentZoom === 1) {
+        panX = 0;
+        panY = 0;
+        imgEl.style.cursor = "zoom-in";
+      } else {
+        imgEl.style.cursor = "grab";
+      }
+      imgEl.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
+    }
+
+    let activeDrawingPinId = null;
+    let tempPolygonCoords = [];
+    let tempDrawingPolyline = null;
+    let tempDrawingMarkers = [];
+
+    window.initPolygonDrawing = function() {
+      const pinId = document.getElementById("edit-pin-id").value;
+      if (!pinId) return;
+
+      activeDrawingPinId = pinId;
+      tempPolygonCoords = [];
+      
+      map.closePopup();
+      document.getElementById("edit-modal").style.display = "none";
+
+      showDrawingBanner("Click on the map to outline the area. Double-click or click here to finish.");
+    };
+
+    function showDrawingBanner(message) {
+      let banner = document.getElementById("drawing-mode-banner");
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "drawing-mode-banner";
+        banner.style.cssText = "position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: #2c3e50; color: white; padding: 10px 20px; border-radius: 20px; z-index: 4000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 13px; display: flex; align-items: center; gap: 12px;";
+        document.body.appendChild(banner);
+      }
+      banner.innerHTML = `<span>${message}</span> <button onclick="finishPolygonDrawing()" style="background: #2ecc71; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">Finish</button> <button onclick="cancelPolygonDrawing()" style="background: #e74c3c; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer;">Cancel</button>`;
+      banner.style.display = "flex";
+
+      map.on('click', onMapClickForDrawing);
+    }
+
+    function onMapClickForDrawing(e) {
+      tempPolygonCoords.push([e.latlng.lat, e.latlng.lng]);
+
+      const vertexMarker = L.circleMarker(e.latlng, { radius: 5, color: '#8e44ad', fillColor: '#9b59b6', fillOpacity: 1 }).addTo(map);
+      tempDrawingMarkers.push(vertexMarker);
+
+      if (!tempDrawingPolyline) {
+        tempDrawingPolyline = L.polygon(tempPolygonCoords, { color: '#8e44ad', weight: 2, fillColor: '#9b59b6', fillOpacity: 0.3 }).addTo(map);
+      } else {
+        tempDrawingPolyline.setLatLngs(tempPolygonCoords);
+      }
+    }
+
+    window.finishPolygonDrawing = async function() {
+      map.off('click', onMapClickForDrawing);
+      
+      const banner = document.getElementById("drawing-mode-banner");
+      if (banner) banner.style.display = "none";
+
+      tempDrawingMarkers.forEach(m => map.removeLayer(m));
+      tempDrawingMarkers = [];
+      if (tempDrawingPolyline) {
+        map.removeLayer(tempDrawingPolyline);
+        tempDrawingPolyline = null;
+      }
+
+      if (tempPolygonCoords.length >= 3 && activeDrawingPinId) {
+        try {
+          const firestoreCoords = tempPolygonCoords.map(pt => ({ lat: pt[0], lng: pt[1] }));
+
+          await db.collection("marshfield_pins").doc(activeDrawingPinId).update({
+            polygonCoords: firestoreCoords,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          alert("Polygon boundary saved successfully!");
+        } catch (err) {
+          alert("Error saving boundary: " + err.message);
+        }
+      }
+
+      if (activeDrawingPinId) {
+        window.openEditModal(activeDrawingPinId);
+      }
+      activeDrawingPinId = null;
+    };
+
+    window.cancelPolygonDrawing = function() {
+      map.off('click', onMapClickForDrawing);
+      const banner = document.getElementById("drawing-mode-banner");
+      if (banner) banner.style.display = "none";
+
+      tempDrawingMarkers.forEach(m => map.removeLayer(m));
+      tempDrawingMarkers = [];
+      if (tempDrawingPolyline) {
+        map.removeLayer(tempDrawingPolyline);
+        tempDrawingPolyline = null;
+      }
+
+      if (activeDrawingPinId) {
+        window.openEditModal(activeDrawingPinId);
+      }
+      activeDrawingPinId = null;
+    };
+
+    window.clearPinPolygon = async function() {
+      const pinId = document.getElementById("edit-pin-id").value;
+      if (!pinId) return;
+
+      if (!confirm("Remove the polygon boundary from this pin?")) return;
+
+      try {
+        await db.collection("marshfield_pins").doc(pinId).update({
+          polygonCoords: [],
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert("Polygon boundary cleared.");
+        window.openEditModal(pinId);
+      } catch (err) {
+        alert("Error clearing boundary: " + err.message);
+      }
+    };
+
+    // Helper to read EXIF GPS metadata from an uploaded file
+    function getFileGPS(file) {
+      return new Promise((resolve) => {
+        EXIF.getData(file, function() {
+          const latTag = EXIF.getTag(this, "GPSLatitude");
+          const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+          const lngTag = EXIF.getTag(this, "GPSLongitude");
+          const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
+
+          if (!latTag || !lngTag) {
+            resolve(null);
+            return;
+          }
+
+          const convertToDecimal = (dms, ref) => {
+            let decimal = dms[0] + dms[1] / 60 + dms[2] / 3600;
+            if (ref === "S" || ref === "W") decimal *= -1;
+            return decimal;
+          };
+
+          resolve({
+            lat: convertToDecimal(latTag, latRef),
+            lng: convertToDecimal(lngTag, lngRef)
+          });
+        });
+      });
+    }
+
+    window.uploadPhotos = async function(pinId, files) {
+      if (!files || files.length === 0) return;
+
+      const statusEl = document.getElementById(`upload-status-${pinId}`) || document.getElementById("upload-status-modal");
+      if (statusEl) {
+        statusEl.style.display = "block";
+        statusEl.innerText = `Processing and uploading ${files.length} image(s)...`;
+      }
+
+      try {
+        const uploadedUrls = [];
+        let updatedLat = null;
+        let updatedLng = null;
+
+        for (let file of files) {
+          if (file.size > 10 * 1024 * 1024) continue;
+
+          // Extract EXIF GPS metadata if present
+          const gps = await getFileGPS(file);
+          if (gps) {
+            updatedLat = gps.lat;
+            updatedLng = gps.lng;
+          }
+
+          const fileRef = storage.ref().child(`pins/${pinId}/${Date.now()}_${file.name}`);
+          const snapshot = await fileRef.put(file);
+          const downloadUrl = await snapshot.ref.getDownloadURL();
+          uploadedUrls.push(downloadUrl);
+        }
+
+        if (uploadedUrls.length > 0) {
+          const docRef = db.collection("marshfield_pins").doc(pinId);
+          const docSnap = await docRef.get();
+          const existingData = docSnap.data();
+          const currentUrls = existingData.imageUrls || (existingData.imageUrl ? [existingData.imageUrl] : []);
+
+          const updatePayload = {
+            imageUrls: [...currentUrls, ...uploadedUrls],
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+
+          // Update pin position and auto-generate polygon boundary if EXIF GPS data is found
+          if (updatedLat !== null && updatedLng !== null) {
+            updatePayload.lat = updatedLat;
+            updatePayload.lng = updatedLng;
+
+            if (!existingData.polygonCoords || existingData.polygonCoords.length === 0) {
+              const offset = 0.0002; // ~20 meter bounding box
+              updatePayload.polygonCoords = [
+                { lat: updatedLat + offset, lng: updatedLng - offset },
+                { lat: updatedLat + offset, lng: updatedLng + offset },
+                { lat: updatedLat - offset, lng: updatedLng + offset },
+                { lat: updatedLat - offset, lng: updatedLng - offset }
+              ];
+            }
+          }
+
+          await docRef.update(updatePayload);
+        }
+      } catch (err) {
+        alert("Photo upload failed: " + err.message);
+      } finally {
+        if (statusEl) statusEl.style.display = "none";
+      }
+    };
+
+    window.removePinImage = async function(pinId, indexToRemove) {
+      if (!confirm("Remove this photo?")) return;
+      try {
+        const docRef = db.collection("marshfield_pins").doc(pinId);
+        const docSnap = await docRef.get();
+        const data = docSnap.data();
+        let urls = data.imageUrls || (data.imageUrl ? [data.imageUrl] : []);
+
+        urls.splice(indexToRemove, 1);
+
+        await docRef.update({
+          imageUrls: urls,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (err) {
+        alert("Error removing image: " + err.message);
+      }
+    };
+
+    window.removePinImageFromModal = async function(id, index) {
+      await window.removePinImage(id, index);
+      window.openEditModal(id);
+    };
+
+    window.closePinPopup = function(pinId) {
+      if (activeMarkers[pinId]) {
+        activeMarkers[pinId].marker.closePopup();
+      }
+    };
+
+    function toggleLegendCollapse() {
+      const content = document.getElementById("legend-content");
+      const title = document.getElementById("legend-title");
+      if (content.style.display === "none") {
+        content.style.display = "flex";
+        title.innerText = "Filter Pins ▾";
+      } else {
+        content.style.display = "none";
+        title.innerText = "Filter Pins ▸";
+      }
+    }
+
+    window.filterMarkers = function() {
+      const checkedColors = Array.from(document.querySelectorAll('.filter-checkbox:checked')).map(cb => cb.value);
+
+      Object.keys(activeMarkers).forEach(id => {
+        const { marker, polygon, data } = activeMarkers[id];
+        const pinColor = data.color && markerIcons[data.color] ? data.color : 'purple';
+
+        if (checkedColors.includes(pinColor)) {
+          if (!markerClusterGroup.hasLayer(marker)) markerClusterGroup.addLayer(marker);
+          if (polygon && !map.hasLayer(polygon)) polygon.addTo(map);
+        } else {
+          if (markerClusterGroup.hasLayer(marker)) {
+            marker.closePopup();
+            markerClusterGroup.removeLayer(marker);
+          }
+          if (polygon && map.hasLayer(polygon)) map.removeLayer(polygon);
+        }
+      });
+    };
+
+    window.toggleAllFilters = function() {
+      const checkboxes = document.querySelectorAll('.filter-checkbox');
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      checkboxes.forEach(cb => { cb.checked = !allChecked; });
+      filterMarkers();
+    };
+
+    window.addNewUserLocation = async function() {
+      if (!currentUser) {
+        alert("You must be logged in to save locations.");
+        return;
+      }
+
+      const name = prompt("Enter a name for this location:");
+      if (!name || name.trim() === "") return;
+
+      const center = map.getCenter();
+
+      try {
+        const userRef = db.collection("users").doc(currentUser.uid);
+        const newLocation = {
+          name: name.trim(),
+          location: new firebase.firestore.GeoPoint(center.lat, center.lng),
+          radiusMeters: null 
+        };
+
+        await userRef.set({
+          allowedGeofences: firebase.firestore.FieldValue.arrayUnion(newLocation)
+        }, { merge: true });
+
+        if (!currentUserProfile) {
+          currentUserProfile = {};
+        }
+        if (!currentUserProfile.allowedGeofences) {
+          currentUserProfile.allowedGeofences = [];
+        }
+        currentUserProfile.allowedGeofences.push(newLocation);
+        
+        updateZonesPanelUI();
+        alert(`Successfully saved "${name}"!`);
+      } catch (err) {
+        alert("Error saving location: " + err.message);
+      }
+    };
+	
+    window.removeUserLocation = async function(index) {
+      if (!currentUser || !currentUserProfile || !currentUserProfile.allowedGeofences) return;
+      
+      const zoneName = currentUserProfile.allowedGeofences[index]?.name || "this location";
+      if (!confirm(`Remove "${zoneName}" from your saved locations?`)) return;
+
+      try {
+        const userRef = db.collection("users").doc(currentUser.uid);
+        const updatedZones = [...currentUserProfile.allowedGeofences];
+        updatedZones.splice(index, 1);
+
+        await userRef.update({
+          allowedGeofences: updatedZones
+        });
+
+        currentUserProfile.allowedGeofences = updatedZones;
+        updateZonesPanelUI();
+      } catch (err) {
+        alert("Error removing location: " + err.message);
+      }
+    };
+	
+    async function renameUserLocation(index, currentName) {
+      const newName = prompt("Rename location:", currentName);
+      if (!newName || newName.trim() === "" || newName === currentName) return;
+
+      const trimmedName = newName.trim();
+
+      if (currentUserProfile && currentUserProfile.allowedGeofences) {
+        currentUserProfile.allowedGeofences[index].name = trimmedName;
+      }
+
+      try {
+        const userRef = db.collection("users").doc(auth.currentUser.uid);
+        await userRef.update({
+          allowedGeofences: currentUserProfile.allowedGeofences
+        });
+        updateZonesPanelUI();
+      } catch (err) {
+        console.error("Failed to rename location:", err);
+        alert("Could not save the new name. Please try again.");
+      }
+    }
+
+    function updateZonesPanelUI() {
+      const zonesPanel = document.getElementById("zones-panel");
+      const zonesList = document.getElementById("zones-list");
+      if (!zonesList) return;
+      geofenceLayerGroup.clearLayers();
+
+      const userZones = currentUserProfile?.allowedGeofences;
+
+      if (userZones && userZones.length > 0) {
+        zonesList.innerHTML = "";
+        
+        userZones.forEach((zone, index) => {
+          const loc = zone.location || zone.geopoint || zone.coords || zone.point || zone;
+          const lat = loc.latitude ?? loc.lat;
+          const lng = loc.longitude ?? loc.lng;
+          const radius = zone.radiusMeters || zone.radius;
+          const name = zone.name || `Location ${index + 1}`;
+
+          if (lat != null && lng != null) {
+            const row = document.createElement("div");
+            row.className = "zone-row";
+
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "zone-btn";
+            btn.innerHTML = `<span>📍 ${name}</span>`;
+            btn.onclick = () => jumpToZone(lat, lng);
+
+            const renameBtn = document.createElement("button");
+            renameBtn.type = "button";
+            renameBtn.className = "zone-rename-btn";
+            renameBtn.innerHTML = "✏️";
+            renameBtn.title = "Rename location";
+            renameBtn.style.background = "none";
+            renameBtn.style.border = "none";
+            renameBtn.style.cursor = "pointer";
+            renameBtn.style.padding = "0 4px";
+            renameBtn.onclick = (e) => {
+              e.stopPropagation();
+              renameUserLocation(index, name);
+            };
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "zone-delete-btn";
+            deleteBtn.innerHTML = "✕";
+            deleteBtn.title = "Remove location";
+            deleteBtn.onclick = () => removeUserLocation(index);
+
+            row.appendChild(btn);
+            row.appendChild(renameBtn);
+            row.appendChild(deleteBtn);
+            zonesList.appendChild(row);
+
+            if (radius != null && radius > 0) {
+              L.circle([lat, lng], {
+                radius: radius,
+                color: '#3498db',
+                fillColor: '#3498db',
+                fillOpacity: 0.1,
+                weight: 2
+              }).bindTooltip(name).addTo(geofenceLayerGroup);
+            }
+          }
+        });
+
+        zonesPanel.style.display = "block";
+      } else {
+        zonesList.innerHTML = `<div style="font-size:11px; color:#777; text-align:center; padding:4px;">No saved locations</div>`;
+        zonesPanel.style.display = currentUser ? "block" : "none"; 
+      }
+    }
+
+    window.jumpToZone = function(lat, lng) {
+      map.flyTo([lat, lng], 15, { duration: 1.5 });
+    };
+
+    auth.onAuthStateChanged(async user => {
+      currentUser = user;
+      const authBtn = document.getElementById("auth-btn");
+      if (authBtn) {
+        authBtn.innerText = user ? "Account" : "Login";
+        authBtn.onclick = user ? window.openAccountMenuModal : window.openLoginChoiceModal;
+      }
+
+      if (user) {
+        try {
+          const userDoc = await db.collection("users").doc(user.uid).get();
+          if (userDoc.exists) {
+            currentUserProfile = userDoc.data();
+            updateZonesPanelUI();
+
+            const firstZone = currentUserProfile.allowedGeofences?.[0];
+            if (firstZone) {
+              const loc = firstZone.location || firstZone.geopoint || firstZone.coords || firstZone.point || firstZone;
+              const lat = loc.latitude ?? loc.lat;
+              const lng = loc.longitude ?? loc.lng;
+              if (lat != null && lng != null) {
+                map.flyTo([lat, lng], 15, { duration: 1.5 });
+              }
+            }
+          } else {
+            currentUserProfile = null;
+            updateZonesPanelUI();
+          }
+        } catch (err) {
+          console.error("Error fetching user profile:", err);
+          currentUserProfile = null;
+          updateZonesPanelUI();
+        }
+      } else {
+        currentUserProfile = null;
+        updateZonesPanelUI();
+      }
+
+      Object.keys(activeMarkers).forEach(id => {
+        const { marker, data } = activeMarkers[id];
+        renderPinMarker(id, data);
+      });
+    });
+
+    async function logoutUser() { 
+      secureEsriLayers.forEach(layer => {
+        map.removeLayer(layer);
+      });
+      secureEsriLayers = [];
+
+      if (typeof arcgisLayerControl !== 'undefined' && arcgisLayerControl) {
+        map.removeControl(arcgisLayerControl);
+        arcgisLayerControl = null;
+      }
+
+      const arcDot = document.getElementById("arcgis-status-dot");
+      if (arcDot) arcDot.style.backgroundColor = "#f39c12";
+
+      await auth.signOut(); 
+    }
+
+    async function loginUser() {
+      const email = document.getElementById("login-email").value.trim();
+      const password = document.getElementById("login-password").value.trim();
+      const rememberMe = document.getElementById("login-remember").checked;
+
+      if (!email || !password) return alert("Enter email and password.");
+
+      try {
+        const persistence = rememberMe ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
+        await auth.setPersistence(persistence);
+        await auth.signInWithEmailAndPassword(email, password);
+        closeLoginModal();
+      } catch (err) {
+        alert("Login failed: " + err.message);
+      }
+    }
+
+    window.toggleZonesPanel = function() {
+      const panel = document.getElementById("zones-panel");
+      panel.classList.toggle("collapsed");
+    };
+
+    async function forgotPassword() {
+      const emailInput = document.getElementById("login-email");
+      let email = emailInput.value.trim();
+
+      if (!email) {
+        email = prompt("Please enter your account email address for password reset:");
+        if (!email) return;
+      }
+
+      try {
+        await auth.sendPasswordResetEmail(email);
+        alert("Password reset email sent! Check your inbox.");
+      } catch (err) {
+        alert("Error sending password reset email: " + err.message);
+      }
+    }
+
+    async function generateArcGISToken() {
+      const username = document.getElementById("arcgis-user").value.trim();
+      const password = document.getElementById("arcgis-pass").value.trim();
+
+      if (!username || !password) {
+        alert("Please enter both username and password.");
+        return;
+      }
+
+      const tokenUrl = "https://www.arcgis.com/sharing/rest/generateToken";
+
+      const params = new URLSearchParams();
+      params.append("username", username);
+      params.append("password", password);
+      params.append("client", "referer");
+      params.append("referer", window.location.origin);
+      params.append("expiration", 60);
+      params.append("f", "json");
+
+      try {
+        const response = await fetch(tokenUrl, {
+          method: "POST",
+          body: params
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+          alert("Login failed: " + data.error.message);
+          return;
+        }
+
+        const token = data.token;
+        closeArcGISLoginModal();
+
+        secureEsriLayers.forEach(layer => map.removeLayer(layer));
+        secureEsriLayers = [];
+
+        if (arcgisLayerControl) {
+          map.removeControl(arcgisLayerControl);
+        }
+
+        loadArcGISLayers(token);
+
+      } catch (err) {
+        alert("Connection error connecting to ArcGIS server: " + err.message);
+      }
+    }
+
+    function loadArcGISLayers(token) {
+      const utilityOverlays = {};
+
+      myBaseServices.forEach(service => {
+        const dynamicLayer = L.esri.dynamicMapLayer({
+          url: service.url,
+          token: token,
+          opacity: 0.85,
+          format: "png24",
+          minZoom: 16
+        });
+
+        secureEsriLayers.push(dynamicLayer);
+        utilityOverlays[`🔒 ${service.name}`] = dynamicLayer;
+      });
+
+      if (arcgisLayerControl) {
+        map.removeControl(arcgisLayerControl);
+      }
+
+      arcgisLayerControl = L.control.layers(null, utilityOverlays, { 
+        position: 'topright', 
+        collapsed: true 
+      }).addTo(map);
+
+      const arcDot = document.getElementById("arcgis-status-dot");
+      if (arcDot) arcDot.style.backgroundColor = "#2ecc71";
+
+      alert("City ArcGIS secure utility layers loaded successfully! They will appear automatically when you zoom in close.");
+    }
+
+    const kmzLayersCache = {
+      pbd03: null,
+      pbd07: null,
+      pbd09: null
+    };
+
+    const kmzFilePaths = {
+      pbd03: './' + encodeURI('Wausau PBD03.kmz'),
+      pbd07: './KMZs/PBD07.kmz',
+      pbd09: './KMZs/PBD09.kmz'
+    };
+
+    const kmzPanel = document.getElementById('kmz-legend-panel');
+    L.DomEvent.disableClickPropagation(kmzPanel);
+    L.DomEvent.disableScrollPropagation(kmzPanel);
+
+    function toggleKmzLayers() {
+      const checkboxes = document.querySelectorAll('.kmz-checkbox');
+      checkboxes.forEach(cb => {
+        const layerKey = cb.getAttribute('data-layer');
+        
+        if (cb.checked) {
+          if (!kmzLayersCache[layerKey]) {
+            const targetLayer = L.kmzLayer();
+            targetLayer.load(kmzFilePaths[layerKey]);
+            kmzLayersCache[layerKey] = targetLayer;
+            targetLayer.addTo(map);
+          } else {
+            if (!map.hasLayer(kmzLayersCache[layerKey])) {
+              map.addLayer(kmzLayersCache[layerKey]);
+            }
+          }
+        } else {
+          if (kmzLayersCache[layerKey] && map.hasLayer(kmzLayersCache[layerKey])) {
+            map.removeLayer(kmzLayersCache[layerKey]);
+          }
+        }
+      });
+    }
+
+    function toggleKmzCollapse() {
+      const content = document.getElementById('kmz-legend-content');
+      const title = document.getElementById('kmz-legend-title');
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        title.innerHTML = 'Fiber ▾';
+      } else {
+        content.style.display = 'none';
+        title.innerHTML = 'Fiber ▸';
+      }
+    }
+
+    function toggleAllKmz() {
+      const checkboxes = document.querySelectorAll('.kmz-checkbox');
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      checkboxes.forEach(cb => {
+        cb.checked = !allChecked;
+      });
+      toggleKmzLayers();
+    }
+  </script>
+
+  <!-- Edit Pin Modal -->
+  <div id="edit-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 3000;">
+    <div class="modal-content" style="background: white; padding: 20px; border-radius: 8px; width: 360px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <h3>Edit Pin</h3>
+      <input type="hidden" id="edit-pin-id">
+      
+      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Title:</label>
+      <input type="text" id="edit-title" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+      
+      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Note / Description:</label>
+      <textarea id="edit-note" rows="3" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+      
+      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Pin Category / Color:</label>
+      <select id="edit-color" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; background: white;">
+        <option value="purple">🟣 Purple (Default)</option>
+        <option value="blue">🔵 Blue (Water)</option>
+        <option value="red">🔴 Red (Electric)</option>
+        <option value="green">🟢 Green (Storm/Sewer)</option>
+        <option value="pink">🩷 Pink (Fiber Optic)</option>
+        <option value="yellow">🟡 Yellow (WE Energies)</option>
+      </select>
+      
+      <label style="display: block; margin-top: 12px; font-size: 13px; font-weight: 500;">Current Photos:</label>
+      <div id="edit-photo-preview" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; margin-bottom: 10px;"></div>
+      
+      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Add More Photos:</label>
+      <input type="file" id="edit-file-input" multiple accept="image/*" style="width: 100%; margin-top: 4px; font-size: 12px;">
+      <div id="upload-status-modal" style="font-size: 11px; color: #666; margin-top: 4px; display: none;"></div>
+
+      <label style="display: block; margin-top: 16px; font-size: 13px; font-weight: 500;">Affected Area Boundary:</label>
+      <div style="display: flex; gap: 8px; margin-top: 4px; margin-bottom: 10px;">
+        <button type="button" onclick="initPolygonDrawing()" style="flex: 1; padding: 6px; background: #8e44ad; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">✏️ Draw / Edit Boundary</button>
+        <button type="button" onclick="clearPinPolygon()" style="padding: 6px 10px; background: #e5e7eb; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;" title="Clear boundary">Clear</button>
+      </div>
+      
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+        <button type="button" onclick="document.getElementById('edit-modal').style.display='none'" style="padding: 6px 12px; background: #e5e7eb; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+        <button type="button" onclick="savePinEdits()" style="padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sign In Choice Modal -->
+  <div id="login-choice-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
+      <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Sign In Options</h3>
+      
+      <button type="button" onclick="window.closeLoginChoiceModal(); window.openLoginModal();" style="width: 100%; padding: 10px; margin-bottom: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #1e293b;">
+        🔐 App Login (Firebase)
+      </button>
+      
+      <button type="button" onclick="window.closeLoginChoiceModal(); window.openArcGISLoginModal();" style="display: none; width: 100%; padding: 10px; margin-bottom: 16px; background: #f0f9ff; border: 1px solid #0284c7; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #0284c7;">
+        🚽 Sewer / Storm / Traffic Login
+      </button>
+
+      <button type="button" onclick="window.closeLoginChoiceModal()" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Account Menu Modal -->
+  <div id="account-menu-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
+      <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Account & Utilities</h3>
+      
+      <button type="button" onclick="window.closeAccountMenuModal(); window.openArcGISLoginModal();" style="display: none; width: 100%; padding: 10px; margin-bottom: 10px; background: #f0f9ff; border: 1px solid #0284c7; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #0284c7;">
+        🚽 ArcGIS Utility Login
+      </button>
+      
+      <button type="button" onclick="window.closeAccountMenuModal(); logoutUser();" style="width: 100%; padding: 10px; margin-bottom: 16px; background: #fef2f2; border: 1px solid #dc2626; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #dc2626;">
+        🚪 Log Out of Firebase
+      </button>
+
+      <button type="button" onclick="window.closeAccountMenuModal()" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- App Login Modal (Firebase) -->
+  <div id="login-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
+      <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Editor Login</h3>
+      <form id="login-form" onsubmit="event.preventDefault(); loginUser();" style="display: flex; flex-direction: column; gap: 10px;">
+        <input type="email" id="login-email" placeholder="Email address" autocomplete="username" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;">
+        <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+          <label for="login-remember" style="display: flex; align-items: center; gap: 8px; color: #555; cursor: pointer;">
+            <input type="checkbox" id="login-remember" checked> Remember me
+          </label>
+          <a href="#" onclick="event.preventDefault(); forgotPassword();" style="color: #3498db; text-decoration: none;">Forgot Password?</a>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+          <button type="button" class="btn" style="background-color: #95a5a6; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer;" onclick="closeLoginModal()">Cancel</button>
+          <button type="submit" class="btn" style="background-color: #3498db; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer;">Log In</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ArcGIS Secure Login Modal -->
+  <div id="arcgis-login-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 24px; border-radius: 8px; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
+      <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">ArcGIS Secure Login</h3>
+      
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #475569;">Username</label>
+        <input type="text" id="arcgis-user" placeholder="Enter ArcGIS username" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #475569;">Password</label>
+        <input type="password" id="arcgis-pass" placeholder="Enter ArcGIS password" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px;" />
+      </div>
+
+      <button type="button" onclick="generateArcGISToken()" style="width: 100%; padding: 10px; margin-bottom: 8px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Sign In & Load Layers</button>
+      
+      <button type="button" onclick="closeArcGISLoginModal()" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
+    </div>
+  </div>
+  
+  <!-- Lightbox Overlay Modal -->
+  <div id="lightbox-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 4000; justify-content: center; align-items: center; flex-direction: column;">
+    <button type="button" onclick="closeLightbox()" style="position: absolute; top: 20px; right: 25px; background: none; border: none; color: white; font-size: 30px; cursor: pointer;">✕</button>
+    
+    <div style="position: relative; max-width: 90vw; max-height: 65vh; display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+      <button type="button" onclick="changeLightboxImage(-1)" style="position: absolute; left: -50px; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; padding: 10px 15px; cursor: pointer; border-radius: 4px;">❮</button>
+      <img id="lightbox-img" src="" style="max-width: 100%; max-height: 65vh; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); cursor: zoom-in; transition: transform 0.1s ease; transform-origin: center center; touch-action: none; will-change: transform;" />
+      <button type="button" onclick="changeLightboxImage(1)" style="position: absolute; right: -50px; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; padding: 10px 15px; cursor: pointer; border-radius: 4px;">❯</button>
+    </div>
+    
+    <!-- Counter & Thumbnail Strip Container -->
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 90vw;">
+      <div id="lightbox-counter" style="color: white; font-size: 14px; font-family: sans-serif;"></div>
+      <div id="lightbox-thumbnails" style="display: flex; gap: 6px; overflow-x: auto; max-width: 100%; padding: 4px;"></div>
+    </div>
+  </div>
+</body>
+</html>
