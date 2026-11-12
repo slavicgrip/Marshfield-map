@@ -837,6 +837,102 @@
 	
     let arcgisLayerControl = null;
 
+// Custom Geolocate Control Button (Apple Maps Style Chevron)
+    const GeolocateControl = L.Control.extend({
+      options: { position: 'topright' },
+      onAdd: function (map) {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+        const button = L.DomUtil.create('a', 'leaflet-control-geolocate-btn', container);
+        
+        button.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" style="vertical-align: middle;">
+            <path fill="#007AFF" d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z"/>
+          </svg>`;
+        button.title = 'Center on My Location';
+        button.href = '#';
+        button.style.lineHeight = '32px';
+        button.style.textAlign = 'center';
+        button.style.backgroundColor = 'white';
+        button.style.width = '34px';
+        button.style.height = '34px';
+        button.style.display = 'flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent: 'center';
+
+        L.DomEvent.disableClickPropagation(container);
+
+        let userLocationMarker = null;
+        let userAccuracyCircle = null;
+
+        const userLocationIcon = L.divIcon({
+          className: 'user-live-location-icon',
+          html: `<div style="width: 18px; height: 18px; background: #007AFF; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 8px rgba(0, 122, 255, 0.6);"></div>`,
+          iconSize: [18, 18],
+          iconAnchor: [9, 9]
+        });
+
+        button.onclick = function (e) {
+          e.preventDefault();
+
+          if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser.");
+            return;
+          }
+
+          button.style.backgroundColor = '#fef9c3';
+
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              button.style.backgroundColor = 'white';
+              const lat = position.coords.latitude;
+              const lng = position.coords.longitude;
+              const accuracy = position.coords.accuracy;
+
+              map.flyTo([lat, lng], 17, { duration: 1.5 });
+
+              if (userLocationMarker) map.removeLayer(userLocationMarker);
+              if (userAccuracyCircle) map.removeLayer(userAccuracyCircle);
+
+              userAccuracyCircle = L.circle([lat, lng], {
+                radius: accuracy,
+                color: '#007AFF',
+                fillColor: '#007AFF',
+                fillOpacity: 0.15,
+                weight: 1
+              }).addTo(map);
+
+              userLocationMarker = L.marker([lat, lng], { icon: userLocationIcon }).addTo(map)
+                .bindPopup(`<b>Your Current Location</b><br>Accuracy: ~${Math.round(accuracy)} meters`)
+                .openPopup();
+            },
+            (error) => {
+              button.style.backgroundColor = 'white';
+              console.error("Geolocation error:", error);
+              switch(error.code) {
+                case error.PERMISSION_DENIED:
+                  alert("Location permission denied. Please enable location access in your browser settings.");
+                  break;
+                case error.POSITION_UNAVAILABLE:
+                  alert("Location information is currently unavailable.");
+                  break;
+                case error.TIMEOUT:
+                  alert("The request to get user location timed out.");
+                  break;
+                default:
+                  alert("An unknown error occurred while retrieving location.");
+                  break;
+              }
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          );
+        };
+
+        return container;
+      }
+    });
+
+    map.addControl(new GeolocateControl());
+
     const ResetViewControl = L.Control.extend({
       options: { position: 'topright' },
       onAdd: function (map) {
