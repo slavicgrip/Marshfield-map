@@ -999,7 +999,7 @@
         notes: ''
       });
     });
-
+	map.on('click', async function(e) {
       try {
         const newDocRef = db.collection("marshfield_pins").doc();
         await newDocRef.set({
