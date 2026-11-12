@@ -975,14 +975,30 @@
     map.addLayer(markerClusterGroup);
 
   map.on('click', async function(e) {
-      // If the measurement tool or polygon drawing mode is active, ignore pin creation
+      // 1. Keep your existing safety and tool guards
       if (isMeasuring || activeDrawingPinId !== null) return;
-
       if (!currentUser) return;
       if (!isWithinAllowedGeofences(e.latlng.lat, e.latlng.lng)) {
         alert("Action blocked: This location is outside your allowed editing geofence.");
         return;
       }
+
+      const lat = e.latlng.lat;
+      const lng = e.latlng.lng;
+
+      // 2. Automatically look up the town/city name for these coordinates
+      const placeName = await getMunicipalityName(lat, lng);
+      const defaultPinTitle = `${placeName} Pin`;
+
+      // 3. Open your edit modal pre-filled with the dynamic municipality title
+      openEditModal({
+        lat: lat,
+        lng: lng,
+        title: defaultPinTitle, // 👈 Dynamically populated (e.g., "Marshfield Pin", "Auburndale Pin", etc.)
+        color: 'purple',
+        notes: ''
+      });
+    });
 
       try {
         const newDocRef = db.collection("marshfield_pins").doc();
@@ -1072,7 +1088,7 @@
     function escapeHtml(str) {
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
-
+		
     // REAL-TIME FIRESTORE SYNC
     db.collection("marshfield_pins").onSnapshot(function(snapshot) {
       var statusDot = document.getElementById("status-dot");
