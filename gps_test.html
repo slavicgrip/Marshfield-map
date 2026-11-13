@@ -474,7 +474,7 @@
     };
 	
 	// Wait for the HTML body to fully load before trying to append elements
-document.addEventListener("DOMContentLoaded", function() {
+ddocument.addEventListener("DOMContentLoaded", function() {
   const nyanOverlay = document.createElement('div');
   nyanOverlay.id = 'nyan-overlay';
   document.body.appendChild(nyanOverlay);
@@ -514,21 +514,36 @@ document.addEventListener("DOMContentLoaded", function() {
   function spawnNyanCat() {
     const wrapper = document.createElement('div');
     wrapper.className = 'nyan-wrapper';
-
-    const startY = Math.random() * (window.innerHeight * 0.75) + (window.innerHeight * 0.1);
-    const duration = (Math.random() * 3 + 4).toFixed(2);
-    const scale = (Math.random() * 0.4 + 0.8).toFixed(2);
-
-    wrapper.style.top = `${startY}px`;
-    wrapper.style.animationDuration = `${duration}s`;
-    wrapper.style.transform = `scale(${scale})`;
-
     wrapper.innerHTML = `<div class="nyan-rainbow"></div>${nyanCatSVG}`;
     nyanOverlay.appendChild(wrapper);
 
-    setTimeout(() => {
-      wrapper.remove();
-    }, duration * 1000 + 200);
+    let currentX = -250;
+    const startY = Math.random() * (window.innerHeight * 0.5) + (window.innerHeight * 0.25);
+    const speed = Math.random() * 1.5 + 2.5; // Horizontal speed
+    const amplitude = Math.random() * 60 + 50; // Wave height (pixels up/down from center)
+    const frequency = 0.008; // Wave frequency (how stretched out the waves are)
+
+    function frame() {
+      currentX += speed;
+      
+      // True mathematical sine wave formula
+      const currentY = startY + amplitude * Math.sin(currentX * frequency);
+      
+      // Calculate angle dynamically based on the slope (derivative) of the sine wave
+      const derivative = amplitude * frequency * Math.cos(currentX * frequency);
+      const angle = Math.atan(derivative) * (180 / Math.PI); // Convert radians to degrees
+
+      wrapper.style.transform = `translate(${currentX}px, ${currentY}px) rotate(${angle}deg)`;
+
+      // Continue animating until it clears the right side of the screen
+      if (currentX < window.innerWidth + 300) {
+        requestAnimationFrame(frame);
+      } else {
+        wrapper.remove();
+      }
+    }
+
+    requestAnimationFrame(frame);
   }
 
   function scheduleNextNyan() {
