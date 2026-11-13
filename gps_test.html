@@ -465,76 +465,76 @@
       if (modal) modal.style.display = "none";
     };
 	
-	const nyanOverlay = document.createElement('div');
-nyanOverlay.id = 'nyan-overlay';
-document.body.appendChild(nyanOverlay);
+	// Wait for the HTML body to fully load before trying to append elements
+document.addEventListener("DOMContentLoaded", function() {
+  const nyanOverlay = document.createElement('div');
+  nyanOverlay.id = 'nyan-overlay';
+  document.body.appendChild(nyanOverlay);
 
-const nyanCatSVG = `
-<svg class="nyan-cat" viewBox="0 0 34 24" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
-  <!-- Tail & Paws -->
-  <rect x="1" y="13" width="4" height="3" fill="#999999"/>
-  <rect x="6" y="19" width="3" height="3" fill="#999999"/>
-  <rect x="11" y="19" width="3" height="3" fill="#999999"/>
-  <rect x="20" y="19" width="3" height="3" fill="#999999"/>
-  <rect x="25" y="19" width="3" height="3" fill="#999999"/>
-  <!-- Pop-Tart Pastry -->
-  <rect x="5" y="3" width="20" height="16" fill="#ffcc99" stroke="#000" stroke-width="1"/>
-  <!-- Pink Frosting -->
-  <rect x="7" y="5" width="16" height="12" fill="#ff99ff"/>
-  <!-- Sprinkles -->
-  <rect x="9" y="7" width="1" height="1" fill="#ff3399"/>
-  <rect x="14" y="6" width="1" height="1" fill="#ff3399"/>
-  <rect x="11" y="11" width="1" height="1" fill="#ff3399"/>
-  <rect x="16" y="13" width="1" height="1" fill="#ff3399"/>
-  <rect x="9" y="14" width="1" height="1" fill="#ff3399"/>
-  <!-- Cat Head -->
-  <rect x="20" y="8" width="11" height="9" fill="#999999" stroke="#000" stroke-width="1"/>
-  <!-- Ears -->
-  <rect x="20" y="5" width="3" height="3" fill="#999999" stroke="#000" stroke-width="1"/>
-  <rect x="28" y="5" width="3" height="3" fill="#999999" stroke="#000" stroke-width="1"/>
-  <!-- Eyes & Cheeks -->
-  <rect x="22" y="11" width="2" height="2" fill="#000000"/>
-  <rect x="28" y="11" width="2" height="2" fill="#000000"/>
-  <rect x="21" y="13" width="2" height="2" fill="#ff9999"/>
-  <rect x="29" y="13" width="2" height="2" fill="#ff9999"/>
-  <!-- Mouth -->
-  <rect x="24" y="14" width="4" height="1" fill="#000000"/>
-</svg>`;
+  const nyanCatSVG = `
+  <svg class="nyan-cat" viewBox="0 0 34 24" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <!-- Tail & Paws -->
+    <rect x="1" y="13" width="4" height="3" fill="#999999"/>
+    <rect x="6" y="19" width="3" height="3" fill="#999999"/>
+    <rect x="11" y="19" width="3" height="3" fill="#999999"/>
+    <rect x="20" y="19" width="3" height="3" fill="#999999"/>
+    <rect x="25" y="19" width="3" height="3" fill="#999999"/>
+    <!-- Pop-Tart Pastry -->
+    <rect x="5" y="3" width="20" height="16" fill="#ffcc99" stroke="#000" stroke-width="1"/>
+    <!-- Pink Frosting -->
+    <rect x="7" y="5" width="16" height="12" fill="#ff99ff"/>
+    <!-- Sprinkles -->
+    <rect x="9" y="7" width="1" height="1" fill="#ff3399"/>
+    <rect x="14" y="6" width="1" height="1" fill="#ff3399"/>
+    <rect x="11" y="11" width="1" height="1" fill="#ff3399"/>
+    <rect x="16" y="13" width="1" height="1" fill="#ff3399"/>
+    <rect x="9" y="14" width="1" height="1" fill="#ff3399"/>
+    <!-- Cat Head -->
+    <rect x="20" y="8" width="11" height="9" fill="#999999" stroke="#000" stroke-width="1"/>
+    <!-- Ears -->
+    <rect x="20" y="5" width="3" height="3" fill="#999999" stroke="#000" stroke-width="1"/>
+    <rect x="28" y="5" width="3" height="3" fill="#999999" stroke="#000" stroke-width="1"/>
+    <!-- Eyes & Cheeks -->
+    <rect x="22" y="11" width="2" height="2" fill="#000000"/>
+    <rect x="28" y="11" width="2" height="2" fill="#000000"/>
+    <rect x="21" y="13" width="2" height="2" fill="#ff9999"/>
+    <rect x="29" y="13" width="2" height="2" fill="#ff9999"/>
+    <!-- Mouth -->
+    <rect x="24" y="14" width="4" height="1" fill="#000000"/>
+  </svg>`;
 
-function spawnNyanCat() {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'nyan-wrapper';
+  function spawnNyanCat() {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'nyan-wrapper';
 
-  // Randomize vertical height, speed (4s to 7s), and size
-  const startY = Math.random() * (window.innerHeight * 0.75) + (window.innerHeight * 0.1);
-  const duration = (Math.random() * 3 + 4).toFixed(2);
-  const scale = (Math.random() * 0.4 + 0.8).toFixed(2);
+    const startY = Math.random() * (window.innerHeight * 0.75) + (window.innerHeight * 0.1);
+    const duration = (Math.random() * 3 + 4).toFixed(2);
+    const scale = (Math.random() * 0.4 + 0.8).toFixed(2);
 
-  wrapper.style.top = `${startY}px`;
-  wrapper.style.animationDuration = `${duration}s`;
-  wrapper.style.transform = `scale(${scale})`;
+    wrapper.style.top = `${startY}px`;
+    wrapper.style.animationDuration = `${duration}s`;
+    wrapper.style.transform = `scale(${scale})`;
 
-  wrapper.innerHTML = `<div class="nyan-rainbow"></div>${nyanCatSVG}`;
-  nyanOverlay.appendChild(wrapper);
+    wrapper.innerHTML = `<div class="nyan-rainbow"></div>${nyanCatSVG}`;
+    nyanOverlay.appendChild(wrapper);
 
-  // Remove element once it crosses the screen
-  setTimeout(() => {
-    wrapper.remove();
-  }, duration * 1000 + 200);
-}
+    setTimeout(() => {
+      wrapper.remove();
+    }, duration * 1000 + 200);
+  }
 
-// Schedule random appearances every 15 to 45 seconds
-function scheduleNextNyan() {
-  const randomDelay = Math.random() * 30000 + 15000;
-  setTimeout(() => {
-    spawnNyanCat();
-    scheduleNextNyan();
-  }, randomDelay);
-}
+  function scheduleNextNyan() {
+    const randomDelay = Math.random() * 30000 + 15000;
+    setTimeout(() => {
+      spawnNyanCat();
+      scheduleNextNyan();
+    }, randomDelay);
+  }
 
-// Fires one 2 seconds after page load to verify it works, then switches to random intervals
-setTimeout(spawnNyanCat, 2000);
-scheduleNextNyan();
+  // Test run 2 seconds after load
+  setTimeout(spawnNyanCat, 2000);
+  scheduleNextNyan();
+});
 	
   </script>
 </head>
