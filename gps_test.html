@@ -59,36 +59,27 @@
   z-index: 9999;
 }
 
+/* Non-blocking overlay container */
+#nyan-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 9999;
+}
+
 .nyan-wrapper {
   position: absolute;
   display: flex;
   align-items: center;
-  left: -250px;
-  /* Smooth out the easing so it feels organic */
-  animation: fly-nyan 6s ease-in-out forwards;
+  left: 0;
+  top: 0;
+  will-change: transform;
 }
 
-/* Swooping, dipping, and tilting arc across the screen */
-@keyframes fly-nyan {
-  0% {
-    transform: translate(0, 0) rotate(0deg);
-  }
-  20% {
-    transform: translate(20vw, -70px) rotate(-12deg);
-  }
-  40% {
-    transform: translate(40vw, 60px) rotate(8deg);
-  }
-  60% {
-    transform: translate(60vw, -40px) rotate(-6deg);
-  }
-  80% {
-    transform: translate(80vw, 40px) rotate(10deg);
-  }
-  100% {
-    transform: translate(calc(100vw + 400px), -20px) rotate(0deg);
-  }
-}
 /* Trailing 6-color rainbow */
 .nyan-rainbow {
   width: 160px;
@@ -114,11 +105,6 @@
   height: 38px;
   margin-left: -6px;
   animation: cat-bounce 0.25s infinite alternate ease-in-out;
-}
-
-@keyframes fly-nyan {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(calc(100vw + 400px)); }
 }
 
 @keyframes cat-bounce {
