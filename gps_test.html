@@ -47,6 +47,30 @@
 
   <style>
   
+  /* Fiery explosion burst animation */
+.nyan-explosion {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  background: radial-gradient(circle, #ffffff 0%, #ffcc00 30%, #ff3300 70%, rgba(255, 0, 0, 0) 100%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.2);
+  animation: explode-burst 0.4s ease-out forwards;
+  pointer-events: none;
+  z-index: 10000;
+}
+
+@keyframes explode-burst {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.2);
+    opacity: 0;
+  }
+}
+  
   /* Non-blocking overlay container so map clicks pass right through */
 #nyan-overlay {
   position: fixed;
@@ -511,6 +535,41 @@
     <rect x="24" y="14" width="4" height="1" fill="#000000"/>
   </svg>`;
 
+  function triggerExplosion(x, y) {
+    const explosion = document.createElement('div');
+    explosion.className = 'nyan-explosion';
+    explosion.style.left = `${x}px`;
+    explosion.style.top = `${y}px`;
+    nyanOverlay.appendChild(explosion);
+
+    setTimeout(() => {
+      explosion.remove();
+    }, 400);
+  }
+
+  function checkPinCollisions(nyanRect) {
+    if (typeof map === 'undefined') return false;
+    
+    let collided = false;
+
+    // Scan all active layers on the Leaflet map for markers
+    map.eachLayer(layer => {
+      if (layer instanceof L.Marker && layer.getElement()) {
+        const pinRect = layer.getElement().getBoundingClientRect();
+
+        // Standard bounding box collision check
+        if (!(nyanRect.right < pinRect.left || 
+              nyanRect.left > pinRect.right || 
+              nyanRect.bottom < pinRect.top || 
+              nyanRect.top > pinRect.bottom)) {
+          collided = true;
+        }
+      }
+    });
+
+    return collided;
+  }
+
   function spawnNyanCat() {
     const wrapper = document.createElement('div');
     wrapper.className = 'nyan-wrapper';
@@ -519,23 +578,44 @@
 
     let currentX = -250;
     const startY = Math.random() * (window.innerHeight * 0.5) + (window.innerHeight * 0.25);
-    const speed = Math.random() * 1.5 + 2.5; // Horizontal speed
-    const amplitude = Math.random() * 60 + 50; // Wave height (pixels up/down from center)
-    const frequency = 0.008; // Wave frequency (how stretched out the waves are)
+    const speed = Math.random() * 1.5 + 2.5;
+    const amplitude = Math.random() * 60 + 50;
+    const frequency = 0.008;
+
+    const willDoStunt = Math.random() < 0.35;
+    const stuntTriggerX = window.innerWidth * (Math.random() * 0.4 + 0.3);
+    let stuntProgress = 0;
+    let isAlive = true;
 
     function frame() {
+      if (!isAlive) return;
+
       currentX += speed;
-      
-      // True mathematical sine wave formula
-      const currentY = startY + amplitude * Math.sin(currentX * frequency);
-      
-      // Calculate angle dynamically based on the slope (derivative) of the sine wave
-      const derivative = amplitude * frequency * Math.cos(currentX * frequency);
-      const angle = Math.atan(derivative) * (180 / Math.PI); // Convert radians to degrees
+
+      let currentY = startY + amplitude * Math.sin(currentX * frequency);
+      let angle = 0;
+
+      if (willDoStunt && currentX >= stuntTriggerX && stuntProgress <= Math.PI * 2) {
+        stuntProgress += 0.08;
+        currentY -= Math.sin(stuntProgress) * 50;
+        angle = stuntProgress * (180 / Math.PI);
+      } else {
+        const derivative = amplitude * frequency * Math.cos(currentX * frequency);
+        angle = Math.atan(derivative) * (180 / Math.PI);
+      }
 
       wrapper.style.transform = `translate(${currentX}px, ${currentY}px) rotate(${angle}deg)`;
 
-      // Continue animating until it clears the right side of the screen
+      // Check collision against Leaflet map pins every frame
+      const nyanRect = wrapper.getBoundingClientRect();
+      if (checkPinCollisions(nyanRect)) {
+        isAlive = false;
+        // Trigger explosion right at the cat's head position
+        triggerExplosion(nyanRect.left + 50, nyanRect.top + 20);
+        wrapper.remove();
+        return;
+      }
+
       if (currentX < window.innerWidth + 300) {
         requestAnimationFrame(frame);
       } else {
@@ -554,7 +634,6 @@
     }, randomDelay);
   }
 
-  // Test run 2 seconds after load
   setTimeout(spawnNyanCat, 2000);
   scheduleNextNyan();
 });
