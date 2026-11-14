@@ -1783,71 +1783,132 @@ let currentLightboxImages = [];
     };
 	
 	window.uploadPhotos = async function(pinId, files) {
-      if (!files || files.length === 0) return;
+  if (!files || files.length === 0) return;
 
-      const statusEl = document.getElementById(`upload-status-${pinId}`) || document.getElementById("upload-status-modal");
-      if (statusEl) {
-        statusEl.style.display = "block";
-        statusEl.innerText = `Processing and uploading ${files.length} image(s)...`;
+  const fileArray = Array.from(files).filter(f => f.size <= 10 * 1024 * 1024);
+  if (fileArray.length === 0) {
+    alert("Selected file(s) exceed the 10MB limit.");
+    return;
+  }
+
+  const progressContainer = document.getElementById("upload-progress-container");
+  const statusText = document.getElementById("upload-status-text");
+  const etaText = document.getElementById("upload-eta-text");
+  const progressBar = document.getElementById("upload-progress-bar");
+  const oldStatusEl = document.getElementById(`upload-status-${pinId}`) || document.getElementById("upload-status-modal");
+
+  const totalBytesAllFiles = fileArray.reduce((sum, f) => sum + f.size, 0);
+  let completedBytesBeforeCurrent = 0;
+  const uploadStartTime = Date.now();
+
+  if (progressContainer) {
+    progressContainer.style.display = "block";
+    if (progressBar) progressBar.style.width = "0%";
+    if (statusText) statusText.innerText = `Preparing ${fileArray.length} file(s)...`;
+    if (etaText) etaText.innerText = "";
+  } else if (oldStatusEl) {
+    oldStatusEl.style.display = "block";
+    oldStatusEl.innerText = `Processing and uploading ${fileArray.length} image(s)...`;
+  }
+
+  try {
+    const uploadedUrls = [];
+    let updatedLat = null;
+    let updatedLng = null;
+
+    for (let i = 0; i < fileArray.length; i++) {
+      const file = fileArray[i];
+
+      // Extract EXIF GPS metadata if present
+      if (statusText) statusText.innerText = `Checking EXIF (${i + 1}/${fileArray.length})...`;
+      const gps = await getFileGPS(file);
+      if (gps) {
+        updatedLat = gps.lat;
+        updatedLng = gps.lng;
       }
 
-      try {
-        const uploadedUrls = [];
-        let updatedLat = null;
-        let updatedLng = null;
+      const fileRef = storage.ref().child(`pins/${pinId}/${Date.now()}_${file.name}`);
+      
+      // Upload with live state_changed progress listener
+      const downloadUrl = await new Promise((resolve, reject) => {
+        const uploadTask = fileRef.put(file);
 
-        for (let file of files) {
-          if (file.size > 10 * 1024 * 1024) continue;
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const totalTransferred = completedBytesBeforeCurrent + snapshot.bytesTransferred;
+            const overallPercent = Math.min(100, Math.round((totalTransferred / totalBytesAllFiles) * 100));
 
-          // Extract EXIF GPS metadata if present
-          const gps = await getFileGPS(file);
-          if (gps) {
-            updatedLat = gps.lat;
-            updatedLng = gps.lng;
-          }
-
-          const fileRef = storage.ref().child(`pins/${pinId}/${Date.now()}_${file.name}`);
-          const snapshot = await fileRef.put(file);
-          const downloadUrl = await snapshot.ref.getDownloadURL();
-          uploadedUrls.push(downloadUrl);
-        }
-
-        if (uploadedUrls.length > 0) {
-          const docRef = db.collection("marshfield_pins").doc(pinId);
-          const docSnap = await docRef.get();
-          const existingData = docSnap.data();
-          const currentUrls = existingData.imageUrls || (existingData.imageUrl ? [existingData.imageUrl] : []);
-
-          const updatePayload = {
-            imageUrls: [...currentUrls, ...uploadedUrls],
-            attribution: getPinAttribution(), // 👈 Keeps your new username & date attribution stamp active!
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          };
-
-          // Update pin position and auto-generate polygon boundary if EXIF GPS data is found
-          if (updatedLat !== null && updatedLng !== null) {
-            updatePayload.lat = updatedLat;
-            updatePayload.lng = updatedLng;
-
-            if (!existingData.polygonCoords || existingData.polygonCoords.length === 0) {
-              const offset = 0.00005; // ~5 meter bounding box
-              updatePayload.polygonCoords = [
-                { lat: updatedLat + offset, lng: updatedLng - offset },
-                { lat: updatedLat + offset, lng: updatedLng + offset },
-                { lat: updatedLat - offset, lng: updatedLng + offset },
-                { lat: updatedLat - offset, lng: updatedLng - offset }
-              ];
+            const elapsedSeconds = (Date.now() - uploadStartTime) / 1000;
+            let etaString = "";
+            if (elapsedSeconds > 0.5 && totalTransferred > 0) {
+              const bytesPerSec = totalTransferred / elapsedSeconds;
+              const remainingBytes = totalBytesAllFiles - totalTransferred;
+              const remainingSec = Math.ceil(remainingBytes / bytesPerSec);
+              etaString = remainingSec > 1 ? `~${remainingSec}s left` : "Almost done...";
             }
-          }
 
-          await docRef.update(updatePayload);
+            if (progressBar) progressBar.style.width = `${overallPercent}%`;
+            if (statusText) statusText.innerText = `Uploading (${i + 1}/${fileArray.length}) - ${overallPercent}%`;
+            if (etaText) etaText.innerText = etaString;
+          },
+          (error) => reject(error),
+          async () => {
+            const url = await uploadTask.snapshot.ref.getDownloadURL();
+            resolve(url);
+          }
+        );
+      });
+
+      completedBytesBeforeCurrent += file.size;
+      uploadedUrls.push(downloadUrl);
+    }
+
+    if (statusText) statusText.innerText = "Saving to map...";
+    if (etaText) etaText.innerText = "";
+
+    if (uploadedUrls.length > 0) {
+      const docRef = db.collection("marshfield_pins").doc(pinId);
+      const docSnap = await docRef.get();
+      const existingData = docSnap.data();
+      const currentUrls = existingData.imageUrls || (existingData.imageUrl ? [existingData.imageUrl] : []);
+
+      const updatePayload = {
+        imageUrls: [...currentUrls, ...uploadedUrls],
+        attribution: getPinAttribution(), // 👈 Keeps your username & date attribution active!
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      // Update pin position and auto-generate polygon boundary if EXIF GPS data is found
+      if (updatedLat !== null && updatedLng !== null) {
+        updatePayload.lat = updatedLat;
+        updatePayload.lng = updatedLng;
+
+        if (!existingData.polygonCoords || existingData.polygonCoords.length === 0) {
+          const offset = 0.00005; // ~5 meter bounding box
+          updatePayload.polygonCoords = [
+            { lat: updatedLat + offset, lng: updatedLng - offset },
+            { lat: updatedLat + offset, lng: updatedLng + offset },
+            { lat: updatedLat - offset, lng: updatedLng + offset },
+            { lat: updatedLat - offset, lng: updatedLng - offset }
+          ];
         }
-      } catch (err) {
-        alert("Photo upload failed: " + err.message);
-      } finally {
-        if (statusEl) statusEl.style.display = "none";
       }
-    };
+
+      await docRef.update(updatePayload);
+    }
+  } catch (err) {
+    alert("Photo upload failed: " + err.message);
+  } finally {
+    if (progressContainer) {
+      progressContainer.style.display = "none";
+      if (progressBar) progressBar.style.width = "0%";
+    }
+    if (oldStatusEl) {
+      oldStatusEl.style.display = "none";
+    }
+  }
+};
 
     // Helper to read EXIF GPS metadata from an uploaded file
     function getFileGPS(file) {
@@ -2380,7 +2441,16 @@ let currentLightboxImages = [];
       
       <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Add More Photos:</label>
       <input type="file" id="edit-file-input" multiple accept="image/*" style="width: 100%; margin-top: 4px; font-size: 12px;">
-      <div id="upload-status-modal" style="font-size: 11px; color: #666; margin-top: 4px; display: none;"></div>
+    <!-- Rich Progress Bar Container (replaces upload-status-modal) -->
+<div id="upload-progress-container" style="display: none; margin-top: 8px; background: #f1f5f9; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+  <div style="display: flex; justify-content: space-between; font-size: 11px; color: #334155; margin-bottom: 4px; font-weight: 500;">
+    <span id="upload-status-text">Preparing...</span>
+    <span id="upload-eta-text"></span>
+  </div>
+  <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+    <div id="upload-progress-bar" style="width: 0%; height: 100%; background: #2563eb; transition: width 0.15s ease;"></div>
+  </div>
+</div>
 
       <!-- 📍 PLACED BELOW PHOTOS -->
       <label style="display: block; margin-top: 16px; font-size: 13px; font-weight: 500;">Affected Area Boundary:</label>
