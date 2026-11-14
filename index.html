@@ -1286,6 +1286,10 @@ if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoord
         activeMarkers[id] = entry;
         markerClusterGroup.addLayer(marker);
       } else {
+	  
+	  // 1. Remove from cluster before altering
+    markerClusterGroup.removeLayer(entry.marker);
+	  
     entry.data = data;
     entry.marker.setIcon(chosenIcon);
     entry.marker.setLatLng([pinLat, pinLng]);
@@ -1303,6 +1307,9 @@ if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoord
         direction: 'top',
         sticky: true
       });
+	  
+	  markerClusterGroup.addLayer(entry.marker);
+	  
     }
 
     // 📍 UPDATE OR REFRESH POLYGON ON EXISTING PIN
