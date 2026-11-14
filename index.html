@@ -1236,7 +1236,6 @@ function buildPopupContent(data) {
 		// 📍 RENDER POLYGON FOR NEW PIN
         var polygonLayer = null;
         if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
-          // Convert stored objects back to [lat, lng] format for Leaflet
           var leafletCoords = data.polygonCoords.map(pt => Array.isArray(pt) ? pt : [pt.lat, pt.lng]);
 
           polygonLayer = L.polygon(leafletCoords, {
@@ -1245,7 +1244,27 @@ function buildPopupContent(data) {
             fillOpacity: 0.3,
             weight: 2
           }).addTo(map);
-          polygonLayer.on('click', function() { marker.openPopup(); });
+
+          // ✨ Tooltip content (Pin Name & Image Count)
+          var pinName = data.title || data.name || "Pin";
+          var imageCount = (data.images ? data.images.length : (data.imageUrls ? data.imageUrls.length : 0));
+          
+          polygonLayer.bindTooltip(`<strong>${pinName}</strong><br>${imageCount} photo(s)`, {
+            direction: 'top',
+            sticky: true
+          });
+
+          // ✨ Hover & Click Handlers
+          polygonLayer.on('mouseover', function(e) {
+            e.target.setStyle({ fillOpacity: 0.6, weight: 3 });
+          });
+          polygonLayer.on('mouseout', function(e) {
+            e.target.setStyle({ fillOpacity: 0.3, weight: 2 });
+          });
+          polygonLayer.on('click', function(e) { 
+            L.DomEvent.stopPropagation(e); 
+            marker.openPopup(); 
+          });
         }
 
         entry = { marker: marker, polygon: polygonLayer, data: data };
@@ -1268,7 +1287,12 @@ function buildPopupContent(data) {
             fillOpacity: 0.3,
             weight: 2
           }).addTo(map);
-          polygonLayer.on('click', function() { entry.marker.openPopup(); });
+
+          polygonLayer.on('click', function(e) { 
+            L.DomEvent.stopPropagation(e); // 🛑 Stops click from hitting map background here too
+            entry.marker.openPopup(); 
+          });
+
           entry.polygon = polygonLayer;
         }
       }
