@@ -1204,6 +1204,10 @@ function buildPopupContent(data) {
       icon: chosenIcon,
       draggable: isDraggable
     });
+	
+	marker.on('mouseover', function(e) {
+  console.log("📍 MOUSEOVER triggered on MARKER icon!", e);
+});
 
     // 🏷️ Standardized Marker Tooltip (Matches the polygon!)
     var pinName = data.title || data.name || "Pin";
