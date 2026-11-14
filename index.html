@@ -1425,11 +1425,13 @@ if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoord
           markerClusterGroup.removeLayer(entry.marker);
         }
       }
-    } 
+    }); // Closes the docChanges iteration loop
+  });   // Closes the onSnapshot event listener
+}       // 👈 This single closing brace closes renderPinMarker() cleanly
 
-    window.openEditModal = function(id) {
-      const entry = activeMarkers[id];
-      if (!entry || !entry.data) {
+window.openEditModal = function(id) {
+  const entry = activeMarkers[id];
+  if (!entry || !entry.data) {
         alert("Could not load pin data for editing.");
         return;
       }
