@@ -41,6 +41,9 @@
   <script src="https://unpkg.com/leaflet.control.layers.tree/L.Control.Layers.Tree.js"></script>
 
   <script src="https://unpkg.com/leaflet-kmz@latest/dist/leaflet-kmz.js"></script>
+  
+  <!-- EXIF-JS for browser metadata extraction -->
+  <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
 
   <style>
     /* Parcel Address Label Styling */
@@ -1780,21 +1783,30 @@ let currentLightboxImages = [];
         alert("Error clearing boundary: " + err.message);
       }
     };
-
-    window.uploadPhotos = async function(pinId, files) {
+	
+	window.uploadPhotos = async function(pinId, files) {
       if (!files || files.length === 0) return;
 
       const statusEl = document.getElementById(`upload-status-${pinId}`) || document.getElementById("upload-status-modal");
       if (statusEl) {
         statusEl.style.display = "block";
-        statusEl.innerText = `Uploading ${files.length} image(s)...`;
+        statusEl.innerText = `Processing and uploading ${files.length} image(s)...`;
       }
 
       try {
         const uploadedUrls = [];
+        let updatedLat = null;
+        let updatedLng = null;
 
         for (let file of files) {
           if (file.size > 10 * 1024 * 1024) continue;
+
+          // Extract EXIF GPS metadata if present
+          const gps = await getFileGPS(file);
+          if (gps) {
+            updatedLat = gps.lat;
+            updatedLng = gps.lng;
+          }
 
           const fileRef = storage.ref().child(`pins/${pinId}/${Date.now()}_${file.name}`);
           const snapshot = await fileRef.put(file);
@@ -1808,10 +1820,29 @@ let currentLightboxImages = [];
           const existingData = docSnap.data();
           const currentUrls = existingData.imageUrls || (existingData.imageUrl ? [existingData.imageUrl] : []);
 
-          await docRef.update({
+          const updatePayload = {
             imageUrls: [...currentUrls, ...uploadedUrls],
+            attribution: getPinAttribution(), // 👈 Keeps your new username & date attribution stamp active!
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
+          };
+
+          // Update pin position and auto-generate polygon boundary if EXIF GPS data is found
+          if (updatedLat !== null && updatedLng !== null) {
+            updatePayload.lat = updatedLat;
+            updatePayload.lng = updatedLng;
+
+            if (!existingData.polygonCoords || existingData.polygonCoords.length === 0) {
+              const offset = 0.00005; // ~5 meter bounding box
+              updatePayload.polygonCoords = [
+                { lat: updatedLat + offset, lng: updatedLng - offset },
+                { lat: updatedLat + offset, lng: updatedLng + offset },
+                { lat: updatedLat - offset, lng: updatedLng + offset },
+                { lat: updatedLat - offset, lng: updatedLng - offset }
+              ];
+            }
+          }
+
+          await docRef.update(updatePayload);
         }
       } catch (err) {
         alert("Photo upload failed: " + err.message);
@@ -1819,6 +1850,34 @@ let currentLightboxImages = [];
         if (statusEl) statusEl.style.display = "none";
       }
     };
+
+    // Helper to read EXIF GPS metadata from an uploaded file
+    function getFileGPS(file) {
+      return new Promise((resolve) => {
+        EXIF.getData(file, function() {
+          const latTag = EXIF.getTag(this, "GPSLatitude");
+          const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+          const lngTag = EXIF.getTag(this, "GPSLongitude");
+          const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
+
+          if (!latTag || !lngTag) {
+            resolve(null);
+            return;
+          }
+
+          const convertToDecimal = (dms, ref) => {
+            let decimal = dms[0] + dms[1] / 60 + dms[2] / 3600;
+            if (ref === "S" || ref === "W") decimal *= -1;
+            return decimal;
+          };
+
+          resolve({
+            lat: convertToDecimal(latTag, latRef),
+            lng: convertToDecimal(lngTag, lngRef)
+          });
+        });
+      });
+    }
 
     window.removePinImage = async function(pinId, indexToRemove) {
       if (!confirm("Remove this photo?")) return;
