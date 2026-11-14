@@ -1021,6 +1021,7 @@
           color: "purple",
           imageUrls: [],
           polygonCoords: [],
+		  attribution: getPinAttribution(),
           userId: auth.currentUser.uid,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
@@ -1110,6 +1111,57 @@
     function escapeHtml(str) {
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
+		
+		function getPinAttribution() {
+  const currentUser = firebase.auth().currentUser;
+  const email = currentUser && currentUser.email ? currentUser.email : "guest@local";
+  const username = email.split('@')[0];
+
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  const year = String(now.getFullYear()).slice(-2);
+
+  return `${username} - ${month}/${day}/${year}`;
+}
+
+// When creating a new pin:
+const newPinData = {
+  lat: latlng.lat,
+  lng: latlng.lng,
+  text: pinTextInput,
+  attribution: getPinAttribution()
+};
+
+// When saving an edit to an existing pin:
+const updatedPinData = {
+  text: updatedTextInput,
+  attribution: getPinAttribution() // Updates to the current editor and date
+};
+
+const pinData = {
+  lat: latlng.lat,
+  lng: latlng.lng,
+  text: pinTextInput,
+  attribution: getPinAttribution(), // Directly calls the helper function here
+  timestamp: firebase.firestore.FieldValue.serverTimestamp() // Keep this for sorting!
+};
+
+function buildPopupContent(data) {
+  // Fallback in case older pins don't have the attribution field yet
+  const metaLine = data.attribution 
+    ? `<div style="font-size: 11px; color: #6b7280; margin-top: 6px; border-top: 1px solid #e5e7eb; padding-top: 4px;">
+         ${data.attribution}
+       </div>` 
+    : '';
+
+  return `
+    <div style="min-width: 160px;">
+      <div style="font-size: 13px; color: #111827;">${data.text || ''}</div>
+      ${metaLine}
+    </div>
+  `;
+}
 		
     // REAL-TIME FIRESTORE SYNC
     db.collection("marshfield_pins").onSnapshot(function(snapshot) {
@@ -1241,8 +1293,10 @@
       }
 
       var editDeleteBtns = canEditPin ? '<div class="pin-actions"><button onclick="openEditModal(\'' + id + '\')">Edit Pin</button><button onclick="deletePin(\'' + id + '\')">Delete Pin</button></div>' : '';
-      var popupContent = '<div class="pin-popup"><h3>' + (data.title || 'Marshfield Pin') + '</h3><p>' + (data.description || data.note || '') + '</p>' + imageGalleryHtml + editDeleteBtns + '</div>';
-      entry.marker.bindPopup(popupContent);
+      
+      // Combine description, images, attribution, and buttons cleanly
+      var dataWithDesc = Object.assign({}, data, { text: (data.description || data.note || '') + imageGalleryHtml + editDeleteBtns });
+      entry.marker.bindPopup(buildPopupContent(dataWithDesc));
 
       var tooltipTitle = data.title && data.title.trim() !== '' ? data.title : 'Untitled Pin';
       if (entry.marker.getTooltip()) {
@@ -1329,6 +1383,7 @@
           note: note,
           description: note,
           color: color,
+		  attribution: getPinAttribution(),
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
