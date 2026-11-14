@@ -1200,10 +1200,19 @@ function buildPopupContent(data) {
       var entry = activeMarkers[id];
 
       if (!entry) {
-        var marker = L.marker([pinLat, pinLng], { 
-          icon: chosenIcon,
-          draggable: isDraggable
-        });
+    var marker = L.marker([pinLat, pinLng], { 
+      icon: chosenIcon,
+      draggable: isDraggable
+    });
+
+    // 🏷️ Standardized Marker Tooltip (Matches the polygon!)
+    var pinName = data.title || data.name || "Pin";
+    var imageCount = (data.images ? data.images.length : (data.imageUrls ? data.imageUrls.length : 0));
+    
+    marker.bindTooltip(`<strong>${pinName}</strong><br>${imageCount} photo(s)`, {
+      direction: 'top',
+      sticky: true
+    });
 
         marker.on('dragstart', function() {
           markerClusterGroup.removeLayer(marker);
