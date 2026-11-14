@@ -1416,7 +1416,7 @@ if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoord
         entry.marker.bindTooltip(tooltipTitle, { direction: 'top', offset: [0, -40], opacity: 0.9 });
       }
 
-      var checkedColors = Array.from(document.querySelectorAll('.filter-checkbox:checked')).map(function(cb) { return cb.value; });
+     var checkedColors = Array.from(document.querySelectorAll('.filter-checkbox:checked')).map(function(cb) { return cb.value; });
       if (checkedColors.includes(pinColor)) {
         if (!markerClusterGroup.hasLayer(entry.marker)) markerClusterGroup.addLayer(entry.marker);
       } else {
@@ -1425,7 +1425,7 @@ if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoord
           markerClusterGroup.removeLayer(entry.marker);
         }
       }
-    });
+    }); 
 	}
 
     window.openEditModal = function(id) {
