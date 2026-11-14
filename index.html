@@ -1218,14 +1218,26 @@ function buildPopupContent(data) {
   console.log("📍 MOUSEOVER triggered on MARKER icon!", e);
 });
 
-    // 🏷️ Standardized Marker Tooltip (Matches the polygon!)
-    var pinName = data.title || data.name || "Pin";
-    var imageCount = (data.images ? data.images.length : (data.imageUrls ? data.imageUrls.length : 0));
-    
-    marker.bindTooltip(`<strong>${pinName}</strong><br>${imageCount} photo(s)`, {
-      direction: 'top',
-      sticky: true
-    });
+   // 🏷️ Standardized Marker Tooltip with Explicit Hover Handlers
+var pinName = data.title || data.name || "Pin";
+var imageList = data.images || data.imageUrls || data.photos || [];
+var imageCount = Array.isArray(imageList) ? imageList.length : 0;
+var tooltipHtml = `<strong>${pinName}</strong><br>${imageCount} photo(s)`;
+
+marker.bindTooltip(tooltipHtml, {
+  direction: 'top',
+  offset: [0, -40]
+});
+
+// Explicitly open/close on hover to bypass SVG divIcon tracking bugs
+marker.on('mouseover', function(e) {
+  console.log("📍 MOUSEOVER triggered on MARKER icon!", e);
+  this.openTooltip();
+});
+
+marker.on('mouseout', function(e) {
+  this.closeTooltip();
+});
 
         marker.on('dragstart', function() {
           markerClusterGroup.removeLayer(marker);
@@ -1294,32 +1306,44 @@ if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoord
         entry = { marker: marker, polygon: polygonLayer, data: data };
         activeMarkers[id] = entry;
         markerClusterGroup.addLayer(marker);
-      } else {
-	  
-	  // 1. Remove from cluster before altering
+     } else {
+    // 1. Remove from cluster before altering
     markerClusterGroup.removeLayer(entry.marker);
-	  
+
     entry.data = data;
     entry.marker.setIcon(chosenIcon);
     entry.marker.setLatLng([pinLat, pinLng]);
 
-    // 🏷️ Ensure existing pins get their tooltip bound/updated with the live photo count
+    // 🏷️ Ensure existing pins get their tooltip updated with the live photo count
     var pinName = data.title || data.name || "Pin";
     var imageList = data.images || data.imageUrls || data.photos || [];
     var imageCount = Array.isArray(imageList) ? imageList.length : 0;
     var tooltipHtml = `<strong>${pinName}</strong><br>${imageCount} photo(s)`;
 
+    // Unbind and rebind fresh to avoid stale text
     if (entry.marker.getTooltip()) {
-      entry.marker.setTooltipContent(tooltipHtml);
-    } else {
-      entry.marker.bindTooltip(tooltipHtml, {
-        direction: 'top',
-        sticky: true
-      });
-	  
-	  markerClusterGroup.addLayer(entry.marker);
-	  
+      entry.marker.unbindTooltip();
     }
+    
+    entry.marker.bindTooltip(tooltipHtml, {
+      direction: 'top',
+      offset: [0, -40]
+    });
+
+    // Re-attach explicit hover handlers for the custom SVG pin
+    entry.marker.off('mouseover mouseout'); // Clears any old duplicate listeners
+    entry.marker.on('mouseover', function(e) {
+      console.log("📍 MOUSEOVER triggered on MARKER icon!", e);
+      this.openTooltip();
+    });
+    
+    entry.marker.on('mouseout', function(e) {
+      this.closeTooltip();
+    });
+
+    // 2. Add back to cluster group last
+    markerClusterGroup.addLayer(entry.marker);
+}
 
     // 📍 UPDATE OR REFRESH POLYGON ON EXISTING PIN
     if (entry.polygon) {
