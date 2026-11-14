@@ -1290,15 +1290,19 @@ if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoord
     entry.marker.setIcon(chosenIcon);
     entry.marker.setLatLng([pinLat, pinLng]);
 
-    // 🏷️ Force the marker tooltip to update with the fresh photo count
+    // 🏷️ Ensure existing pins get their tooltip bound/updated with the live photo count
     var pinName = data.title || data.name || "Pin";
-    var imageCount = (data.images ? data.images.length : (data.imageUrls ? data.imageUrls.length : 0));
+    var imageList = data.images || data.imageUrls || data.photos || [];
+    var imageCount = Array.isArray(imageList) ? imageList.length : 0;
     var tooltipHtml = `<strong>${pinName}</strong><br>${imageCount} photo(s)`;
 
     if (entry.marker.getTooltip()) {
       entry.marker.setTooltipContent(tooltipHtml);
     } else {
-      entry.marker.bindTooltip(tooltipHtml, { direction: 'top', sticky: true });
+      entry.marker.bindTooltip(tooltipHtml, {
+        direction: 'top',
+        sticky: true
+      });
     }
 
     // 📍 UPDATE OR REFRESH POLYGON ON EXISTING PIN
@@ -1306,41 +1310,36 @@ if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoord
       map.removeLayer(entry.polygon);
       entry.polygon = null;
     }
-if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
-  var leafletCoords = data.polygonCoords.map(pt => Array.isArray(pt) ? pt : [pt.lat, pt.lng]);
+    
+    if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
+      var leafletCoords = data.polygonCoords.map(pt => Array.isArray(pt) ? pt : [pt.lat, pt.lng]);
 
-  var polygonLayer = L.polygon(leafletCoords, {
-    color: colorHexMap[pinColor] || '#8e44ad',
-    fillColor: colorHexMap[pinColor] || '#9b59b6',
-    fillOpacity: 0.3,
-    weight: 2,
-    interactive: true
-  }).addTo(map);
+      var polygonLayer = L.polygon(leafletCoords, {
+        color: colorHexMap[pinColor] || '#8e44ad',
+        fillColor: colorHexMap[pinColor] || '#9b59b6',
+        fillOpacity: 0.3,
+        weight: 2,
+        interactive: true
+      }).addTo(map);
 
-  // 🏷️ Tooltip
-  var pinName = data.title || data.name || "Pin";
-  var imageCount = (data.images ? data.images.length : (data.imageUrls ? data.imageUrls.length : 0));
-  polygonLayer.bindTooltip(`<strong>${pinName}</strong><br>${imageCount} photo(s)`, {
-    direction: 'top',
-    sticky: true
-  });
+      polygonLayer.bindTooltip(tooltipHtml, {
+        direction: 'top',
+        sticky: true
+      });
 
-  // ✨ Hover & Click Handlers
-  polygonLayer.on('mouseover', function(e) {
-  console.log("🖱️ MOUSEOVER triggered on polygon!", e);
-  e.target.setStyle({ fillOpacity: 0.6, weight: 3 });
-});
-  polygonLayer.on('mouseout', function(e) {
-  console.log("🖱️ MOUSEOUT triggered on polygon!", e);
-  e.target.setStyle({ fillOpacity: 0.3, weight: 2 });
-});
-  polygonLayer.on('click', function(e) { 
-    L.DomEvent.stopPropagation(e); 
-    entry.marker.openPopup(); 
-  });
+      polygonLayer.on('mouseover', function(e) {
+        e.target.setStyle({ fillOpacity: 0.6, weight: 3 });
+      });
+      polygonLayer.on('mouseout', function(e) {
+        e.target.setStyle({ fillOpacity: 0.3, weight: 2 });
+      });
+      polygonLayer.on('click', function(e) { 
+        L.DomEvent.stopPropagation(e); 
+        entry.marker.openPopup(); 
+      });
 
-  entry.polygon = polygonLayer;
-}
+      entry.polygon = polygonLayer;
+    }
 }
 
       if (entry.marker.dragging) {
