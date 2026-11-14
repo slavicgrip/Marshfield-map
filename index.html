@@ -1128,16 +1128,32 @@
 
 
 function buildPopupContent(data) {
-  // Fallback in case older pins don't have the attribution field yet
-  const metaLine = data.attribution 
+  let metaText = data.attribution;
+
+  // Fallback for older pins: if no attribution exists but updatedAt is present, format it
+  if (!metaText && data.updatedAt) {
+    // Handle both Firestore Timestamp objects (.toDate()) and standard dates/strings
+    const dateObj = data.updatedAt.toDate ? data.updatedAt.toDate() : new Date(data.updatedAt);
+    if (!isNaN(dateObj)) {
+      const month = dateObj.getMonth() + 1;
+      const day = dateObj.getDate();
+      const year = String(dateObj.getFullYear()).slice(-2);
+      metaText = `Legacy Pin - ${month}/${day}/${year}`;
+    }
+  }
+
+  const metaLine = metaText 
     ? `<div style="font-size: 11px; color: #6b7280; margin-top: 6px; border-top: 1px solid #e5e7eb; padding-top: 4px;">
-         ${data.attribution}
+         ${metaText}
        </div>` 
     : '';
 
+  // Use data.description or data.note as a fallback for the text field
+  const noteText = data.text || data.description || data.note || '';
+
   return `
     <div style="min-width: 160px;">
-      <div style="font-size: 13px; color: #111827;">${data.text || ''}</div>
+      <div style="font-size: 13px; color: #111827;">${noteText}</div>
       ${metaLine}
     </div>
   `;
