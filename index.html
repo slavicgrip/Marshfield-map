@@ -1235,37 +1235,39 @@ function buildPopupContent(data) {
 		
 		// 📍 RENDER POLYGON FOR NEW PIN
         var polygonLayer = null;
-        if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
-          var leafletCoords = data.polygonCoords.map(pt => Array.isArray(pt) ? pt : [pt.lat, pt.lng]);
+if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
+  var leafletCoords = data.polygonCoords.map(pt => Array.isArray(pt) ? pt : [pt.lat, pt.lng]);
 
-          polygonLayer = L.polygon(leafletCoords, {
-            color: colorHexMap[pinColor] || '#8e44ad',
-            fillColor: colorHexMap[pinColor] || '#9b59b6',
-            fillOpacity: 0.3,
-            weight: 2
-          }).addTo(map);
+  polygonLayer = L.polygon(leafletCoords, {
+    color: colorHexMap[pinColor] || '#8e44ad',
+    fillColor: colorHexMap[pinColor] || '#9b59b6',
+    fillOpacity: 0.3,
+    weight: 2,
+    interactive: true
+  }).addTo(map);
 
-          // ✨ Tooltip content (Pin Name & Image Count)
-          var pinName = data.title || data.name || "Pin";
-          var imageCount = (data.images ? data.images.length : (data.imageUrls ? data.imageUrls.length : 0));
-          
-          polygonLayer.bindTooltip(`<strong>${pinName}</strong><br>${imageCount} photo(s)`, {
-            direction: 'top',
-            sticky: true
-          });
+  // 🏷️ Tooltip
+  var pinName = data.title || data.name || "Pin";
+  var imageCount = (data.images ? data.images.length : (data.imageUrls ? data.imageUrls.length : 0));
+  polygonLayer.bindTooltip(`<strong>${pinName}</strong><br>${imageCount} photo(s)`, {
+    direction: 'top',
+    sticky: true
+  });
 
-          // ✨ Hover & Click Handlers
-          polygonLayer.on('mouseover', function(e) {
-            e.target.setStyle({ fillOpacity: 0.6, weight: 3 });
-          });
-          polygonLayer.on('mouseout', function(e) {
-            e.target.setStyle({ fillOpacity: 0.3, weight: 2 });
-          });
-          polygonLayer.on('click', function(e) { 
-            L.DomEvent.stopPropagation(e); 
-            marker.openPopup(); 
-          });
-        }
+  // ✨ Hover & Click Handlers
+  polygonLayer.on('mouseover', function(e) {
+  console.log("🖱️ MOUSEOVER triggered on polygon!", e);
+  e.target.setStyle({ fillOpacity: 0.6, weight: 3 });
+});
+  polygonLayer.on('mouseout', function(e) {
+  console.log("🖱️ MOUSEOUT triggered on polygon!", e);
+  e.target.setStyle({ fillOpacity: 0.3, weight: 2 });
+});
+  polygonLayer.on('click', function(e) { 
+    L.DomEvent.stopPropagation(e); 
+    marker.openPopup(); 
+  });
+}
 
         entry = { marker: marker, polygon: polygonLayer, data: data };
         activeMarkers[id] = entry;
@@ -1277,25 +1279,44 @@ function buildPopupContent(data) {
 
         // 📍 UPDATE OR REFRESH POLYGON ON EXISTING PIN
         if (entry.polygon) {
-          map.removeLayer(entry.polygon);
-          entry.polygon = null;
-        }
-        if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
-          var polygonLayer = L.polygon(data.polygonCoords, {
-            color: colorHexMap[pinColor] || '#8e44ad',
-            fillColor: colorHexMap[pinColor] || '#9b59b6',
-            fillOpacity: 0.3,
-            weight: 2
-          }).addTo(map);
+  map.removeLayer(entry.polygon);
+  entry.polygon = null;
+}
+if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
+  var leafletCoords = data.polygonCoords.map(pt => Array.isArray(pt) ? pt : [pt.lat, pt.lng]);
 
-          polygonLayer.on('click', function(e) { 
-            L.DomEvent.stopPropagation(e); // 🛑 Stops click from hitting map background here too
-            entry.marker.openPopup(); 
-          });
+  var polygonLayer = L.polygon(leafletCoords, {
+    color: colorHexMap[pinColor] || '#8e44ad',
+    fillColor: colorHexMap[pinColor] || '#9b59b6',
+    fillOpacity: 0.3,
+    weight: 2,
+    interactive: true
+  }).addTo(map);
 
-          entry.polygon = polygonLayer;
-        }
-      }
+  // 🏷️ Tooltip
+  var pinName = data.title || data.name || "Pin";
+  var imageCount = (data.images ? data.images.length : (data.imageUrls ? data.imageUrls.length : 0));
+  polygonLayer.bindTooltip(`<strong>${pinName}</strong><br>${imageCount} photo(s)`, {
+    direction: 'top',
+    sticky: true
+  });
+
+  // ✨ Hover & Click Handlers
+  polygonLayer.on('mouseover', function(e) {
+  console.log("🖱️ MOUSEOVER triggered on polygon!", e);
+  e.target.setStyle({ fillOpacity: 0.6, weight: 3 });
+});
+  polygonLayer.on('mouseout', function(e) {
+  console.log("🖱️ MOUSEOUT triggered on polygon!", e);
+  e.target.setStyle({ fillOpacity: 0.3, weight: 2 });
+});
+  polygonLayer.on('click', function(e) { 
+    L.DomEvent.stopPropagation(e); 
+    entry.marker.openPopup(); 
+  });
+
+  entry.polygon = polygonLayer;
+}
 
       if (entry.marker.dragging) {
         isDraggable ? entry.marker.dragging.enable() : entry.marker.dragging.disable();
