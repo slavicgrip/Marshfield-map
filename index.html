@@ -1130,12 +1130,11 @@
 
 
 
+// 1. Popup content builder with multi-line support (white-space: pre-wrap) and legacy timestamp fallbacks
 function buildPopupContent(data) {
   let metaText = data.attribution;
 
-  // Fallback for older pins: if no attribution exists but updatedAt is present, format it
   if (!metaText && data.updatedAt) {
-    // Handle both Firestore Timestamp objects (.toDate()) and standard dates/strings
     const dateObj = data.updatedAt.toDate ? data.updatedAt.toDate() : new Date(data.updatedAt);
     if (!isNaN(dateObj)) {
       const month = dateObj.getMonth() + 1;
@@ -1150,6 +1149,16 @@ function buildPopupContent(data) {
          ${metaText}
        </div>` 
     : '';
+
+  const noteText = data.text || data.description || data.note || '';
+
+  return `
+    <div style="min-width: 160px; max-width: 250px;">
+      <div style="font-size: 13px; color: #111827; white-space: pre-wrap; word-break: break-word;">${noteText}</div>
+      ${metaLine}
+    </div>
+  `;
+}
 
   // Use data.description or data.note as a fallback for the text field
   const noteText = data.text || data.description || data.note || '';
