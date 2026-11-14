@@ -1286,26 +1286,26 @@ if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoord
         activeMarkers[id] = entry;
         markerClusterGroup.addLayer(marker);
       } else {
-        entry.data = data;
-        entry.marker.setIcon(chosenIcon);
-        entry.marker.setLatLng([pinLat, pinLng]);
+    entry.data = data;
+    entry.marker.setIcon(chosenIcon);
+    entry.marker.setLatLng([pinLat, pinLng]);
 
-        // 🏷️ Update Marker Tooltip for Existing Pins
-        var pinName = data.title || data.name || "Pin";
-        var imageCount = (data.images ? data.images.length : (data.imageUrls ? data.imageUrls.length : 0));
-        var tooltipHtml = `<strong>${pinName}</strong><br>${imageCount} photo(s)`;
+    // 🏷️ Force the marker tooltip to update with the fresh photo count
+    var pinName = data.title || data.name || "Pin";
+    var imageCount = (data.images ? data.images.length : (data.imageUrls ? data.imageUrls.length : 0));
+    var tooltipHtml = `<strong>${pinName}</strong><br>${imageCount} photo(s)`;
 
-        if (entry.marker.getTooltip()) {
-          entry.marker.setTooltipContent(tooltipHtml);
-        } else {
-          entry.marker.bindTooltip(tooltipHtml, { direction: 'top', sticky: true });
-        }
+    if (entry.marker.getTooltip()) {
+      entry.marker.setTooltipContent(tooltipHtml);
+    } else {
+      entry.marker.bindTooltip(tooltipHtml, { direction: 'top', sticky: true });
+    }
 
-        // 📍 UPDATE OR REFRESH POLYGON ON EXISTING PIN
-        if (entry.polygon) {
-          map.removeLayer(entry.polygon);
-          entry.polygon = null;
-        }
+    // 📍 UPDATE OR REFRESH POLYGON ON EXISTING PIN
+    if (entry.polygon) {
+      map.removeLayer(entry.polygon);
+      entry.polygon = null;
+    }
 if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
   var leafletCoords = data.polygonCoords.map(pt => Array.isArray(pt) ? pt : [pt.lat, pt.lng]);
 
