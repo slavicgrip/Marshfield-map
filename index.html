@@ -1277,15 +1277,20 @@ function buildPopupContent(data) {
         isDraggable ? entry.marker.dragging.enable() : entry.marker.dragging.disable();
       }
 
-      var images = data.imageUrls || (data.imageUrl ? [data.imageUrl] : []);
+     // 1. Support both structured images array and legacy imageUrls strings
+      var images = data.images || (data.imageUrls ? data.imageUrls.map(url => ({ url: url })) : (data.imageUrl ? [{ url: data.imageUrl }] : []));
       var imageGalleryHtml = "";
+      
       if (images.length > 0) {
-        // Encode images array safely to pass into inline click handler
-        var encodedImages = encodeURIComponent(JSON.stringify(images));
-        imageGalleryHtml = '<div class="image-gallery">' + 
-          images.map(function(url, idx) {
-            var deleteBtn = canEditPin ? '<button type="button" class="delete-img-btn" onclick="removePinImage(\'' + id + '\',' + idx + ')" title="Remove photo">✕</button>' : '';
-            return '<div class="image-thumb-container"><img src="' + url + '" alt="photo" onclick="openLightbox(\'' + encodedImages + '\', ' + idx + ')" style="cursor: pointer;">' + deleteBtn + '</div>';
+        // Extract plain URL strings for the lightbox viewer
+        var urlStrings = images.map(img => img.url);
+        var encodedImages = encodeURIComponent(JSON.stringify(urlStrings));
+
+        imageGalleryHtml = '<div class="image-gallery">' +  
+          images.map(function(img, idx) {
+            // Use canEditPin and pass the exact image URL to deletePinImage
+            var deleteBtn = canEditPin ? '<button type="button" class="delete-img-btn" onclick="deletePinImage(\'' + id + '\', \'' + img.url + '\')" title="Remove photo">✕</button>' : '';
+            return '<div class="image-thumb-container"><img src="' + img.url + '" alt="photo" onclick="openLightbox(\'' + encodedImages + '\', ' + idx + ')" style="cursor: pointer;">' + deleteBtn + '</div>';
           }).join('') + '</div>';
       }
 
@@ -1812,24 +1817,31 @@ let currentLightboxImages = [];
   }
 
   try {
-    const uploadedUrls = [];
-    let updatedLat = null;
-    let updatedLng = null;
+    const docRef = db.collection("marshfield_pins").doc(pinId);
+    const docSnap = await docRef.get();
+    const existingData = docSnap.data() || {};
+    
+    // Legacy migration: convert old imageUrls strings into structured objects if needed
+    let existingImages = existingData.images || [];
+    if (existingImages.length === 0 && existingData.imageUrls && existingData.imageUrls.length > 0) {
+      existingImages = existingData.imageUrls.map(url => ({
+        url: url,
+        lat: existingData.lat || 44.6685,
+        lng: existingData.lng || -90.1717
+      }));
+    }
 
+    const newImageObjects = [];
+
+    // 1. Loop through files, extract EXIF, and upload
     for (let i = 0; i < fileArray.length; i++) {
       const file = fileArray[i];
 
-      // Extract EXIF GPS metadata if present
       if (statusText) statusText.innerText = `Checking EXIF (${i + 1}/${fileArray.length})...`;
       const gps = await getFileGPS(file);
-      if (gps) {
-        updatedLat = gps.lat;
-        updatedLng = gps.lng;
-      }
 
       const fileRef = storage.ref().child(`pins/${pinId}/${Date.now()}_${file.name}`);
       
-      // Upload with live state_changed progress listener
       const downloadUrl = await new Promise((resolve, reject) => {
         const uploadTask = fileRef.put(file);
 
@@ -1861,39 +1873,50 @@ let currentLightboxImages = [];
       });
 
       completedBytesBeforeCurrent += file.size;
-      uploadedUrls.push(downloadUrl);
+
+      // 2. Build structured image objects using EXIF GPS or fallback to existing pin center
+      if (gps) {
+        newImageObjects.push({ url: downloadUrl, lat: gps.lat, lng: gps.lng });
+      } else {
+        newImageObjects.push({ 
+          url: downloadUrl, 
+          lat: existingData.lat || 44.6685, 
+          lng: existingData.lng || -90.1717 
+        });
+      }
     }
 
     if (statusText) statusText.innerText = "Saving to map...";
     if (etaText) etaText.innerText = "";
 
-    if (uploadedUrls.length > 0) {
-      const docRef = db.collection("marshfield_pins").doc(pinId);
-      const docSnap = await docRef.get();
-      const existingData = docSnap.data();
-      const currentUrls = existingData.imageUrls || (existingData.imageUrl ? [existingData.imageUrl] : []);
+    // 3. Combine existing images and newly uploaded images
+    const combinedImages = [...existingImages, ...newImageObjects];
+
+    if (combinedImages.length > 0) {
+      const lats = combinedImages.map(img => img.lat);
+      const lngs = combinedImages.map(img => img.lng);
+      
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+
+      const padding = 0.00005; // ~5 meter buffer
 
       const updatePayload = {
-        imageUrls: [...currentUrls, ...uploadedUrls],
-        attribution: getPinAttribution(), // 👈 Keeps your username & date attribution active!
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        images: combinedImages,
+        imageUrls: combinedImages.map(img => img.url), // Maintained for backwards compatibility
+        attribution: getPinAttribution(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        lat: lats.reduce((sum, v) => sum + v, 0) / lats.length, // Average center point
+        lng: lngs.reduce((sum, v) => sum + v, 0) / lngs.length,
+        polygonCoords: [
+          { lat: maxLat + padding, lng: minLng - padding }, // Top-Left
+          { lat: maxLat + padding, lng: maxLng + padding }, // Top-Right
+          { lat: minLat - padding, lng: maxLng + padding }, // Bottom-Right
+          { lat: minLat - padding, lng: minLng - padding }  // Bottom-Left
+        ]
       };
-
-      // Update pin position and auto-generate polygon boundary if EXIF GPS data is found
-      if (updatedLat !== null && updatedLng !== null) {
-        updatePayload.lat = updatedLat;
-        updatePayload.lng = updatedLng;
-
-        if (!existingData.polygonCoords || existingData.polygonCoords.length === 0) {
-          const offset = 0.00005; // ~5 meter bounding box
-          updatePayload.polygonCoords = [
-            { lat: updatedLat + offset, lng: updatedLng - offset },
-            { lat: updatedLat + offset, lng: updatedLng + offset },
-            { lat: updatedLat - offset, lng: updatedLng + offset },
-            { lat: updatedLat - offset, lng: updatedLng - offset }
-          ];
-        }
-      }
 
       await docRef.update(updatePayload);
     }
@@ -1909,6 +1932,64 @@ let currentLightboxImages = [];
     }
   }
 };
+
+async function deletePinImage(pinId, targetUrl) {
+  // 1. Prompt user for confirmation before doing anything
+  if (!confirm("Are you sure you want to delete this photo? This will also readjust the pin's polygon boundary.")) {
+    return; // Abort if user clicks "Cancel"
+  }
+
+  try {
+    const docRef = db.collection("marshfield_pins").doc(pinId);
+    const docSnap = await docRef.get();
+    if (!docSnap.exists) return;
+
+    const data = docSnap.data();
+    const currentImages = data.images || [];
+
+    // 2. Filter out the deleted image
+    const updatedImages = currentImages.filter(img => img.url !== targetUrl);
+
+    const updatePayload = {
+      images: updatedImages,
+      imageUrls: updatedImages.map(img => img.url) // Keeps backward compatibility
+    };
+
+    // 3. If images remain, readjust center and shrink/expand polygon bounds
+    if (updatedImages.length > 0) {
+      const lats = updatedImages.map(img => img.lat);
+      const lngs = updatedImages.map(img => img.lng);
+      
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+
+      // Recalculate pin center to be the average of remaining photos
+      updatePayload.lat = lats.reduce((sum, val) => sum + val, 0) / lats.length;
+      updatePayload.lng = lngs.reduce((sum, val) => sum + val, 0) / lngs.length;
+
+      const padding = 0.00005; // ~5 meter buffer
+      updatePayload.polygonCoords = [
+        { lat: maxLat + padding, lng: minLng - padding }, // Top-Left
+        { lat: maxLat + padding, lng: maxLng + padding }, // Top-Right
+        { lat: minLat - padding, lng: maxLng + padding }, // Bottom-Right
+        { lat: minLat - padding, lng: minLng - padding }  // Bottom-Left
+      ];
+    } else {
+      // 4. If zero images are left, clear out the polygon coordinates
+      updatePayload.polygonCoords = [];
+    }
+
+    await docRef.update(updatePayload);
+
+    // Refresh your map display
+    if (typeof loadPins === 'function') loadPins();
+    
+  } catch (err) {
+    alert("Failed to delete image and update boundary: " + err.message);
+  }
+}
 
     // Helper to read EXIF GPS metadata from an uploaded file
     function getFileGPS(file) {
