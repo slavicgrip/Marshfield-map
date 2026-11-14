@@ -1159,17 +1159,6 @@ function buildPopupContent(data) {
     </div>
   `;
 }
-
-  // Use data.description or data.note as a fallback for the text field
-  const noteText = data.text || data.description || data.note || '';
-
-  return `
-    <div style="min-width: 160px;">
-      <div style="font-size: 13px; color: #111827;">${noteText}</div>
-      ${metaLine}
-    </div>
-  `;
-}
 		
     // REAL-TIME FIRESTORE SYNC
     db.collection("marshfield_pins").onSnapshot(function(snapshot) {
