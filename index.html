@@ -46,6 +46,14 @@
   <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
 
   <style>
+  
+  .custom-svg-pin {
+  pointer-events: auto !important;
+}
+.custom-svg-pin svg {
+  pointer-events: auto !important;
+}
+  
     /* Parcel Address Label Styling */
     .parcel-address-label {
       background: transparent;
@@ -571,6 +579,7 @@
         iconSize: [30, 45],
         iconAnchor: [15, 45],
         popupAnchor: [0, -40]
+		tooltipAnchor: [0, -40]
       });
     }
 
