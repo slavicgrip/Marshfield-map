@@ -1125,27 +1125,7 @@
   return `${username} - ${month}/${day}/${year}`;
 }
 
-// When creating a new pin:
-const newPinData = {
-  lat: latlng.lat,
-  lng: latlng.lng,
-  text: pinTextInput,
-  attribution: getPinAttribution()
-};
 
-// When saving an edit to an existing pin:
-const updatedPinData = {
-  text: updatedTextInput,
-  attribution: getPinAttribution() // Updates to the current editor and date
-};
-
-const pinData = {
-  lat: latlng.lat,
-  lng: latlng.lng,
-  text: pinTextInput,
-  attribution: getPinAttribution(), // Directly calls the helper function here
-  timestamp: firebase.firestore.FieldValue.serverTimestamp() // Keep this for sorting!
-};
 
 function buildPopupContent(data) {
   // Fallback in case older pins don't have the attribution field yet
