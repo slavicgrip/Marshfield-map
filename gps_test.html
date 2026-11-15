@@ -1395,6 +1395,47 @@ function buildPopupContent(data) {
         }
       }
     }
+	
+	let currentAuditLogs = [];
+
+function openAuditModalFromEdit() {
+  const modal = document.getElementById("audit-trail-modal");
+  const listContent = document.getElementById("audit-full-list-content");
+  if (!modal || !listContent) return;
+
+  if (currentAuditLogs.length === 0) {
+    listContent.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">No activity history recorded yet.</div>';
+  } else {
+    listContent.innerHTML = `<table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr style="border-bottom: 1px solid #cbd5e1; text-align: left; color: #475569;">
+          <th style="padding: 6px;">Time</th>
+          <th style="padding: 6px;">User</th>
+          <th style="padding: 6px;">Action</th>
+        </tr>
+      </thead>
+      <tbody>` + 
+      currentAuditLogs.slice().reverse().map(log => {
+        const timestamp = log.timestamp?.toDate ? log.timestamp.toDate() : new Date(log.timestamp || Date.now());
+        const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const username = log.userEmail ? log.userEmail.split('@')[0] : 'Unknown';
+        return `<tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 6px; color: #64748b; white-space: nowrap;">${timeString}</td>
+          <td style="padding: 6px; font-weight: 500; color: #1e293b;">${username}</td>
+          <td style="padding: 6px; color: #334155;">${escapeHtml(log.action)}</td>
+        </tr>`;
+      }).join('') + `
+      </tbody>
+    </table>`;
+  }
+
+  modal.style.display = "flex";
+}
+
+function closeAuditModal() {
+  const modal = document.getElementById("audit-trail-modal");
+  if (modal) modal.style.display = "none";
+}
 
 window.openEditModal = function(id) {
   const entry = activeMarkers[id];
@@ -1433,27 +1474,16 @@ window.openEditModal = function(id) {
       const fileInput = document.getElementById("edit-file-input");
       if (fileInput) fileInput.value = "";
 	  
-	  // 🛡️ Explicit Firestore-Controlled Audit Trail Visibility
-  const auditContainer = document.getElementById("edit-audit-container");
-  const auditContent = document.getElementById("edit-audit-log-content");
+// 🛡️ Explicit Firestore-Controlled Audit Trail Button Visibility
+  const auditBtnContainer = document.getElementById("edit-audit-btn-container");
   
-  if (auditContainer && auditContent) {
+  if (auditBtnContainer) {
     if (canViewAuditTrail()) {
-      auditContainer.style.display = "block";
-      
-      const logs = pinData.activityLog || [];
-      if (logs.length === 0) {
-        auditContent.innerHTML = '<span style="color: #888;">No activity history recorded yet.</span>';
-      } else {
-        auditContent.innerHTML = `<ul style="margin-left: 15px;">` + logs.slice(-5).reverse().map(log => {
-          const timestamp = log.timestamp?.toDate ? log.timestamp.toDate() : new Date(log.timestamp || Date.now());
-          const timeString = isNaN(timestamp) ? '' : timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          const username = log.userEmail ? log.userEmail.split('@')[0] : 'Unknown';
-          return `<li><b>${username}</b>: ${escapeHtml(log.action)} <span style="color: #94a3b8;">(${timeString})</span></li>`;
-        }).join('') + `</ul>`;
-      }
+      auditBtnContainer.style.display = "block";
+      currentAuditLogs = pinData.activityLog || []; // Store logs for the modal popup
     } else {
-      auditContainer.style.display = "none"; // Completely hidden for standard field users
+      auditBtnContainer.style.display = "none";     // Hidden for standard field users
+      currentAuditLogs = [];
     }
   }
 
@@ -2681,10 +2711,29 @@ async function deletePinImage(pinId, targetUrl) {
   </div>
 </div>
 
-<!-- Audit Trail Container -->
-<div id="edit-audit-container" style="display: none; margin-top: 12px; background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
-  <label style="display: block; font-size: 13px; font-weight: 500; color: #475569; margin-bottom: 4px;">Audit Trail / History:</label>
-  <div id="edit-audit-log-content" style="max-height: 100px; overflow-y: auto; font-size: 11px; color: #334155;"></div>
+
+
+      <!-- 🛡️ NEW: Audit Trail Button (Controlled by permission) -->
+      <div id="edit-audit-btn-container" style="display: none; margin-top: 12px;">
+        <button type="button" onclick="openAuditModalFromEdit()" style="width: 100%; padding: 8px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">
+          📜 View Full Audit Trail
+        </button>
+      </div>
+
+<!-- Full Audit Trail History Modal -->
+<div id="audit-trail-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 4000; justify-content: center; align-items: center;">
+  <div style="background: white; padding: 24px; border-radius: 8px; width: 450px; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
+      <h3 style="margin: 0; font-size: 16px; color: #1e293b;">Complete Pin Audit Trail</h3>
+      <button type="button" onclick="closeAuditModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">✕</button>
+    </div>
+    
+    <div id="audit-full-list-content" style="font-size: 12px; color: #334155; max-height: 50vh; overflow-y: auto;"></div>
+
+    <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+      <button type="button" onclick="closeAuditModal()" style="padding: 6px 14px; background: #64748b; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+    </div>
+  </div>
 </div>
 
       <!-- 📍 PLACED BELOW PHOTOS -->
