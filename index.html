@@ -1208,14 +1208,25 @@ function buildPopupContent(data, pinId, canEditPin) {
   const editDeleteBtns = canEditPin ? '<div class="pin-actions"><button onclick="openEditModal(\'' + pinId + '\')">Edit Pin</button><button onclick="deletePin(\'' + pinId + '\')">Delete Pin</button></div>' : '';
   // Add a "View Comments" button right alongside your edit/delete actions
   const commentsCount = (data.comments || []).length;
-  const commentBtnLabel = commentsCount > 0 ? `View Comments (${commentsCount})` : `View Comments`;
+  const commentBtnLabel = commentsCount > 0 ? `Comments (${commentsCount})` : `Comments`;
   const viewCommentsBtn = `<div class="pin-actions" style="margin-top: 4px;"><button type="button" onclick="openCommentsModal('${pinId}')" style="background: #475569; color: white;">${commentBtnLabel}</button></div>`;
+  
+  // Check permission using your centralized function
+  const showAuditBtn = typeof canViewAuditTrail === 'function' ? canViewAuditTrail() : false;
+
+  const actionButtonsRow = `
+    <div style="display: flex; gap: 4px; margin-top: 6px;">
+      <button type="button" onclick="openCommentsModal('${pinId}')" style="background: #475569; color: white; flex: 1; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">${commentBtnLabel}</button>
+      ${showAuditBtn ? `<button type="button" onclick="openAuditModal('${pinId}')" style="background: #1e293b; color: white; flex: 1; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Changelog</button>` : ''}
+    </div>
+  `;
+  
   return `
     <div style="min-width: 160px; max-width: 250px;">
       ${contentHtml}
       ${imageGalleryHtml}
       ${editDeleteBtns}
-	  ${viewCommentsBtn}
+	  ${actionButtonsRow}
       ${metaLine}
     </div>
   `;
