@@ -1791,20 +1791,7 @@ window.openEditModal = function(id) {
 
       const fileInput = document.getElementById("edit-file-input");
       if (fileInput) fileInput.value = "";
-	  
-	  // 🛡️ Explicit Firestore-Controlled Audit Trail Button Visibility
-      const auditBtnContainer = document.getElementById("edit-audit-btn-container");
-      
-      if (auditBtnContainer) {
-        if (canViewAuditTrail()) {
-          auditBtnContainer.style.display = "block";
-          currentAuditLogs = pinData.activityLog || []; 
-        } else {
-          auditBtnContainer.style.display = "none";     
-          currentAuditLogs = [];
-        }
-      }
-
+	  	  
       const modal = document.getElementById("edit-modal");
       if (modal) modal.style.display = "flex";
     };
