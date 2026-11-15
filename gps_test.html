@@ -1206,7 +1206,10 @@ function buildPopupContent(data, pinId, canEditPin) {
 
   // Build edit/delete action buttons
   const editDeleteBtns = canEditPin ? '<div class="pin-actions"><button onclick="openEditModal(\'' + pinId + '\')">Edit Pin</button><button onclick="deletePin(\'' + pinId + '\')">Delete Pin</button></div>' : '';
-
+  // Add a "View Comments" button right alongside your edit/delete actions
+  const commentsCount = (data.comments || []).length;
+  const commentBtnLabel = commentsCount > 0 ? `View Comments (${commentsCount})` : `View Comments`;
+  const viewCommentsBtn = `<div class="pin-actions" style="margin-top: 4px;"><button type="button" onclick="openCommentsModal('${pinId}')" style="background: #475569; color: white;">${commentBtnLabel}</button></div>`;
   return `
     <div style="min-width: 160px; max-width: 250px;">
       ${contentHtml}
@@ -1260,6 +1263,79 @@ window.addPinCommentFromModal = async function() {
   } catch (err) {
     alert("Failed to post comment: " + err.message);
   }
+};
+
+window.openCommentsModal = async function(pinId) {
+  const modal = document.getElementById("comments-modal");
+  const titleEl = document.getElementById("comments-modal-title");
+  const bodyEl = document.getElementById("comments-modal-body");
+  
+  if (!modal || !bodyEl) return;
+
+  bodyEl.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px;">Loading comments...</div>';
+  modal.style.display = "flex";
+
+  try {
+    const doc = await db.collection("marshfield_pins").doc(pinId).get();
+    if (!doc.exists) {
+      bodyEl.innerHTML = '<span style="color: #dc2626;">Pin not found.</span>';
+      return;
+    }
+
+    const data = doc.data();
+    if (titleEl) titleEl.innerText = data.title ? `Comments: ${data.title}` : "Pin Comments & Activity";
+
+    const comments = data.comments || [];
+    const legacyNote = data.description || data.text || data.note || "";
+    const isSuperAdmin = currentUserProfile && currentUserProfile.role === "super_admin";
+
+    let htmlParts = [];
+
+    // 1. Show the permanent description if it exists
+    if (legacyNote.trim() !== "") {
+      htmlParts.push(`
+        <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px; border-radius: 6px; margin-bottom: 12px;">
+          <div style="font-weight: 600; font-size: 11px; color: #475569; margin-bottom: 2px;">Description</div>
+          <div style="white-space: pre-wrap; word-break: break-word; color: #1e293b;">${escapeHtml(legacyNote)}</div>
+        </div>
+      `);
+    }
+
+    // 2. Show Threaded Comments Feed
+    if (comments.length === 0 && legacyNote.trim() === "") {
+      htmlParts.push('<div style="text-align: center; color: #94a3b8; font-style: italic; padding: 20px;">No comments or descriptions yet.</div>');
+    } else if (comments.length > 0) {
+      htmlParts.push('<div style="font-weight: 600; font-size: 12px; color: #475569; margin-bottom: 6px;">Threaded Activity Feed:</div>');
+      
+      comments.forEach(comment => {
+        const timestamp = new Date(comment.timestamp || Date.now());
+        const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const username = comment.userEmail ? comment.userEmail.split('@')[0] : 'Unknown';
+        
+        const deleteBtn = isSuperAdmin 
+          ? `<button type="button" onclick="deletePinComment('${pinId}', '${comment.timestamp}'); openCommentsModal('${pinId}');" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
+          : '';
+
+        htmlParts.push(`
+          <div style="padding: 8px 0; border-bottom: 1px solid #e2e8f0; position: relative;">
+            ${deleteBtn}
+            <div style="font-weight: 500; font-size: 11px; color: #1e293b;">${username} <span style="color: #94a3b8; font-weight: normal; font-size: 10px;">(${timeString})</span></div>
+            <div style="font-size: 12px; color: #334155; margin-top: 3px; white-space: pre-wrap; word-break: break-word;">${escapeHtml(comment.text)}</div>
+          </div>
+        `);
+      });
+    }
+
+    bodyEl.innerHTML = htmlParts.join('');
+  } catch (err) {
+    console.error("Error loading comments:", err);
+    bodyEl.innerHTML = '<span style="color: #dc2626;">Error loading comments.</span>';
+  }
+};
+
+window.closeCommentsModal = function() {
+  const modal = document.getElementById("comments-modal");
+  if (modal) modal.style.display = "none";
 };
 
 // Super-admin moderation: delete a comment from the array
@@ -2889,6 +2965,25 @@ async function deletePinImage(pinId, targetUrl) {
       
       <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Add More Photos:</label>
       <input type="file" id="edit-file-input" multiple accept="image/*" style="width: 100%; margin-top: 4px; font-size: 12px;">
+	  
+	  <!-- View All Comments / Activity Modal -->
+<div id="comments-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+  <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 450px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px;">
+      <h3 id="comments-modal-title" style="margin: 0; font-size: 16px; color: #1e293b;">Pin Comments & Activity</h3>
+      <button type="button" onclick="closeCommentsModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">✕</button>
+    </div>
+    
+    <div id="comments-modal-body" style="overflow-y: auto; flex: 1; padding-right: 4px; font-size: 13px; color: #334155;">
+      <!-- Populated dynamically -->
+    </div>
+    
+    <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 10px; text-align: right;">
+      <button type="button" onclick="closeCommentsModal()" style="padding: 6px 12px; background: #64748b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Close</button>
+    </div>
+  </div>
+</div>
+	  
     <!-- Rich Progress Bar Container (replaces upload-status-modal) -->
 <div id="upload-progress-container" style="display: none; margin-top: 8px; background: #f1f5f9; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
   <div style="display: flex; justify-content: space-between; font-size: 11px; color: #334155; margin-bottom: 4px; font-weight: 500;">
