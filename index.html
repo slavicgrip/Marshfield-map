@@ -1284,7 +1284,7 @@ window.openCommentsModal = async function(pinId) {
     }
 
     const data = doc.data();
-    if (titleEl) titleEl.innerText = data.title ? `Comments: ${data.title}` : "Pin Comments & Activity";
+    if (titleEl) titleEl.innerText = data.title || "Pin Comments & Activity";
 
     const comments = data.comments || [];
     const legacyNote = data.description || data.text || data.note || "";
