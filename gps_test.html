@@ -1559,8 +1559,10 @@ window.openEditModal = function(id) {
       }
       
       const pinData = entry.data;
-
-     const idField = document.getElementById("edit-pin-id");
+	  
+	 const isSuperAdmin = currentUserProfile && currentUserProfile.role === "super_admin";
+     
+	 const idField = document.getElementById("edit-pin-id");
       const titleField = document.getElementById("edit-title");
       const descField = document.getElementById("edit-description");
       const colorField = document.getElementById("edit-color");
@@ -1594,7 +1596,7 @@ window.openEditModal = function(id) {
     // 💬 Render Threaded Comments Feed inside the Modal
       const commentsContainer = document.getElementById("edit-comments-container");
       const comments = pinData.comments || [];
-      const isSuperAdmin = currentUserProfile && currentUserProfile.role === "super_admin";
+      
 
       if (commentsContainer) {
         if (comments.length === 0) {
