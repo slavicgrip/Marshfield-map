@@ -1610,49 +1610,45 @@ window.openEditModal = function(id) {
     };
 
     window.savePinEdits = async function() {
-      const idField = document.getElementById("edit-pin-id");
-      const titleField = document.getElementById("edit-title");
-      const noteField = document.getElementById("edit-note");
-      const colorField = document.getElementById("edit-color");
-      const fileInput = document.getElementById("edit-file-input");
+  const idField = document.getElementById("edit-pin-id");
+  const titleField = document.getElementById("edit-title");
+  const colorField = document.getElementById("edit-color");
+  const fileInput = document.getElementById("edit-file-input");
 
-      if (!idField || !titleField || !noteField) return;
+  if (!idField || !titleField) return;
 
-      const id = idField.value;
-      const title = titleField.value.trim();
-      const note = noteField.value.trim();
-      const color = colorField ? colorField.value : "purple";
+  const id = idField.value;
+  const title = titleField.value.trim();
+  const color = colorField ? colorField.value : "purple";
 
-      if (!id) return;
+  if (!id) return;
 
-      try {
-        if (fileInput && fileInput.files && fileInput.files.length > 0) {
-          await window.uploadPhotos(id, fileInput.files);
-        }
+  try {
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+      await window.uploadPhotos(id, fileInput.files);
+    }
 
-        // 🛡️ Create the audit log entry
-        const activityEntry = {
-          userEmail: currentUser ? currentUser.email : "guest@local",
-          action: "Updated pin details & notes",
-          timestamp: new Date().toISOString() // Using ISO string for safe arrayUnion serialization
-        };
-
-        await db.collection("marshfield_pins").doc(id).update({
-          title: title,
-          note: note,
-          description: note,
-          color: color,
-		      attribution: getPinAttribution(),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry) // 👈 Appends to the history array
-        });
-        
-        const modal = document.getElementById("edit-modal");
-        if (modal) modal.style.display = "none";
-      } catch (err) {
-        alert("Error updating pin: " + err.message);
-      }
+    // 🛡️ Create the audit log entry
+    const activityEntry = {
+      userEmail: currentUser ? currentUser.email : "guest@local",
+      action: "Updated pin title or category",
+      timestamp: new Date().toISOString()
     };
+
+    await db.collection("marshfield_pins").doc(id).update({
+      title: title,
+      color: color,
+      attribution: getPinAttribution(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry)
+    });
+    
+    const modal = document.getElementById("edit-modal");
+    if (modal) modal.style.display = "none";
+  } catch (err) {
+    alert("Error updating pin: " + err.message);
+  }
+};
 
     window.deletePin = async function(id) {
       if (!confirm("Are you sure you want to delete this pin?")) return;
