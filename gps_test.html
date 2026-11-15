@@ -1560,13 +1560,36 @@ window.openEditModal = function(id) {
       
       const pinData = entry.data;
 
-      const idField = document.getElementById("edit-pin-id");
+     const idField = document.getElementById("edit-pin-id");
       const titleField = document.getElementById("edit-title");
+      const descField = document.getElementById("edit-description");
       const colorField = document.getElementById("edit-color");
       
       if (idField) idField.value = id;
       if (titleField) titleField.value = pinData.title || "";
+      if (descField) descField.value = pinData.description || pinData.text || pinData.note || "";
       if (colorField) colorField.value = pinData.color || "purple";
+	  
+	  if (descField) {
+        const existingDesc = pinData.description || pinData.text || pinData.note || "";
+        descField.value = existingDesc;
+
+        if (existingDesc.trim() !== "") {
+          // 🔒 Lock the box so saved descriptions cannot be altered
+          descField.readOnly = true;
+          descField.style.backgroundColor = "#f1f5f9";
+          descField.style.color = "#475569";
+          descField.style.cursor = "not-allowed";
+          descField.title = "Saved descriptions are locked. Add updates in the comments below.";
+        } else {
+          // ✏️ Allow entering a description once if none exists yet
+          descField.readOnly = false;
+          descField.style.backgroundColor = "#ffffff";
+          descField.style.color = "#0f172a";
+          descField.style.cursor = "text";
+          descField.title = "";
+        }
+      }
 
     // 💬 Render Legacy Note + Threaded Comments Feed inside the Modal
       const commentsContainer = document.getElementById("edit-comments-container");
@@ -1651,6 +1674,7 @@ window.openEditModal = function(id) {
     window.savePinEdits = async function() {
   const idField = document.getElementById("edit-pin-id");
   const titleField = document.getElementById("edit-title");
+  const descField = document.getElementById("edit-description");
   const colorField = document.getElementById("edit-color");
   const fileInput = document.getElementById("edit-file-input");
 
@@ -1667,20 +1691,29 @@ window.openEditModal = function(id) {
       await window.uploadPhotos(id, fileInput.files);
     }
 
-    // 🛡️ Create the audit log entry
     const activityEntry = {
       userEmail: currentUser ? currentUser.email : "guest@local",
-      action: "Updated pin title or category",
+      action: "Updated pin details",
       timestamp: new Date().toISOString()
     };
 
-    await db.collection("marshfield_pins").doc(id).update({
+    const updatePayload = {
       title: title,
       color: color,
       attribution: getPinAttribution(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry)
-    });
+    };
+
+    // Only save the description if it wasn't already locked
+    if (descField && !descField.readOnly) {
+      const newDesc = descField.value.trim();
+      if (newDesc !== "") {
+        updatePayload.description = newDesc;
+      }
+    }
+
+    await db.collection("marshfield_pins").doc(id).update(updatePayload);
     
     const modal = document.getElementById("edit-modal");
     if (modal) modal.style.display = "none";
@@ -2833,6 +2866,9 @@ async function deletePinImage(pinId, targetUrl) {
       
       <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Title:</label>
       <input type="text" id="edit-title" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+	  
+	  <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Description:</label>
+      <textarea id="edit-description" rows="2" placeholder="Primary pin details or legacy summary..." style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 4px; font-family: inherit; font-size: 13px;"></textarea>
       
       <!-- Replace the old single note textarea with this comment section layout -->
       <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Threaded Comments & Activity:</label>
