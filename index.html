@@ -1350,6 +1350,66 @@ window.closeCommentsModal = function() {
   if (modal) modal.style.display = "none";
 };
 
+window.openAuditModal = async function(pinId) {
+  // Safeguard check using your centralized permission function
+  if (typeof canViewAuditTrail === 'function' && !canViewAuditTrail()) {
+    alert("You do not have permission to view the audit trail.");
+    return;
+  }
+
+  const modal = document.getElementById("audit-modal");
+  const titleEl = document.getElementById("audit-modal-title");
+  const bodyEl = document.getElementById("audit-modal-body");
+  
+  if (!modal || !bodyEl) return;
+
+  bodyEl.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px;">Loading audit trail...</div>';
+  modal.style.display = "flex";
+
+  try {
+    const doc = await db.collection("marshfield_pins").doc(pinId).get();
+    if (!doc.exists) {
+      bodyEl.innerHTML = '<span style="color: #dc2626;">Pin not found.</span>';
+      return;
+    }
+
+    const data = doc.data();
+    if (titleEl) titleEl.innerText = data.title ? `Audit Trail: ${data.title}` : "Audit Trail";
+
+    const activityLog = data.activityLog || [];
+
+    if (activityLog.length === 0) {
+      bodyEl.innerHTML = '<div style="text-align: center; color: #94a3b8; font-style: italic; padding: 20px;">No audit activity recorded yet.</div>';
+      return;
+    }
+
+    let htmlParts = ['<div style="font-weight: 600; font-size: 12px; color: #475569; margin-bottom: 6px;">Activity History:</div>'];
+
+    activityLog.forEach(entry => {
+      const timestamp = new Date(entry.timestamp || Date.now());
+      const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const username = entry.userEmail ? entry.userEmail.split('@')[0] : 'Unknown';
+
+      htmlParts.push(`
+        <div style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+          <div style="font-weight: 500; font-size: 11px; color: #1e293b;">${username} <span style="color: #94a3b8; font-weight: normal; font-size: 10px;">(${timeString})</span></div>
+          <div style="font-size: 12px; color: #334155; margin-top: 3px; white-space: pre-wrap; word-break: break-word;">${escapeHtml(entry.action || 'Action logged')}</div>
+        </div>
+      `);
+    });
+
+    bodyEl.innerHTML = htmlParts.join('');
+  } catch (err) {
+    console.error("Error loading audit trail:", err);
+    bodyEl.innerHTML = '<span style="color: #dc2626;">Error loading audit trail.</span>';
+  }
+};
+
+window.closeAuditModal = function() {
+  const modal = document.getElementById("audit-modal");
+  if (modal) modal.style.display = "none";
+};
+
 // Super-admin moderation: delete a comment from the array
 window.deletePinComment = async function(pinId, commentTimestamp) {
   if (!confirm("Are you sure you want to delete this comment?")) return;
@@ -1380,6 +1440,25 @@ window.deletePinComment = async function(pinId, commentTimestamp) {
     alert("Failed to delete comment: " + err.message);
   }
 };
+
+<!-- Audit Trail Modal -->
+<div id="audit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+  <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 450px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px;">
+      <h3 id="audit-modal-title" style="margin: 0; font-size: 16px; color: #1e293b;">Audit Trail</h3>
+      <button type="button" onclick="closeAuditModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">✕</button>
+    </div>
+    
+    <div id="audit-modal-body" style="overflow-y: auto; flex: 1; padding-right: 4px; font-size: 13px; color: #334155;">
+      <!-- Populated dynamically -->
+    </div>
+    
+    <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 10px; text-align: right;">
+      <button type="button" onclick="closeAuditModal()" style="padding: 6px 12px; background: #64748b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Close</button>
+    </div>
+  </div>
+</div>
+
 		
     // REAL-TIME FIRESTORE SYNC
     db.collection("marshfield_pins").onSnapshot(function(snapshot) {
