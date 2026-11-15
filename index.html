@@ -3039,26 +3039,6 @@ async function deletePinImage(pinId, targetUrl) {
   </div>
 </div>
 
-
-
-<!-- Standalone Audit Trail Modal -->
-<div id="audit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
-  <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 450px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px;">
-      <h3 id="audit-modal-title" style="margin: 0; font-size: 16px; color: #1e293b;">Audit Trail</h3>
-      <button type="button" onclick="closeAuditModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">✕</button>
-    </div>
-    
-    <div id="audit-modal-body" style="overflow-y: auto; flex: 1; padding-right: 4px; font-size: 13px; color: #334155;">
-      <!-- Populated dynamically -->
-    </div>
-    
-    <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 10px; text-align: right;">
-      <button type="button" onclick="closeAuditModal()" style="padding: 6px 12px; background: #64748b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Close</button>
-    </div>
-  </div>
-</div>
-
       <!-- 📍 PLACED BELOW PHOTOS -->
       <label style="display: block; margin-top: 16px; font-size: 13px; font-weight: 500;">Affected Area Boundary:</label>
       <div style="display: flex; gap: 8px; margin-top: 4px; margin-bottom: 10px;">
@@ -3185,5 +3165,24 @@ async function deletePinImage(pinId, targetUrl) {
       <div id="lightbox-thumbnails" style="display: flex; gap: 6px; overflow-x: auto; max-width: 100%; padding: 4px;"></div>
     </div>
   </div>
+  
+  <!-- Standalone Audit Trail Modal -->
+<div id="audit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+  <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 450px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px;">
+      <h3 id="audit-modal-title" style="margin: 0; font-size: 16px; color: #1e293b;">Audit Trail</h3>
+      <button type="button" onclick="closeAuditModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">✕</button>
+    </div>
+    
+    <div id="audit-modal-body" style="overflow-y: auto; flex: 1; padding-right: 4px; font-size: 13px; color: #334155;">
+      <!-- Populated dynamically -->
+    </div>
+    
+    <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 10px; text-align: right;">
+      <button type="button" onclick="closeAuditModal()" style="padding: 6px 12px; background: #64748b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Close</button>
+    </div>
+  </div>
+</div>
+  
 </body>
 </html>
