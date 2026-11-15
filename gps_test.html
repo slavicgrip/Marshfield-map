@@ -1146,7 +1146,7 @@
 
 
 
-// 1. Popup content builder with multi-line support (white-space: pre-wrap) and legacy timestamp fallbacks
+// 1. Popup content builder with multi-line support for threaded comments
 function buildPopupContent(data) {
   let metaText = data.attribution;
 
@@ -1161,20 +1161,112 @@ function buildPopupContent(data) {
   }
 
   const metaLine = metaText 
-    ? `<div style="font-size: 11px; color: #6b7280; margin-top: 6px; border-top: 1px solid #e5e7eb; padding-top: 4px;">
-         ${metaText}
-       </div>` 
+    ? `<div style="font-size: 11px; color: #6b7280; margin-top: 6px; border-top: 1px solid #e5e7eb; padding-top: 4px;">${metaText}</div>` 
     : '';
 
-  const noteText = data.text || data.description || data.note || '';
+  const comments = data.comments || [];
+  let latestCommentHtml = "";
+
+  if (comments.length > 0) {
+    const latest = comments[comments.length - 1];
+    const username = latest.userEmail ? latest.userEmail.split('@')[0] : 'Unknown';
+    latestCommentHtml = `<div style="font-size: 12px; color: #111827; margin-top: 4px; white-space: pre-wrap; word-break: break-word;"><b>${username}:</b> ${escapeHtml(latest.text)}</div>`;
+    if (comments.length > 1) {
+      latestCommentHtml += `<div style="font-size: 10px; color: #6b7280; margin-top: 2px;">(${comments.length} total comments)</div>`;
+    }
+  } else {
+    // Fallback if no comments yet, but check if there's an old description/note
+    const legacyNote = data.text || data.description || data.note || '';
+    if (legacyNote) {
+      latestCommentHtml = `<div style="font-size: 12px; color: #111827; white-space: pre-wrap; word-break: break-word;">${escapeHtml(legacyNote)}</div>`;
+    } else {
+      latestCommentHtml = `<div style="font-size: 12px; color: #6b7280; font-style: italic;">No comments yet.</div>`;
+    }
+  }
 
   return `
     <div style="min-width: 160px; max-width: 250px;">
-      <div style="font-size: 13px; color: #111827; white-space: pre-wrap; word-break: break-word;">${noteText}</div>
+      ${latestCommentHtml}
       ${metaLine}
     </div>
   `;
 }
+
+// Post a new comment to the pin's comment array
+window.addPinCommentFromModal = async function() {
+  const pinId = document.getElementById("edit-pin-id").value;
+  const inputEl = document.getElementById("new-comment-input");
+  if (!pinId || !inputEl) return;
+
+  const text = inputEl.value.trim();
+  if (!text) {
+    alert("Please enter comment text before posting.");
+    return;
+  }
+
+  const userEmail = currentUser && currentUser.email ? currentUser.email : "guest@local";
+  
+  const newComment = {
+    userEmail: userEmail,
+    text: text,
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    const docRef = db.collection("marshfield_pins").doc(pinId);
+    
+    // 🛡️ Create an audit log entry for the comment
+    const activityEntry = {
+      userEmail: userEmail,
+      action: `Added a comment: "${text.substring(0, 30)}..."`,
+      timestamp: new Date().toISOString()
+    };
+
+    await docRef.update({
+      comments: firebase.firestore.FieldValue.arrayUnion(newComment),
+      activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    inputEl.value = ""; // Clear input box
+    
+    // Refresh the modal view to show the new comment immediately
+    window.openEditModal(pinId);
+  } catch (err) {
+    alert("Failed to post comment: " + err.message);
+  }
+};
+
+// Super-admin moderation: delete a comment from the array
+window.deletePinComment = async function(pinId, commentTimestamp) {
+  if (!confirm("Are you sure you want to delete this comment?")) return;
+
+  try {
+    const docRef = db.collection("marshfield_pins").doc(pinId);
+    const docSnap = await docRef.get();
+    if (!docSnap.exists) return;
+
+    const data = docSnap.data();
+    const currentComments = data.comments || [];
+    const updatedComments = currentComments.filter(c => c.timestamp !== commentTimestamp);
+
+    const activityEntry = {
+      userEmail: currentUser ? currentUser.email : "guest@local",
+      action: "Deleted a user comment for moderation",
+      timestamp: new Date().toISOString()
+    };
+
+    await docRef.update({
+      comments: updatedComments,
+      activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    window.openEditModal(pinId);
+  } catch (err) {
+    alert("Failed to delete comment: " + err.message);
+  }
+};
 		
     // REAL-TIME FIRESTORE SYNC
     db.collection("marshfield_pins").onSnapshot(function(snapshot) {
@@ -1448,13 +1540,39 @@ window.openEditModal = function(id) {
 
       const idField = document.getElementById("edit-pin-id");
       const titleField = document.getElementById("edit-title");
-      const noteField = document.getElementById("edit-note");
       const colorField = document.getElementById("edit-color");
       
       if (idField) idField.value = id;
       if (titleField) titleField.value = pinData.title || "";
-      if (noteField) noteField.value = pinData.note || pinData.description || "";
       if (colorField) colorField.value = pinData.color || "purple";
+
+      // 💬 Render Threaded Comments Feed inside the Modal
+      const commentsContainer = document.getElementById("edit-comments-container");
+      const comments = pinData.comments || [];
+      const isSuperAdmin = currentUserProfile && currentUserProfile.role === "super_admin";
+
+      if (commentsContainer) {
+        if (comments.length === 0) {
+          commentsContainer.innerHTML = '<span style="font-size: 12px; color: #888;">No comments yet.</span>';
+        } else {
+          commentsContainer.innerHTML = comments.map(comment => {
+            const timestamp = new Date(comment.timestamp || Date.now());
+            const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const username = comment.userEmail ? comment.userEmail.split('@')[0] : 'Unknown';
+            
+            // Super-admin moderation delete button (✕)
+            const deleteBtn = isSuperAdmin 
+              ? `<button type="button" onclick="deletePinComment('${id}', '${comment.timestamp}')" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
+              : '';
+
+            return `<div style="padding: 6px 0; border-bottom: 1px solid #e2e8f0; position: relative;">
+              ${deleteBtn}
+              <div style="font-weight: 500; font-size: 11px; color: #1e293b;">${username} <span style="color: #94a3b8; font-weight: normal; font-size: 10px;">(${timeString})</span></div>
+              <div style="font-size: 12px; color: #334155; margin-top: 2px; word-break: break-word;">${escapeHtml(comment.text)}</div>
+            </div>`;
+          }).join('');
+        }
+      }
 
       const previewContainer = document.getElementById("edit-photo-preview");
       if (previewContainer) {
@@ -1474,18 +1592,18 @@ window.openEditModal = function(id) {
       const fileInput = document.getElementById("edit-file-input");
       if (fileInput) fileInput.value = "";
 	  
-// 🛡️ Explicit Firestore-Controlled Audit Trail Button Visibility
-  const auditBtnContainer = document.getElementById("edit-audit-btn-container");
-  
-  if (auditBtnContainer) {
-    if (canViewAuditTrail()) {
-      auditBtnContainer.style.display = "block";
-      currentAuditLogs = pinData.activityLog || []; // Store logs for the modal popup
-    } else {
-      auditBtnContainer.style.display = "none";     // Hidden for standard field users
-      currentAuditLogs = [];
-    }
-  }
+	  // 🛡️ Explicit Firestore-Controlled Audit Trail Button Visibility
+      const auditBtnContainer = document.getElementById("edit-audit-btn-container");
+      
+      if (auditBtnContainer) {
+        if (canViewAuditTrail()) {
+          auditBtnContainer.style.display = "block";
+          currentAuditLogs = pinData.activityLog || []; 
+        } else {
+          auditBtnContainer.style.display = "none";     
+          currentAuditLogs = [];
+        }
+      }
 
       const modal = document.getElementById("edit-modal");
       if (modal) modal.style.display = "flex";
@@ -2681,8 +2799,19 @@ async function deletePinImage(pinId, targetUrl) {
       <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Title:</label>
       <input type="text" id="edit-title" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
       
-      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Note / Description:</label>
-      <textarea id="edit-note" rows="3" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+      <!-- Replace the old single note textarea with this comment section layout -->
+      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Threaded Comments & Activity:</label>
+      
+      <!-- Container that displays the scrollable list of past comments -->
+      <div id="edit-comments-container" style="max-height: 140px; overflow-y: auto; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; margin-top: 4px; margin-bottom: 8px;">
+        <span style="font-size: 12px; color: #888;">No comments yet.</span>
+      </div>
+
+      <!-- Input box to type a new comment -->
+      <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+        <input type="text" id="new-comment-input" placeholder="Type a comment or field update..." style="flex: 1; padding: 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px;" />
+        <button type="button" onclick="addPinCommentFromModal()" style="padding: 8px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">Post</button>
+      </div>
       
       <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Pin Category / Color:</label>
       <select id="edit-color" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; background: white;">
