@@ -521,20 +521,56 @@
     let geofenceLayerGroup = L.layerGroup();
 	
 	// 🔑 Global Auth State Listener
-    firebase.auth().onAuthStateChanged((user) => {
-      currentUser = user; // Keeps your global currentUser variable updated
-      
-      const emailDisplay = document.getElementById("user-email-display");
-      if (user) {
-        if (emailDisplay) {
-          emailDisplay.textContent = user.email || "Authenticated User";
+firebase.auth().onAuthStateChanged(async (user) => {
+  currentUser = user; // Keeps your global currentUser variable updated
+  
+  const emailDisplay = document.getElementById("user-email-display");
+  const roleBadge = document.getElementById("user-role-badge");
+  
+  if (user) {
+    if (emailDisplay) {
+      emailDisplay.textContent = user.email || "Authenticated User";
+    }
+    
+    // Determine the user's role
+    let role = (currentUserProfile && currentUserProfile.role) ? currentUserProfile.role : null;
+    
+    if (!role) {
+      try {
+        const userDoc = await db.collection("users").doc(user.uid).get();
+        if (userDoc.exists) {
+          currentUserProfile = userDoc.data();
+          role = currentUserProfile.role || currentUserProfile.userRole || "User";
+        } else {
+          role = "User";
         }
-      } else {
-        if (emailDisplay) {
-          emailDisplay.textContent = "";
-        }
+      } catch (err) {
+        console.error("Error fetching user role:", err);
+        role = "User";
       }
-    });
+    }
+    
+    // Update the role badge in the UI
+    if (roleBadge) {
+      roleBadge.textContent = role.replace('_', ' ').toUpperCase();
+      if (role === 'super_admin' || role === 'admin') {
+        roleBadge.style.background = '#dbeafe';
+        roleBadge.style.color = '#1e40af';
+      } else {
+        roleBadge.style.background = '#f1f5f9';
+        roleBadge.style.color = '#475569';
+      }
+    }
+  } else {
+    if (emailDisplay) {
+      emailDisplay.textContent = "";
+    }
+    if (roleBadge) {
+      roleBadge.textContent = "";
+    }
+    currentUserProfile = null;
+  }
+});
 
     const MARSHFIELD_CENTER = [44.6688, -90.1718];
     const MARSHFIELD_ZOOM = 13;
