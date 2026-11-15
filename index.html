@@ -3041,30 +3041,7 @@ async function deletePinImage(pinId, targetUrl) {
 
 
 
-      <!-- 🛡️ NEW: Audit Trail Button (Controlled by permission) -->
-      <div id="edit-audit-btn-container" style="display: none; margin-top: 12px;">
-        <button type="button" onclick="openAuditModalFromEdit()" style="width: 100%; padding: 8px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">
-          📜 View Full Audit Trail
-        </button>
-      </div>
-
-<!-- Full Audit Trail History Modal -->
-<div id="audit-trail-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 4000; justify-content: center; align-items: center;">
-  <div style="background: white; padding: 24px; border-radius: 8px; width: 450px; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
-      <h3 style="margin: 0; font-size: 16px; color: #1e293b;">Complete Pin Audit Trail</h3>
-      <button type="button" onclick="closeAuditModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">✕</button>
-    </div>
-    
-    <div id="audit-full-list-content" style="font-size: 12px; color: #334155; max-height: 50vh; overflow-y: auto;"></div>
-
-    <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
-      <button type="button" onclick="closeAuditModal()" style="padding: 6px 14px; background: #64748b; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
-    </div>
-  </div>
-</div>
-
-<!-- Audit Trail Modal -->
+<!-- Standalone Audit Trail Modal -->
 <div id="audit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
   <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 450px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px;">
