@@ -1574,8 +1574,8 @@ window.openEditModal = function(id) {
         const existingDesc = pinData.description || pinData.text || pinData.note || "";
         descField.value = existingDesc;
 
-        if (existingDesc.trim() !== "") {
-          // 🔒 Lock the box so saved descriptions cannot be altered
+        if (existingDesc.trim() !== "" && !isSuperAdmin) {
+          // 🔒 Lock the box so saved descriptions cannot be altered, unless you are super-admin
           descField.readOnly = true;
           descField.style.backgroundColor = "#f1f5f9";
           descField.style.color = "#475569";
@@ -1591,48 +1591,32 @@ window.openEditModal = function(id) {
         }
       }
 
-    // 💬 Render Legacy Note + Threaded Comments Feed inside the Modal
+    // 💬 Render Threaded Comments Feed inside the Modal
       const commentsContainer = document.getElementById("edit-comments-container");
       const comments = pinData.comments || [];
-      const legacyNote = pinData.text || pinData.description || pinData.note || "";
       const isSuperAdmin = currentUserProfile && currentUserProfile.role === "super_admin";
 
       if (commentsContainer) {
-        let htmlParts = [];
-
-        // 1. If a legacy note exists, display it as the original pinned note at the top
-        if (legacyNote.trim() !== "") {
-          htmlParts.push(`
-            <div style="padding: 6px 0; border-bottom: 1px solid #cbd5e1; background: #fffbeb; padding: 6px; border-radius: 4px; margin-bottom: 6px;">
-              <div style="font-weight: 600; font-size: 11px; color: #92400e;">Original Field Note <span style="font-weight: normal; color: #b45309;">(Legacy)</span></div>
-              <div style="font-size: 12px; color: #334155; margin-top: 2px; white-space: pre-wrap; word-break: break-word;">${escapeHtml(legacyNote)}</div>
-            </div>
-          `);
-        }
-
-        // 2. Append all threaded comments underneath
-        comments.forEach(comment => {
-          const timestamp = new Date(comment.timestamp || Date.now());
-          const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-          const username = comment.userEmail ? comment.userEmail.split('@')[0] : 'Unknown';
-          
-          const deleteBtn = isSuperAdmin 
-            ? `<button type="button" onclick="deletePinComment('${id}', '${comment.timestamp}')" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
-            : '';
-
-          htmlParts.push(`
-            <div style="padding: 6px 0; border-bottom: 1px solid #e2e8f0; position: relative;">
-              ${deleteBtn}
-              <div style="font-weight: 500; font-size: 11px; color: #1e293b;">${username} <span style="color: #94a3b8; font-weight: normal; font-size: 10px;">(${timeString})</span></div>
-              <div style="font-size: 12px; color: #334155; margin-top: 2px; white-space: pre-wrap; word-break: break-word;">${escapeHtml(comment.text)}</div>
-            </div>
-          `);
-        });
-
-        if (htmlParts.length === 0) {
+        if (comments.length === 0) {
           commentsContainer.innerHTML = '<span style="font-size: 12px; color: #888;">No comments yet.</span>';
         } else {
-          commentsContainer.innerHTML = htmlParts.join('');
+          commentsContainer.innerHTML = comments.map(comment => {
+            const timestamp = new Date(comment.timestamp || Date.now());
+            const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const username = comment.userEmail ? comment.userEmail.split('@')[0] : 'Unknown';
+            
+            const deleteBtn = isSuperAdmin 
+              ? `<button type="button" onclick="deletePinComment('${id}', '${comment.timestamp}')" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
+              : '';
+
+            return `
+              <div style="padding: 6px 0; border-bottom: 1px solid #e2e8f0; position: relative;">
+                ${deleteBtn}
+                <div style="font-weight: 500; font-size: 11px; color: #1e293b;">${username} <span style="color: #94a3b8; font-weight: normal; font-size: 10px;">(${timeString})</span></div>
+                <div style="font-size: 12px; color: #334155; margin-top: 2px; white-space: pre-wrap; word-break: break-word;">${escapeHtml(comment.text)}</div>
+              </div>
+            `;
+          }).join('');
         }
       }
 
