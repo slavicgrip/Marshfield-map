@@ -1150,13 +1150,16 @@
 function buildPopupContent(data, pinId, canEditPin) {
   let metaText = data.attribution;
 
-  if (!metaText && data.updatedAt) {
-    const dateObj = data.updatedAt.toDate ? data.updatedAt.toDate() : new Date(data.updatedAt);
+  // Fallback for legacy pins without a saved attribution string
+  const fallbackTimestamp = data.createdAt || data.updatedAt;
+  if (!metaText && fallbackTimestamp) {
+    const dateObj = fallbackTimestamp.toDate ? fallbackTimestamp.toDate() : new Date(fallbackTimestamp);
     if (!isNaN(dateObj)) {
       const month = dateObj.getMonth() + 1;
       const day = dateObj.getDate();
       const year = String(dateObj.getFullYear()).slice(-2);
-      metaText = `Legacy Pin - ${month}/${day}/${year}`;
+      const creatorPrefix = data.createdBy ? `Created by ${data.createdBy.split('@')[0]} - ` : 'Created - ';
+      metaText = `${creatorPrefix}${month}/${day}/${year}`;
     }
   }
 
@@ -1686,7 +1689,7 @@ window.openEditModal = function(id) {
     const updatePayload = {
       title: title,
       color: color,
-      attribution: getPinAttribution(),
+      // attribution: getPinAttribution(), disabled so original pin creator name and date sticks
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry)
     };
@@ -2225,7 +2228,7 @@ let currentLightboxImages = [];
       const updatePayload = {
         images: combinedImages,
         imageUrls: combinedImages.map(img => img.url), // Maintained for backwards compatibility
-        attribution: getPinAttribution(),
+        // attribution: getPinAttribution(), disabled so original pin creator name and date sticks
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         lat: lats.reduce((sum, v) => sum + v, 0) / lats.length, // Average center point
         lng: lngs.reduce((sum, v) => sum + v, 0) / lngs.length,
