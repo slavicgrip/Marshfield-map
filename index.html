@@ -47,6 +47,66 @@
 
   <style>
   
+ .alert-beacon-wrapper {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.alert-beacon-wrapper svg {
+  position: relative;
+  z-index: 3;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+  animation: beaconHeartbeat 1.8s infinite ease-in-out;
+}
+
+/* Primary expanding pulse ring */
+.alert-beacon-wrapper .beacon-ring-1 {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: rgba(220, 38, 38, 0.55);
+  z-index: 1;
+  animation: beaconExpand 1.8s infinite ease-out;
+  pointer-events: none;
+}
+
+/* Secondary delayed ring for a radar effect */
+.alert-beacon-wrapper .beacon-ring-2 {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #dc2626;
+  border-radius: 50%;
+  z-index: 2;
+  animation: beaconExpand 1.8s infinite ease-out 0.6s;
+  pointer-events: none;
+}
+
+@keyframes beaconExpand {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes beaconHeartbeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+  
   .custom-svg-pin {
   pointer-events: auto !important;
 }
@@ -311,6 +371,19 @@
     .dot-pink { background-color: #e91e63; }
     .dot-yellow { background-color: #f39c12; }
 	.dot-copper { background-color: #b87333; }
+	.dot-pulsing_alert {
+      background-color: #dc2626;
+      border-radius: 2px;
+      transform: rotate(45deg);
+      box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+      animation: legendDiamondPulse 1.8s infinite ease-out;
+    }
+
+    @keyframes legendDiamondPulse {
+      0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.75); }
+      70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
 
     /* RESET BUTTON */
     .leaflet-control-reset {
@@ -472,6 +545,8 @@
       <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="pink" checked onchange="filterMarkers()"><span class="legend-dot dot-pink"></span> Fiber Optic</label>
       <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="yellow" checked onchange="filterMarkers()"><span class="legend-dot dot-yellow"></span> WE Energies</label>
 	  <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="copper" checked onchange="filterMarkers()"><span class="legend-dot dot-copper"></span> Telecom/Copper</label>
+	  <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="pulsing_alert" checked onchange="filterMarkers()"><span class="legend-dot dot-pulsing_alert"></span><span>Urgent Alert</span>
+</label>
     </div>
   </div>
   
@@ -561,6 +636,14 @@ firebase.auth().onAuthStateChanged(async (user) => {
         roleBadge.style.color = '#475569';
       }
     }
+
+    // Show or hide super_admin-only pin options while `role` is in scope
+    const isSuperAdmin = (role === 'super_admin');
+    document.querySelectorAll('.super-admin-only-option').forEach(opt => {
+      opt.style.display = isSuperAdmin ? '' : 'none';
+      opt.disabled = !isSuperAdmin;
+    });
+
   } else {
     if (emailDisplay) {
       emailDisplay.textContent = "";
@@ -569,6 +652,12 @@ firebase.auth().onAuthStateChanged(async (user) => {
       roleBadge.textContent = "";
     }
     currentUserProfile = null;
+
+    // Hide and disable super_admin-only pin options when logged out
+    document.querySelectorAll('.super-admin-only-option').forEach(opt => {
+      opt.style.display = 'none';
+      opt.disabled = true;
+    });
   }
 });
 
@@ -618,13 +707,36 @@ firebase.auth().onAuthStateChanged(async (user) => {
       return false;
     }
 
-    const colorHexMap = {
+   const colorHexMap = {
       purple: '#8e44ad', blue: '#2980b9', red: '#c0392b',
       green: '#27ae60', pink: '#e91e63', yellow: '#f39c12',
-	  copper: '#b87333'
+      copper: '#b87333', pulsing_alert: '#dc2626'
     };
 
     function createSvgPinIcon(colorName) {
+      // Return distinct pulsing diamond beacon for urgent alerts
+      if (colorName === 'pulsing_alert') {
+        return L.divIcon({
+          className: 'custom-svg-pin',
+          html: `
+            <div class="alert-beacon-wrapper">
+              <div class="beacon-ring-1"></div>
+              <div class="beacon-ring-2"></div>
+              <svg width="34" height="34" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 2L30 16L16 30L2 16L16 2Z" fill="#DC2626" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
+                <path d="M16 9.5V17.5" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round"/>
+                <circle cx="16" cy="22" r="1.6" fill="#FFFFFF"/>
+              </svg>
+            </div>
+          `,
+          iconSize: [34, 34],
+          iconAnchor: [17, 17],
+          popupAnchor: [0, -18],
+          tooltipAnchor: [0, -18]
+        });
+      }
+
+      // Standard teardrop SVG pins
       const hex = colorHexMap[colorName] || colorHexMap.purple;
       const svg = `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="30" height="45">
@@ -638,7 +750,7 @@ firebase.auth().onAuthStateChanged(async (user) => {
         iconSize: [30, 45],
         iconAnchor: [15, 45],
         popupAnchor: [0, -40],
-		tooltipAnchor: [0, -25]
+        tooltipAnchor: [0, -25]
       });
     }
 
@@ -648,8 +760,30 @@ firebase.auth().onAuthStateChanged(async (user) => {
       red: createSvgPinIcon('red'),
       green: createSvgPinIcon('green'),
       pink: createSvgPinIcon('pink'),
-      yellow: createSvgPinIcon('yellow')
+      yellow: createSvgPinIcon('yellow'),
+      copper: createSvgPinIcon('copper'),
+      pulsing_alert: createSvgPinIcon('pulsing_alert')
     };
+	
+	const pulsingAlertIcon = L.divIcon({
+  className: 'custom-div-icon',
+  html: `
+    <div class="alert-beacon-wrapper">
+      <div class="beacon-ring-1"></div>
+      <div class="beacon-ring-2"></div>
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- High-contrast outer diamond shape -->
+        <path d="M16 2L30 16L16 30L2 16L16 2Z" fill="#DC2626" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
+        <!-- Crisp white exclamation mark -->
+        <path d="M16 9.5V17.5" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round"/>
+        <circle cx="16" cy="22" r="1.6" fill="#FFFFFF"/>
+      </svg>
+    </div>
+  `,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],   // Anchors dead-center on the exact lat/lng
+  popupAnchor: [0, -16]   // Opens popup cleanly above the top point of the diamond
+});
 
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 21,
@@ -1873,6 +2007,15 @@ window.openEditModal = function(id) {
       action: "Updated pin details",
       timestamp: new Date().toISOString()
     };
+	
+	const editColorSelect = document.getElementById("edit-color");
+    const userRole = currentUserProfile?.role || currentUserProfile?.userRole || "User";
+
+    // Block non-super_admins from newly assigning pulsing_alert (allow if already locked as one)
+    if (color === "pulsing_alert" && userRole !== "super_admin" && (!editColorSelect || !editColorSelect.disabled)) {
+      showAppModal("Permission Denied", "Only Super Admins can assign Pulsing Red Alerts.");
+      return;
+    }
 
     const updatePayload = {
       title: title,
@@ -3069,7 +3212,8 @@ async function deletePinImage(pinId, targetUrl) {
         <option value="green">🟢 Green (Storm/Sewer)</option>
         <option value="pink">🩷 Pink (Fiber Optic)</option>
         <option value="yellow">🟡 Yellow (WE Energies)</option>
-		<option value="copper">🟤 Copper (Telecom/Copper)</option>
+        <option value="copper">🟤 Copper (Telecom/Copper)</option>
+        <option value="pulsing_alert" class="super-admin-only-option" style="display: none;">🚨 Pulsing Red Alert (Urgent)</option>
       </select>
       
       <label style="display: block; margin-top: 12px; font-size: 13px; font-weight: 500;">Current Photos:</label>
