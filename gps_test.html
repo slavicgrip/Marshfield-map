@@ -647,6 +647,13 @@ firebase.auth().onAuthStateChanged(async (user) => {
   }
 });
 
+// Show or hide super_admin-only pin options
+const isSuperAdmin = (role === 'super_admin');
+document.querySelectorAll('.super-admin-only-option').forEach(opt => {
+  opt.style.display = isSuperAdmin ? '' : 'none';
+  opt.disabled = !isSuperAdmin;
+});
+
     const MARSHFIELD_CENTER = [44.6688, -90.1718];
     const MARSHFIELD_ZOOM = 13;
 
@@ -1993,6 +2000,15 @@ window.openEditModal = function(id) {
       action: "Updated pin details",
       timestamp: new Date().toISOString()
     };
+	
+	const editColorSelect = document.getElementById("edit-color");
+    const userRole = currentUserProfile?.Role || currentUserProfile?.role || "User";
+
+    // Block non-super_admins from newly assigning pulsing_alert (allow if already locked as one)
+    if (color === "pulsing_alert" && userRole !== "super_admin" && (!editColorSelect || !editColorSelect.disabled)) {
+      showAppModal("Permission Denied", "Only Super Admins can assign Pulsing Red Alerts.");
+      return;
+    }
 
     const updatePayload = {
       title: title,
@@ -3190,7 +3206,7 @@ async function deletePinImage(pinId, targetUrl) {
         <option value="pink">🩷 Pink (Fiber Optic)</option>
         <option value="yellow">🟡 Yellow (WE Energies)</option>
         <option value="copper">🟤 Copper (Telecom/Copper)</option>
-        <option value="pulsing_alert">🚨 Pulsing Red Alert (Urgent)</option>
+        <option value="pulsing_alert" class="super-admin-only-option" style="display: none;">🚨 Pulsing Red Alert (Urgent)</option>
       </select>
       
       <label style="display: block; margin-top: 12px; font-size: 13px; font-weight: 500;">Current Photos:</label>
