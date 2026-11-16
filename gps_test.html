@@ -47,6 +47,66 @@
 
   <style>
   
+ .alert-beacon-wrapper {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.alert-beacon-wrapper svg {
+  position: relative;
+  z-index: 3;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+  animation: beaconHeartbeat 1.8s infinite ease-in-out;
+}
+
+/* Primary expanding pulse ring */
+.alert-beacon-wrapper .beacon-ring-1 {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: rgba(220, 38, 38, 0.55);
+  z-index: 1;
+  animation: beaconExpand 1.8s infinite ease-out;
+  pointer-events: none;
+}
+
+/* Secondary delayed ring for a radar effect */
+.alert-beacon-wrapper .beacon-ring-2 {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #dc2626;
+  border-radius: 50%;
+  z-index: 2;
+  animation: beaconExpand 1.8s infinite ease-out 0.6s;
+  pointer-events: none;
+}
+
+@keyframes beaconExpand {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes beaconHeartbeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+  
   .custom-svg-pin {
   pointer-events: auto !important;
 }
@@ -311,6 +371,19 @@
     .dot-pink { background-color: #e91e63; }
     .dot-yellow { background-color: #f39c12; }
 	.dot-copper { background-color: #b87333; }
+	.dot-pulsing_alert {
+      background-color: #dc2626;
+      border-radius: 2px;
+      transform: rotate(45deg);
+      box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+      animation: legendDiamondPulse 1.8s infinite ease-out;
+    }
+
+    @keyframes legendDiamondPulse {
+      0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.75); }
+      70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
 
     /* RESET BUTTON */
     .leaflet-control-reset {
@@ -472,6 +545,8 @@
       <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="pink" checked onchange="filterMarkers()"><span class="legend-dot dot-pink"></span> Fiber Optic</label>
       <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="yellow" checked onchange="filterMarkers()"><span class="legend-dot dot-yellow"></span> WE Energies</label>
 	  <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="copper" checked onchange="filterMarkers()"><span class="legend-dot dot-copper"></span> Telecom/Copper</label>
+	  <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="pulsing_alert" checked onchange="filterMarkers()"><span class="legend-dot dot-pulsing_alert"></span><span>Urgent Alert</span>
+</label>
     </div>
   </div>
   
@@ -519,6 +594,58 @@
     let activeMarkers = {}; 
     let searchResultMarker = null;
     let geofenceLayerGroup = L.layerGroup();
+	
+	// 🔑 Global Auth State Listener
+firebase.auth().onAuthStateChanged(async (user) => {
+  currentUser = user; // Keeps your global currentUser variable updated
+  
+  const emailDisplay = document.getElementById("user-email-display");
+  const roleBadge = document.getElementById("user-role-badge");
+  
+  if (user) {
+    if (emailDisplay) {
+      emailDisplay.textContent = user.email || "Authenticated User";
+    }
+    
+    // Determine the user's role
+    let role = (currentUserProfile && currentUserProfile.role) ? currentUserProfile.role : null;
+    
+    if (!role) {
+      try {
+        const userDoc = await db.collection("users").doc(user.uid).get();
+        if (userDoc.exists) {
+          currentUserProfile = userDoc.data();
+          role = currentUserProfile.role || currentUserProfile.userRole || "User";
+        } else {
+          role = "User";
+        }
+      } catch (err) {
+        console.error("Error fetching user role:", err);
+        role = "User";
+      }
+    }
+    
+    // Update the role badge in the UI
+    if (roleBadge) {
+      roleBadge.textContent = role.replace('_', ' ').toUpperCase();
+      if (role === 'super_admin' || role === 'admin') {
+        roleBadge.style.background = '#dbeafe';
+        roleBadge.style.color = '#1e40af';
+      } else {
+        roleBadge.style.background = '#f1f5f9';
+        roleBadge.style.color = '#475569';
+      }
+    }
+  } else {
+    if (emailDisplay) {
+      emailDisplay.textContent = "";
+    }
+    if (roleBadge) {
+      roleBadge.textContent = "";
+    }
+    currentUserProfile = null;
+  }
+});
 
     const MARSHFIELD_CENTER = [44.6688, -90.1718];
     const MARSHFIELD_ZOOM = 13;
@@ -566,13 +693,36 @@
       return false;
     }
 
-    const colorHexMap = {
+   const colorHexMap = {
       purple: '#8e44ad', blue: '#2980b9', red: '#c0392b',
       green: '#27ae60', pink: '#e91e63', yellow: '#f39c12',
-	  copper: '#b87333'
+      copper: '#b87333'
     };
 
     function createSvgPinIcon(colorName) {
+      // Return distinct pulsing diamond beacon for urgent alerts
+      if (colorName === 'pulsing_alert') {
+        return L.divIcon({
+          className: 'custom-svg-pin',
+          html: `
+            <div class="alert-beacon-wrapper">
+              <div class="beacon-ring-1"></div>
+              <div class="beacon-ring-2"></div>
+              <svg width="34" height="34" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 2L30 16L16 30L2 16L16 2Z" fill="#DC2626" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
+                <path d="M16 9.5V17.5" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round"/>
+                <circle cx="16" cy="22" r="1.6" fill="#FFFFFF"/>
+              </svg>
+            </div>
+          `,
+          iconSize: [34, 34],
+          iconAnchor: [17, 17],
+          popupAnchor: [0, -18],
+          tooltipAnchor: [0, -18]
+        });
+      }
+
+      // Standard teardrop SVG pins
       const hex = colorHexMap[colorName] || colorHexMap.purple;
       const svg = `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="30" height="45">
@@ -586,7 +736,7 @@
         iconSize: [30, 45],
         iconAnchor: [15, 45],
         popupAnchor: [0, -40],
-		tooltipAnchor: [0, -25]
+        tooltipAnchor: [0, -25]
       });
     }
 
@@ -598,6 +748,26 @@
       pink: createSvgPinIcon('pink'),
       yellow: createSvgPinIcon('yellow')
     };
+	
+	const pulsingAlertIcon = L.divIcon({
+  className: 'custom-div-icon',
+  html: `
+    <div class="alert-beacon-wrapper">
+      <div class="beacon-ring-1"></div>
+      <div class="beacon-ring-2"></div>
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- High-contrast outer diamond shape -->
+        <path d="M16 2L30 16L16 30L2 16L16 2Z" fill="#DC2626" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
+        <!-- Crisp white exclamation mark -->
+        <path d="M16 9.5V17.5" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round"/>
+        <circle cx="16" cy="22" r="1.6" fill="#FFFFFF"/>
+      </svg>
+    </div>
+  `,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],   // Anchors dead-center on the exact lat/lng
+  popupAnchor: [0, -16]   // Opens popup cleanly above the top point of the diamond
+});
 
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 21,
@@ -1208,14 +1378,25 @@ function buildPopupContent(data, pinId, canEditPin) {
   const editDeleteBtns = canEditPin ? '<div class="pin-actions"><button onclick="openEditModal(\'' + pinId + '\')">Edit Pin</button><button onclick="deletePin(\'' + pinId + '\')">Delete Pin</button></div>' : '';
   // Add a "View Comments" button right alongside your edit/delete actions
   const commentsCount = (data.comments || []).length;
-  const commentBtnLabel = commentsCount > 0 ? `View Comments (${commentsCount})` : `View Comments`;
+  const commentBtnLabel = commentsCount > 0 ? `Comments (${commentsCount})` : `Comments`;
   const viewCommentsBtn = `<div class="pin-actions" style="margin-top: 4px;"><button type="button" onclick="openCommentsModal('${pinId}')" style="background: #475569; color: white;">${commentBtnLabel}</button></div>`;
+  
+  // Check permission using your centralized function
+  const showAuditBtn = typeof canViewAuditTrail === 'function' ? canViewAuditTrail() : false;
+
+  const actionButtonsRow = `
+    <div style="display: flex; gap: 4px; margin-top: 6px;">
+      <button type="button" onclick="openCommentsModal('${pinId}')" style="background: #475569; color: white; flex: 1; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">${commentBtnLabel}</button>
+      ${showAuditBtn ? `<button type="button" onclick="openAuditModal('${pinId}')" style="background: #1e293b; color: white; flex: 1; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Changelog</button>` : ''}
+    </div>
+  `;
+  
   return `
     <div style="min-width: 160px; max-width: 250px;">
       ${contentHtml}
       ${imageGalleryHtml}
       ${editDeleteBtns}
-	  ${viewCommentsBtn}
+	  ${actionButtonsRow}
       ${metaLine}
     </div>
   `;
@@ -1284,7 +1465,7 @@ window.openCommentsModal = async function(pinId) {
     }
 
     const data = doc.data();
-    if (titleEl) titleEl.innerText = data.title ? `Comments: ${data.title}` : "Pin Comments & Activity";
+    if (titleEl) titleEl.innerText = data.title || "Pin Comments & Activity";
 
     const comments = data.comments || [];
     const legacyNote = data.description || data.text || data.note || "";
@@ -1339,6 +1520,66 @@ window.closeCommentsModal = function() {
   if (modal) modal.style.display = "none";
 };
 
+window.openAuditModal = async function(pinId) {
+  // Safeguard check using your centralized permission function
+  if (typeof canViewAuditTrail === 'function' && !canViewAuditTrail()) {
+    alert("You do not have permission to view the audit trail.");
+    return;
+  }
+
+  const modal = document.getElementById("audit-modal");
+  const titleEl = document.getElementById("audit-modal-title");
+  const bodyEl = document.getElementById("audit-modal-body");
+  
+  if (!modal || !bodyEl) return;
+
+  bodyEl.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px;">Loading audit trail...</div>';
+  modal.style.display = "flex";
+
+  try {
+    const doc = await db.collection("marshfield_pins").doc(pinId).get();
+    if (!doc.exists) {
+      bodyEl.innerHTML = '<span style="color: #dc2626;">Pin not found.</span>';
+      return;
+    }
+
+    const data = doc.data();
+    if (titleEl) titleEl.innerText = data.title ? `Audit Trail: ${data.title}` : "Audit Trail";
+
+    const activityLog = data.activityLog || [];
+
+    if (activityLog.length === 0) {
+      bodyEl.innerHTML = '<div style="text-align: center; color: #94a3b8; font-style: italic; padding: 20px;">No audit activity recorded yet.</div>';
+      return;
+    }
+
+    let htmlParts = ['<div style="font-weight: 600; font-size: 12px; color: #475569; margin-bottom: 6px;">Activity History:</div>'];
+
+    activityLog.forEach(entry => {
+      const timestamp = new Date(entry.timestamp || Date.now());
+      const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const username = entry.userEmail ? entry.userEmail.split('@')[0] : 'Unknown';
+
+      htmlParts.push(`
+        <div style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+          <div style="font-weight: 500; font-size: 11px; color: #1e293b;">${username} <span style="color: #94a3b8; font-weight: normal; font-size: 10px;">(${timeString})</span></div>
+          <div style="font-size: 12px; color: #334155; margin-top: 3px; white-space: pre-wrap; word-break: break-word;">${escapeHtml(entry.action || 'Action logged')}</div>
+        </div>
+      `);
+    });
+
+    bodyEl.innerHTML = htmlParts.join('');
+  } catch (err) {
+    console.error("Error loading audit trail:", err);
+    bodyEl.innerHTML = '<span style="color: #dc2626;">Error loading audit trail.</span>';
+  }
+};
+
+window.closeAuditModal = function() {
+  const modal = document.getElementById("audit-modal");
+  if (modal) modal.style.display = "none";
+};
+
 // Super-admin moderation: delete a comment from the array
 window.deletePinComment = async function(pinId, commentTimestamp) {
   if (!confirm("Are you sure you want to delete this comment?")) return;
@@ -1369,6 +1610,7 @@ window.deletePinComment = async function(pinId, commentTimestamp) {
     alert("Failed to delete comment: " + err.message);
   }
 };
+
 		
     // REAL-TIME FIRESTORE SYNC
     db.collection("marshfield_pins").onSnapshot(function(snapshot) {
@@ -1719,20 +1961,7 @@ window.openEditModal = function(id) {
 
       const fileInput = document.getElementById("edit-file-input");
       if (fileInput) fileInput.value = "";
-	  
-	  // 🛡️ Explicit Firestore-Controlled Audit Trail Button Visibility
-      const auditBtnContainer = document.getElementById("edit-audit-btn-container");
-      
-      if (auditBtnContainer) {
-        if (canViewAuditTrail()) {
-          auditBtnContainer.style.display = "block";
-          currentAuditLogs = pinData.activityLog || []; 
-        } else {
-          auditBtnContainer.style.display = "none";     
-          currentAuditLogs = [];
-        }
-      }
-
+	  	  
       const modal = document.getElementById("edit-modal");
       if (modal) modal.style.display = "flex";
     };
@@ -2958,7 +3187,8 @@ async function deletePinImage(pinId, targetUrl) {
         <option value="green">🟢 Green (Storm/Sewer)</option>
         <option value="pink">🩷 Pink (Fiber Optic)</option>
         <option value="yellow">🟡 Yellow (WE Energies)</option>
-		<option value="copper">🟤 Copper (Telecom/Copper)</option>
+        <option value="copper">🟤 Copper (Telecom/Copper)</option>
+        <option value="pulsing_alert">🚨 Pulsing Red Alert (Urgent)</option>
       </select>
       
       <label style="display: block; margin-top: 12px; font-size: 13px; font-weight: 500;">Current Photos:</label>
@@ -2977,31 +3207,6 @@ async function deletePinImage(pinId, targetUrl) {
   </div>
   <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
     <div id="upload-progress-bar" style="width: 0%; height: 100%; background: #2563eb; transition: width 0.15s ease;"></div>
-  </div>
-</div>
-
-
-
-      <!-- 🛡️ NEW: Audit Trail Button (Controlled by permission) -->
-      <div id="edit-audit-btn-container" style="display: none; margin-top: 12px;">
-        <button type="button" onclick="openAuditModalFromEdit()" style="width: 100%; padding: 8px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">
-          📜 View Full Audit Trail
-        </button>
-      </div>
-
-<!-- Full Audit Trail History Modal -->
-<div id="audit-trail-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 4000; justify-content: center; align-items: center;">
-  <div style="background: white; padding: 24px; border-radius: 8px; width: 450px; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: sans-serif;">
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
-      <h3 style="margin: 0; font-size: 16px; color: #1e293b;">Complete Pin Audit Trail</h3>
-      <button type="button" onclick="closeAuditModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">✕</button>
-    </div>
-    
-    <div id="audit-full-list-content" style="font-size: 12px; color: #334155; max-height: 50vh; overflow-y: auto;"></div>
-
-    <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
-      <button type="button" onclick="closeAuditModal()" style="padding: 6px 14px; background: #64748b; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
-    </div>
   </div>
 </div>
 
@@ -3045,6 +3250,15 @@ async function deletePinImage(pinId, targetUrl) {
   🚽 ArcGIS Utility Login
 	  </button>
       
+	<!-- User Email & Role Display -->
+  <div id="user-auth-status" style="padding: 4px 0 12px 0; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
+    Signed in as:<br>
+    <strong id="user-email-display" style="color: #1e293b; font-size: 13px; display: block; margin-top: 2px;"></strong>
+    <div style="margin-top: 6px;">
+      <span id="user-role-badge" style="display: inline-block; padding: 2px 6px; background: #e2e8f0; color: #334155; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase;">Loading role...</span>
+    </div>
+  </div>
+	  
       <button type="button" onclick="window.closeAccountMenuModal(); logoutUser();" style="width: 100%; padding: 10px; margin-bottom: 16px; background: #fef2f2; border: 1px solid #dc2626; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #dc2626;">
         🚪 Log Out of Firebase
       </button>
@@ -3131,5 +3345,24 @@ async function deletePinImage(pinId, targetUrl) {
       <div id="lightbox-thumbnails" style="display: flex; gap: 6px; overflow-x: auto; max-width: 100%; padding: 4px;"></div>
     </div>
   </div>
+  
+  <!-- Standalone Audit Trail Modal -->
+<div id="audit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+  <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 450px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px;">
+      <h3 id="audit-modal-title" style="margin: 0; font-size: 16px; color: #1e293b;">Audit Trail</h3>
+      <button type="button" onclick="closeAuditModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">✕</button>
+    </div>
+    
+    <div id="audit-modal-body" style="overflow-y: auto; flex: 1; padding-right: 4px; font-size: 13px; color: #334155;">
+      <!-- Populated dynamically -->
+    </div>
+    
+    <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 10px; text-align: right;">
+      <button type="button" onclick="closeAuditModal()" style="padding: 6px 12px; background: #64748b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Close</button>
+    </div>
+  </div>
+</div>
+  
 </body>
 </html>
