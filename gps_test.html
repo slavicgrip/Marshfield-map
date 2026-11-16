@@ -1972,6 +1972,21 @@ window.openEditModal = function(id) {
       if (descField) descField.value = pinData.description || pinData.text || pinData.note || "";
       if (colorField) colorField.value = pinData.color || "purple";
 	  
+	  if (colorField) {
+  colorField.value = pinData.color || "purple";
+  if (pinData.color === "pulsing_alert" && !isSuperAdmin) {
+    colorField.disabled = true;
+    colorField.style.backgroundColor = "#f1f5f9";
+    colorField.style.cursor = "not-allowed";
+    colorField.title = "Only Super Admins can change Urgent Alert status.";
+  } else {
+    colorField.disabled = false;
+    colorField.style.backgroundColor = "#ffffff";
+    colorField.style.cursor = "pointer";
+    colorField.title = "";
+  }
+}
+	  
 	  if (descField) {
         const existingDesc = pinData.description || pinData.text || pinData.note || "";
         descField.value = existingDesc;
