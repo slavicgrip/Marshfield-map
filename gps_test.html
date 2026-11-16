@@ -636,6 +636,14 @@ firebase.auth().onAuthStateChanged(async (user) => {
         roleBadge.style.color = '#475569';
       }
     }
+
+    // Show or hide super_admin-only pin options while `role` is in scope
+    const isSuperAdmin = (role === 'super_admin');
+    document.querySelectorAll('.super-admin-only-option').forEach(opt => {
+      opt.style.display = isSuperAdmin ? '' : 'none';
+      opt.disabled = !isSuperAdmin;
+    });
+
   } else {
     if (emailDisplay) {
       emailDisplay.textContent = "";
@@ -644,16 +652,13 @@ firebase.auth().onAuthStateChanged(async (user) => {
       roleBadge.textContent = "";
     }
     currentUserProfile = null;
+
+    // Hide and disable super_admin-only pin options when logged out
+    document.querySelectorAll('.super-admin-only-option').forEach(opt => {
+      opt.style.display = 'none';
+      opt.disabled = true;
+    });
   }
-});
-
-// Show or hide super_admin-only pin options
-const userRole = currentUserProfile?.Role || currentUserProfile?.role || 'User';
-const isSuperAdmin = (userRole === 'super_admin');
-
-document.querySelectorAll('.super-admin-only-option').forEach(opt => {
-  opt.style.display = isSuperAdmin ? '' : 'none';
-  opt.disabled = !isSuperAdmin;
 });
 
     const MARSHFIELD_CENTER = [44.6688, -90.1718];
@@ -2004,7 +2009,7 @@ window.openEditModal = function(id) {
     };
 	
 	const editColorSelect = document.getElementById("edit-color");
-    const userRole = currentUserProfile?.Role || currentUserProfile?.role || "User";
+    const userRole = currentUserProfile?.role || currentUserProfile?.userRole || "User";
 
     // Block non-super_admins from newly assigning pulsing_alert (allow if already locked as one)
     if (color === "pulsing_alert" && userRole !== "super_admin" && (!editColorSelect || !editColorSelect.disabled)) {
