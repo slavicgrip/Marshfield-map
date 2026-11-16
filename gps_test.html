@@ -1455,6 +1455,40 @@ window.addPinCommentFromModal = async function() {
     });
 
     inputEl.value = ""; // Clear input box
+	
+	// Post a new comment directly from the Comments Modal (works outside geofence)
+window.addPinCommentFromCommentsModal = async function(pinId) {
+  const inputEl = document.getElementById("comments-modal-new-input");
+  if (!pinId || !inputEl) return;
+
+  const text = inputEl.value.trim();
+  if (!text) {
+    alert("Please enter comment text before posting.");
+    return;
+  }
+
+  const userEmail = currentUser && currentUser.email ? currentUser.email : "guest@local";
+
+  const newComment = {
+    userEmail: userEmail,
+    text: text,
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    const docRef = db.collection("marshfield_pins").doc(pinId);
+
+    const activityEntry = {
+      userEmail: userEmail,
+      action: `Added a comment: "${text.substring(0, 30)}..."`,
+      timestamp: new Date().toISOString()
+    };
+
+    await docRef.update({
+      comments: firebase.firestore.FieldValue.arrayUnion(newComment),
+      activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
     
     // Refresh the modal view to show the new comment immediately
     window.openEditModal(pinId);
@@ -1522,6 +1556,27 @@ window.openCommentsModal = async function(pinId) {
           </div>
         `);
       });
+    }
+	
+	// 3. Add a quick-comment input box directly inside the Comments Modal
+    if (currentUser) {
+      htmlParts.push(`
+        <div style="display: flex; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #cbd5e1;">
+          <input 
+            type="text" 
+            id="comments-modal-new-input" 
+            placeholder="Write a comment..." 
+            style="flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;"
+            onkeydown="if (event.key === 'Enter') addPinCommentFromCommentsModal('${pinId}')"
+          >
+          <button 
+            type="button" 
+            onclick="addPinCommentFromCommentsModal('${pinId}')" 
+            style="padding: 8px 14px; background: #2563eb; color: #ffffff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+            Post
+          </button>
+        </div>
+      `);
     }
 
     bodyEl.innerHTML = htmlParts.join('');
