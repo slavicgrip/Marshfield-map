@@ -1418,7 +1418,7 @@ function buildPopupContent(data, pinId, canEditPin) {
   `;
 }
 
-// Post a new comment to the pin's comment array
+// Post a new comment to the pin's comment array (from Edit Modal)
 window.addPinCommentFromModal = async function() {
   const pinId = document.getElementById("edit-pin-id").value;
   const inputEl = document.getElementById("new-comment-input");
@@ -1455,8 +1455,15 @@ window.addPinCommentFromModal = async function() {
     });
 
     inputEl.value = ""; // Clear input box
-	
-	// Post a new comment directly from the Comments Modal (works outside geofence)
+    
+    // Refresh the Edit Modal view to show the new comment immediately
+    window.openEditModal(pinId);
+  } catch (err) {
+    alert("Failed to post comment: " + err.message);
+  }
+};
+
+// Post a new comment directly from the Comments Modal (works outside geofence)
 window.addPinCommentFromCommentsModal = async function(pinId) {
   const inputEl = document.getElementById("comments-modal-new-input");
   if (!pinId || !inputEl) return;
@@ -1489,9 +1496,9 @@ window.addPinCommentFromCommentsModal = async function(pinId) {
       activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    
-    // Refresh the modal view to show the new comment immediately
-    window.openEditModal(pinId);
+
+    // Refresh the Comments Modal view to show the new comment immediately
+    window.openCommentsModal(pinId);
   } catch (err) {
     alert("Failed to post comment: " + err.message);
   }
