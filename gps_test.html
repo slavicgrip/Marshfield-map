@@ -2027,8 +2027,8 @@ window.openEditModal = function(id) {
             const username = comment.userEmail ? comment.userEmail.split('@')[0] : 'Unknown';
             
             const deleteBtn = isSuperAdmin 
-          ? `<button type="button" onclick="deletePinComment('${pinId}', '${comment.timestamp}', true)" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
-          : '';
+              ? `<button type="button" onclick="deletePinComment('${id}', '${comment.timestamp}')" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
+              : '';
 
             return `
               <div style="padding: 6px 0; border-bottom: 1px solid #e2e8f0; position: relative;">
