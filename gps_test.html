@@ -47,6 +47,25 @@
 
   <style>
   
+  	  .photo-direction-arrow {
+  background: transparent;
+  border: none;
+}
+.photo-direction-arrow div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #2563eb;
+  color: white;
+  border: 2px solid white;
+  border-radius: 50%;
+  font-size: 12px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  transition: transform 0.2s ease;
+}
+  
  .alert-beacon-wrapper {
   position: relative;
   width: 32px;
@@ -1737,25 +1756,6 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
       var imageList = data.images || data.imageUrls || data.photos || [];
       var imageCount = Array.isArray(imageList) ? imageList.length : 0;
       var tooltipHtml = `<strong>${pinName}</strong><br>${imageCount} photo(s)`;
-	  
-	  .photo-direction-arrow {
-  background: transparent;
-  border: none;
-}
-.photo-direction-arrow div {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: #2563eb;
-  color: white;
-  border: 2px solid white;
-  border-radius: 50%;
-  font-size: 12px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-  transition: transform 0.2s ease;
-}
 
 // Clear out any old photo directional markers for this pin if updating
 if (entry && entry.photoMarkers) {
