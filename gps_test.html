@@ -2697,18 +2697,18 @@ let currentLightboxImages = [];
 
       const updatePayload = {
         images: combinedImages,
-        imageUrls: combinedImages.map(img => img.url), // Maintained for backwards compatibility
-        // attribution: getPinAttribution(), disabled so original pin creator name and date sticks
+        imageUrls: combinedImages.map(img => img.url),  // Maintained for backwards compatibility
+		 // attribution: getPinAttribution(), disabled so original pin creator name and date sticks
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         lat: lats.reduce((sum, v) => sum + v, 0) / lats.length, // Average center point
         lng: lngs.reduce((sum, v) => sum + v, 0) / lngs.length,
         polygonCoords: [
-          { lat: maxLat + padding, lng: minLng - padding }, // Top-Left
-          { lat: maxLat + padding, lng: maxLng + padding }, // Top-Right
-          { lat: minLat - padding, lng: maxLng + padding }, // Bottom-Right
-          { lat: minLat - padding, lng: minLng - padding }  // Bottom-Left
+          { lat: maxLat + padding, lng: minLng - padding },
+          { lat: maxLat + padding, lng: maxLng + padding },
+          { lat: minLat - padding, lng: maxLng + padding },
+          { lat: minLat - padding, lng: minLng - padding }
         ],
-		activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry) // 👈 Appends to history
+        activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry) // 👈 Appends to history
       };
 
       await docRef.update(updatePayload);
