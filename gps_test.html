@@ -2570,6 +2570,9 @@ let currentLightboxImages = [];
 	window.uploadPhotos = async function(pinId, files) {
   if (!files || files.length === 0) return;
 
+  window.uploadPhotos = async function(pinId, files) {
+  if (!files || files.length === 0) return;
+
   const fileArray = Array.from(files).filter(f => f.size <= 10 * 1024 * 1024);
   if (fileArray.length === 0) {
     alert("Selected file(s) exceed the 10MB limit.");
@@ -2607,7 +2610,8 @@ let currentLightboxImages = [];
       existingImages = existingData.imageUrls.map(url => ({
         url: url,
         lat: existingData.lat || 44.6685,
-        lng: existingData.lng || -90.1717
+        lng: existingData.lng || -90.1717,
+        direction: null
       }));
     }
 
@@ -2654,7 +2658,7 @@ let currentLightboxImages = [];
 
       completedBytesBeforeCurrent += file.size;
 
-      // 2. Build structured image objects using EXIF GPS or fallback to existing pin center
+      // 2. Build structured image objects using EXIF GPS and direction
       if (gps) {
         newImageObjects.push({ 
           url: downloadUrl, 
@@ -2670,6 +2674,7 @@ let currentLightboxImages = [];
           direction: null 
         });
       }
+    }
 
     if (statusText) statusText.innerText = "Saving to map...";
     if (etaText) etaText.innerText = "";
@@ -2688,7 +2693,6 @@ let currentLightboxImages = [];
 
       const padding = 0.00005; // ~5 meter buffer
 	  
-	  // 🛡️ Create the audit log entry for photo uploads
       const activityEntry = {
         userEmail: currentUser ? currentUser.email : "guest@local",
         action: `Uploaded ${fileArray.length} new photo(s)`,
@@ -2697,10 +2701,9 @@ let currentLightboxImages = [];
 
       const updatePayload = {
         images: combinedImages,
-        imageUrls: combinedImages.map(img => img.url),  // Maintained for backwards compatibility
-		 // attribution: getPinAttribution(), disabled so original pin creator name and date sticks
+        imageUrls: combinedImages.map(img => img.url),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        lat: lats.reduce((sum, v) => sum + v, 0) / lats.length, // Average center point
+        lat: lats.reduce((sum, v) => sum + v, 0) / lats.length,
         lng: lngs.reduce((sum, v) => sum + v, 0) / lngs.length,
         polygonCoords: [
           { lat: maxLat + padding, lng: minLng - padding },
@@ -2708,7 +2711,7 @@ let currentLightboxImages = [];
           { lat: minLat - padding, lng: maxLng + padding },
           { lat: minLat - padding, lng: minLng - padding }
         ],
-        activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry) // 👈 Appends to history
+        activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry)
       };
 
       await docRef.update(updatePayload);
