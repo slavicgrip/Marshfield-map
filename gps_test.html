@@ -1737,6 +1737,59 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
       var imageList = data.images || data.imageUrls || data.photos || [];
       var imageCount = Array.isArray(imageList) ? imageList.length : 0;
       var tooltipHtml = `<strong>${pinName}</strong><br>${imageCount} photo(s)`;
+	  
+	  .photo-direction-arrow {
+  background: transparent;
+  border: none;
+}
+.photo-direction-arrow div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #2563eb;
+  color: white;
+  border: 2px solid white;
+  border-radius: 50%;
+  font-size: 12px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  transition: transform 0.2s ease;
+}
+
+// Clear out any old photo directional markers for this pin if updating
+if (entry && entry.photoMarkers) {
+  entry.photoMarkers.forEach(m => map.removeLayer(m));
+}
+var photoMarkers = [];
+
+var images = data.images || [];
+images.forEach((img, idx) => {
+  if (img.lat && img.lng) {
+    var heading = img.direction != null ? img.direction : 0;
+
+    var arrowIcon = L.divIcon({
+      className: 'photo-direction-arrow',
+      html: `<div style="transform: rotate(${heading}deg);">⬆</div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+
+    var photoMarker = L.marker([img.lat, img.lng], { icon: arrowIcon });
+    photoMarker.bindPopup(`
+      <div style="text-align: center;">
+        <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;"><br>
+        <span style="font-size: 11px; color: #555;">Heading: ${img.direction != null ? Math.round(img.direction) + '°' : 'Not recorded'}</span>
+      </div>
+    `);
+
+    photoMarker.addTo(map);
+    photoMarkers.push(photoMarker);
+  }
+});
+
+// Store photoMarkers in your entry object so they clean up/update properly
+entry = { marker: marker, polygon: polygonLayer, photoMarkers: photoMarkers, data: data };
 
       if (!entry) {
         var marker = L.marker([pinLat, pinLng], { 
@@ -2603,15 +2656,20 @@ let currentLightboxImages = [];
 
       // 2. Build structured image objects using EXIF GPS or fallback to existing pin center
       if (gps) {
-        newImageObjects.push({ url: downloadUrl, lat: gps.lat, lng: gps.lng });
+        newImageObjects.push({ 
+          url: downloadUrl, 
+          lat: gps.lat, 
+          lng: gps.lng, 
+          direction: gps.direction 
+        });
       } else {
         newImageObjects.push({ 
           url: downloadUrl, 
           lat: existingData.lat || 44.6685, 
-          lng: existingData.lng || -90.1717 
+          lng: existingData.lng || -90.1717,
+          direction: null 
         });
       }
-    }
 
     if (statusText) statusText.innerText = "Saving to map...";
     if (etaText) etaText.innerText = "";
@@ -2764,6 +2822,7 @@ async function deletePinImage(pinId, targetUrl) {
           const latRef = EXIF.getTag(this, "GPSLatitudeRef");
           const lngTag = EXIF.getTag(this, "GPSLongitude");
           const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
+          const directionTag = EXIF.getTag(this, "GPSImgDirection"); // 🧭 Camera heading (0-360°)
 
           if (!latTag || !lngTag) {
             resolve(null);
@@ -2778,7 +2837,8 @@ async function deletePinImage(pinId, targetUrl) {
 
           resolve({
             lat: convertToDecimal(latTag, latRef),
-            lng: convertToDecimal(lngTag, lngRef)
+            lng: convertToDecimal(lngTag, lngRef),
+            direction: directionTag != null ? Number(directionTag) : null
           });
         });
       });
