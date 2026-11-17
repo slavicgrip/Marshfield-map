@@ -1735,7 +1735,7 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
       console.error("Firestore sync error:", error);
     });
 
-    function renderPinMarker(id, data) {
+   function renderPinMarker(id, data) {
       var currentUser = auth.currentUser;
       var isOwner = currentUser && data.userId === currentUser.uid;
       var isSuperAdmin = typeof currentUserProfile !== 'undefined' && currentUserProfile && currentUserProfile.role === "super_admin";
@@ -1757,40 +1757,6 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
       var imageCount = Array.isArray(imageList) ? imageList.length : 0;
       var tooltipHtml = `<strong>${pinName}</strong><br>${imageCount} photo(s)`;
 
-// Clear out any old photo directional markers for this pin if updating
-if (entry && entry.photoMarkers) {
-  entry.photoMarkers.forEach(m => map.removeLayer(m));
-}
-var photoMarkers = [];
-
-var images = data.images || [];
-images.forEach((img, idx) => {
-  if (img.lat && img.lng) {
-    var heading = img.direction != null ? img.direction : 0;
-
-    var arrowIcon = L.divIcon({
-      className: 'photo-direction-arrow',
-      html: `<div style="transform: rotate(${heading}deg);">⬆</div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
-    });
-
-    var photoMarker = L.marker([img.lat, img.lng], { icon: arrowIcon });
-    photoMarker.bindPopup(`
-      <div style="text-align: center;">
-        <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;"><br>
-        <span style="font-size: 11px; color: #555;">Heading: ${img.direction != null ? Math.round(img.direction) + '°' : 'Not recorded'}</span>
-      </div>
-    `);
-
-    photoMarker.addTo(map);
-    photoMarkers.push(photoMarker);
-  }
-});
-
-// Store photoMarkers in your entry object so they clean up/update properly
-entry = { marker: marker, polygon: polygonLayer, photoMarkers: photoMarkers, data: data };
-
       if (!entry) {
         var marker = L.marker([pinLat, pinLng], { 
           icon: chosenIcon,
@@ -1802,13 +1768,8 @@ entry = { marker: marker, polygon: polygonLayer, photoMarkers: photoMarkers, dat
           offset: [0, -25]
         });
 
-        marker.on('mouseover', function(e) {
-          this.openTooltip();
-        });
-        
-        marker.on('mouseout', function(e) {
-          this.closeTooltip();
-        });
+        marker.on('mouseover', function(e) { this.openTooltip(); });
+        marker.on('mouseout', function(e) { this.closeTooltip(); });
 
         marker.on('dragstart', function() {
           markerClusterGroup.removeLayer(marker);
@@ -1850,50 +1811,57 @@ entry = { marker: marker, polygon: polygonLayer, photoMarkers: photoMarkers, dat
             interactive: true
           }).addTo(map);
 
-          polygonLayer.bindTooltip(tooltipHtml, {
-            direction: 'top',
-            sticky: true
-          });
-
-          polygonLayer.on('mouseover', function(e) {
-            e.target.setStyle({ fillOpacity: 0.6, weight: 3 });
-          });
-          polygonLayer.on('mouseout', function(e) {
-            e.target.setStyle({ fillOpacity: 0.3, weight: 2 });
-          });
-          polygonLayer.on('click', function(e) { 
-            L.DomEvent.stopPropagation(e); 
-            marker.openPopup(); 
-          });
+          polygonLayer.bindTooltip(tooltipHtml, { direction: 'top', sticky: true });
+          polygonLayer.on('mouseover', function(e) { e.target.setStyle({ fillOpacity: 0.6, weight: 3 }); });
+          polygonLayer.on('mouseout', function(e) { e.target.setStyle({ fillOpacity: 0.3, weight: 2 }); });
+          polygonLayer.on('click', function(e) { L.DomEvent.stopPropagation(e); marker.openPopup(); });
         }
 
-        entry = { marker: marker, polygon: polygonLayer, data: data };
+        // Render Photo Direction Arrows
+        var photoMarkers = [];
+        var images = data.images || [];
+        images.forEach((img) => {
+          if (img.lat && img.lng) {
+            var heading = img.direction != null ? img.direction : 0;
+            var arrowIcon = L.divIcon({
+              className: 'photo-direction-arrow',
+              html: `<div style="transform: rotate(${heading}deg);">⬆</div>`,
+              iconSize: [24, 24],
+              iconAnchor: [12, 12]
+            });
+            var photoMarker = L.marker([img.lat, img.lng], { icon: arrowIcon });
+            photoMarker.bindPopup(`
+              <div style="text-align: center;">
+                <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;"><br>
+                <span style="font-size: 11px; color: #555;">Heading: ${img.direction != null ? Math.round(img.direction) + '°' : 'Not recorded'}</span>
+              </div>
+            `);
+            photoMarker.addTo(map);
+            photoMarkers.push(photoMarker);
+          }
+        });
+
+        entry = { marker: marker, polygon: polygonLayer, photoMarkers: photoMarkers, data: data };
         activeMarkers[id] = entry;
         markerClusterGroup.addLayer(marker);
 
       } else {
-        markerClusterGroup.removeLayer(entry.marker);
+        // Clean up old photo markers if updating
+        if (entry.photoMarkers) {
+          entry.photoMarkers.forEach(m => map.removeLayer(m));
+        }
 
+        markerClusterGroup.removeLayer(entry.marker);
         entry.data = data;
         entry.marker.setIcon(chosenIcon);
         entry.marker.setLatLng([pinLat, pinLng]);
 
-        if (entry.marker.getTooltip()) {
-          entry.marker.unbindTooltip();
-        }
-        
-        entry.marker.bindTooltip(tooltipHtml, {
-          direction: 'top',
-          offset: [0, -25]
-        });
+        if (entry.marker.getTooltip()) entry.marker.unbindTooltip();
+        entry.marker.bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -25] });
 
         entry.marker.off('mouseover mouseout');
-        entry.marker.on('mouseover', function(e) {
-          this.openTooltip();
-        });
-        entry.marker.on('mouseout', function(e) {
-          this.closeTooltip();
-        });
+        entry.marker.on('mouseover', function(e) { this.openTooltip(); });
+        entry.marker.on('mouseout', function(e) { this.closeTooltip(); });
 
         markerClusterGroup.addLayer(entry.marker);
 
@@ -1902,10 +1870,10 @@ entry = { marker: marker, polygon: polygonLayer, photoMarkers: photoMarkers, dat
           entry.polygon = null;
         }
         
+        var polygonLayer = null;
         if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
           var leafletCoords = data.polygonCoords.map(pt => Array.isArray(pt) ? pt : [pt.lat, pt.lng]);
-
-          var polygonLayer = L.polygon(leafletCoords, {
+          polygonLayer = L.polygon(leafletCoords, {
             color: colorHexMap[pinColor] || '#8e44ad',
             fillColor: colorHexMap[pinColor] || '#9b59b6',
             fillOpacity: 0.3,
@@ -1913,39 +1881,53 @@ entry = { marker: marker, polygon: polygonLayer, photoMarkers: photoMarkers, dat
             interactive: true
           }).addTo(map);
 
-          polygonLayer.bindTooltip(tooltipHtml, {
-            direction: 'top',
-            sticky: true
-          });
-
-          polygonLayer.on('mouseover', function(e) {
-            e.target.setStyle({ fillOpacity: 0.6, weight: 3 });
-          });
-          polygonLayer.on('mouseout', function(e) {
-            e.target.setStyle({ fillOpacity: 0.3, weight: 2 });
-          });
-          polygonLayer.on('click', function(e) { 
-            L.DomEvent.stopPropagation(e); 
-            entry.marker.openPopup(); 
-          });
+          polygonLayer.bindTooltip(tooltipHtml, { direction: 'top', sticky: true });
+          polygonLayer.on('mouseover', function(e) { e.target.setStyle({ fillOpacity: 0.6, weight: 3 }); });
+          polygonLayer.on('mouseout', function(e) { e.target.setStyle({ fillOpacity: 0.3, weight: 2 }); });
+          polygonLayer.on('click', function(e) { L.DomEvent.stopPropagation(e); entry.marker.openPopup(); });
 
           entry.polygon = polygonLayer;
         }
+
+        // Re-render Photo Direction Arrows for existing marker update
+        var photoMarkers = [];
+        var images = data.images || [];
+        images.forEach((img) => {
+          if (img.lat && img.lng) {
+            var heading = img.direction != null ? img.direction : 0;
+            var arrowIcon = L.divIcon({
+              className: 'photo-direction-arrow',
+              html: `<div style="transform: rotate(${heading}deg);">⬆</div>`,
+              iconSize: [24, 24],
+              iconAnchor: [12, 12]
+            });
+            var photoMarker = L.marker([img.lat, img.lng], { icon: arrowIcon });
+            photoMarker.bindPopup(`
+              <div style="text-align: center;">
+                <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;"><br>
+                <span style="font-size: 11px; color: #555;">Heading: ${img.direction != null ? Math.round(img.direction) + '°' : 'Not recorded'}</span>
+              </div>
+            `);
+            photoMarker.addTo(map);
+            photoMarkers.push(photoMarker);
+          }
+        });
+        entry.photoMarkers = photoMarkers;
       }
 
       if (entry.marker.dragging) {
         isDraggable ? entry.marker.dragging.enable() : entry.marker.dragging.disable();
       }
 
-      var images = data.images || (data.imageUrls ? data.imageUrls.map(url => ({ url: url })) : (data.imageUrl ? [{ url: data.imageUrl }] : []));
+      var imagesListForGallery = data.images || (data.imageUrls ? data.imageUrls.map(url => ({ url: url })) : (data.imageUrl ? [{ url: data.imageUrl }] : []));
       var imageGalleryHtml = "";
       
-      if (images.length > 0) {
-        var urlStrings = images.map(img => img.url);
+      if (imagesListForGallery.length > 0) {
+        var urlStrings = imagesListForGallery.map(img => img.url);
         var encodedImages = encodeURIComponent(JSON.stringify(urlStrings));
 
         imageGalleryHtml = '<div class="image-gallery">' +  
-          images.map(function(img, idx) {
+          imagesListForGallery.map(function(img, idx) {
             var deleteBtn = canEditPin ? '<button type="button" class="delete-img-btn" onclick="deletePinImage(\'' + id + '\', \'' + img.url + '\')" title="Remove photo">✕</button>' : '';
             return '<div class="image-thumb-container"><img src="' + img.url + '" alt="photo" onclick="openLightbox(\'' + encodedImages + '\', ' + idx + ')" style="cursor: pointer;">' + deleteBtn + '</div>';
           }).join('') + '</div>';
@@ -1953,7 +1935,6 @@ entry = { marker: marker, polygon: polygonLayer, photoMarkers: photoMarkers, dat
 
       var editDeleteBtns = canEditPin ? '<div class="pin-actions"><button onclick="openEditModal(\'' + id + '\')">Edit Pin</button><button onclick="deletePin(\'' + id + '\')">Delete Pin</button></div>' : '';
       
-      var dataWithDesc = Object.assign({}, data, { text: (data.description || data.note || '') + imageGalleryHtml + editDeleteBtns });
       entry.marker.bindPopup(buildPopupContent(data, id, canEditPin));
 
       var checkedColors = Array.from(document.querySelectorAll('.filter-checkbox:checked')).map(function(cb) { return cb.value; });
@@ -2568,9 +2549,6 @@ let currentLightboxImages = [];
     };
 	
 	window.uploadPhotos = async function(pinId, files) {
-  if (!files || files.length === 0) return;
-
-  window.uploadPhotos = async function(pinId, files) {
   if (!files || files.length === 0) return;
 
   const fileArray = Array.from(files).filter(f => f.size <= 10 * 1024 * 1024);
