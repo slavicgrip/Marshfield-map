@@ -681,6 +681,16 @@
         if (adminBtn) adminBtn.style.display = isSuperAdmin ? "block" : "none";
 
         updateZonesPanelUI();
+		// ➔ AUTO-JUMP TO USER'S FIRST SAVED GEOFENCE ON LOGIN
+        const primaryZone = currentUserProfile?.allowedGeofences?.[0];
+        if (primaryZone) {
+          const loc = primaryZone.location || primaryZone.geopoint || primaryZone.coords || primaryZone.point || primaryZone;
+          const lat = loc.latitude ?? loc.lat;
+          const lng = loc.longitude ?? loc.lng;
+          if (lat != null && lng != null) {
+            map.flyTo([lat, lng], 15, { duration: 1.5 });
+          }
+        }
       } else {
         if (authBtn) {
           authBtn.innerText = "Login";
@@ -3212,12 +3222,11 @@
               <div style="font-weight: 600; font-size: 13px; color: #1e293b; overflow: hidden; text-overflow: ellipsis;">
                 ${escapeHtml(displayEmail)}
               </div>
-             <select onchange="updateExistingUserRole('${u.uid}', this.value)" style="padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f8fafc; cursor: pointer;">
-  <option value="Tech" ${role === 'Tech' ? 'selected' : ''}>Tech</option>
-  <option value="Supervisor" ${role === 'Supervisor' ? 'selected' : ''}>Supervisor</option>
-  <option value="Owner" ${role === 'Owner' ? 'selected' : ''}>Owner</option>
-  <option value="super_admin" ${role === 'super_admin' ? 'selected' : ''}>Super Admin</option>
-</select>
+              <select onchange="updateExistingUserRole('${u.uid}', this.value)" style="padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f8fafc; cursor: pointer;">
+                <option value="User" ${role === 'User' ? 'selected' : ''}>Standard User</option>
+                <option value="admin" ${role === 'admin' ? 'selected' : ''}>Admin</option>
+                <option value="super_admin" ${role === 'super_admin' ? 'selected' : ''}>Super Admin</option>
+              </select>
             </div>
 
             <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
