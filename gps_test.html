@@ -1385,14 +1385,14 @@
         const urlStrings = images.map(img => img.url);
         const encodedImages = encodeURIComponent(JSON.stringify(urlStrings));
 
-        imageGalleryHtml = '<div class="image-gallery">' +  
+        imageGalleryHtml = `<div class="image-gallery">` +  
           images.map(function(img, idx) {
-            const deleteBtn = canEditPin ? '<button type="button" class="delete-img-btn" onclick="deletePinImage('' + pinId + '', '' + img.url + '')" title="Remove photo">✕</button>' : '';
-            return '<div class="image-thumb-container"><img src="' + img.url + '" alt="photo" onclick="openLightbox('' + encodedImages + '', ' + idx + ')" style="cursor: pointer;">' + deleteBtn + '</div>';
-          }).join('') + '</div>';
+            const deleteBtn = canEditPin ? `<button type="button" class="delete-img-btn" onclick="deletePinImage('${pinId}', '${img.url}')" title="Remove photo">✕</button>` : '';
+            return `<div class="image-thumb-container"><img src="${img.url}" alt="photo" onclick="openLightbox('${encodedImages}', ${idx})" style="cursor: pointer;">${deleteBtn}</div>`;
+          }).join('') + `</div>`;
       }
 
-      const editDeleteBtns = canEditPin ? '<div class="pin-actions"><button onclick="openEditModal('' + pinId + '')">Edit Pin</button><button onclick="deletePin('' + pinId + '')">Delete Pin</button></div>' : '';
+      const editDeleteBtns = canEditPin ? `<div class="pin-actions"><button onclick="openEditModal('${pinId}')">Edit Pin</button><button onclick="deletePin('${pinId}')">Delete Pin</button></div>` : '';
       const commentsCount = (data.comments || []).length;
       const commentBtnLabel = commentsCount > 0 ? `Comments (${commentsCount})` : `Comments`;
       
