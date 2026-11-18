@@ -954,11 +954,10 @@ const PHOTO_ZOOM_THRESHOLD = 16; // Level 16 = street/neighborhood level
     });
 
     // Initialize Map
-    var map = L.map('map', {
-      zoomControl: false,
-      maxZoom: 21,
-      layers: [osmLayer, wiParcelsLayer, addressLabelsLayer, streetLabelsLayer] 
-    }).setView(MARSHFIELD_CENTER, MARSHFIELD_ZOOM);
+    var map = L.map('map', { 
+  zoomControl: false, maxZoom: 21,
+  layers: [osmLayer, wiParcelsLayer, addressLabelsLayer, streetLabelsLayer] 
+}).setView(MARSHFIELD_CENTER, MARSHFIELD_ZOOM);
 
     map.on('moveend', fetchParcelsForCurrentView);
     map.on('layeradd', function(e) {
@@ -2633,6 +2632,7 @@ let currentLightboxImages = [];
       
       const downloadUrl = await new Promise((resolve, reject) => {
         const uploadTask = fileRef.put(file);
+		
 
         uploadTask.on(
           "state_changed",
