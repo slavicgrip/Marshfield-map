@@ -1818,7 +1818,12 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
         // Render Photo Blue Bubble Markers
         var photoMarkers = [];
         var images = data.images || [];
-        images.forEach((img) => {
+        
+        // Prepare encoded images array for the lightbox
+        var urlStrings = images.map(img => img.url);
+        var encodedImages = encodeURIComponent(JSON.stringify(urlStrings));
+
+        images.forEach((img, idx) => {
           if (img.lat && img.lng) {
             var bubbleIcon = L.divIcon({
               className: 'photo-bubble-icon',
@@ -1827,21 +1832,24 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
               iconAnchor: [7, 7]
             });
 
-            // Only show the heading line if GPSImgDirection was actually recorded
             var headingHtml = img.direction != null 
               ? `<br><span style="font-size: 11px; color: #555;">Heading: ${Math.round(img.direction)}°</span>` 
               : '';
 
             var photoMarker = L.marker([img.lat, img.lng], { icon: bubbleIcon });
+            
+            // Popup shows thumbnail; clicking it launches your zoomable lightbox
             photoMarker.bindPopup(`
               <div style="text-align: center;">
-                <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;">${headingHtml}
+                <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; cursor: pointer; margin-bottom: 4px;" onclick="openLightbox('${encodedImages}', ${idx})">${headingHtml}
               </div>
             `);
+
             photoMarker.addTo(map);
             photoMarkers.push(photoMarker);
           }
         });
+        entry.photoMarkers = photoMarkers;
 
         entry = { marker: marker, polygon: polygonLayer, photoMarkers: photoMarkers, data: data };
         activeMarkers[id] = entry;
@@ -1894,7 +1902,12 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
         // Re-render Photo Direction Arrows for existing marker update
        var photoMarkers = [];
         var images = data.images || [];
-        images.forEach((img) => {
+        
+        // Prepare encoded images array for the lightbox
+        var urlStrings = images.map(img => img.url);
+        var encodedImages = encodeURIComponent(JSON.stringify(urlStrings));
+
+        images.forEach((img, idx) => {
           if (img.lat && img.lng) {
             var bubbleIcon = L.divIcon({
               className: 'photo-bubble-icon',
@@ -1908,17 +1921,19 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
               : '';
 
             var photoMarker = L.marker([img.lat, img.lng], { icon: bubbleIcon });
+            
+            // Popup shows thumbnail; clicking it launches your zoomable lightbox
             photoMarker.bindPopup(`
               <div style="text-align: center;">
-                <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;">${headingHtml}
+                <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; cursor: pointer; margin-bottom: 4px;" onclick="openLightbox('${encodedImages}', ${idx})">${headingHtml}
               </div>
             `);
+
             photoMarker.addTo(map);
             photoMarkers.push(photoMarker);
           }
         });
         entry.photoMarkers = photoMarkers;
-      }
 
       if (entry.marker.dragging) {
         isDraggable ? entry.marker.dragging.enable() : entry.marker.dragging.disable();
