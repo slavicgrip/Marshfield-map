@@ -2114,6 +2114,19 @@
     };
 
     window.deletePin = async function(id) {
+      const entry = activeMarkers[id];
+      if (entry && entry.data) {
+        const pinLat = entry.data.lat ?? entry.data.latitude;
+        const pinLng = entry.data.lng ?? entry.data.longitude;
+        
+        if (pinLat != null && pinLng != null && typeof isWithinAllowedGeofences === 'function') {
+          if (!isWithinAllowedGeofences(pinLat, pinLng)) {
+            alert("Action blocked: This pin is outside your allowed editing geofence.");
+            return;
+          }
+        }
+      }
+
       if (!confirm("Are you sure you want to delete this pin?")) return;
       try {
         await db.collection("marshfield_pins").doc(id).delete();
