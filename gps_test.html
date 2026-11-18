@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Marshfield Area Pin Placement Editing Database [M.A.P.P.E.D.]</title>
+  <title>B.U.M.P. [B&M Utility Mapping Platform]</title>
   
   <link rel="icon" type="image/png" href="globe.png"> 
 
@@ -387,8 +387,8 @@
     .dot-green { background-color: #27ae60; }
     .dot-pink { background-color: #e91e63; }
     .dot-yellow { background-color: #f39c12; }
-	.dot-copper { background-color: #b87333; }
-	.dot-pulsing_alert {
+    .dot-copper { background-color: #b87333; }
+    .dot-pulsing_alert {
       background-color: #dc2626;
       border-radius: 2px;
       transform: rotate(45deg);
@@ -501,21 +501,35 @@
       if (modal) modal.style.display = "none";
     };
 	
-	function canViewAuditTrail() {
-  if (!currentUserProfile) return false;
-  // Checks if the user is explicitly flagged, or is a super admin
-  return currentUserProfile.canViewAudit === true || currentUserProfile.role === "super_admin";
-}
-	
+    function canViewAuditTrail() {
+      if (!currentUserProfile) return false;
+      return currentUserProfile.canViewAudit === true || currentUserProfile.role === "super_admin";
+    }
+	  
+    window.openUserManagementModal = async function() {
+      if (!currentUserProfile || currentUserProfile.role !== 'super_admin') {
+        alert("Permission denied: Super Admin access required.");
+        return;
+      }
+      document.getElementById("user-management-modal").style.display = "flex";
+      await loadAllUsersForAdmin();
+    };
+
+    window.closeUserManagementModal = function() {
+      document.getElementById("user-management-modal").style.display = "none";
+      if (previewGeofenceLayer) {
+        map.removeLayer(previewGeofenceLayer);
+        previewGeofenceLayer = null;
+      }
+    };
   </script>
 </head>
 <body>
 
   <header>
     <div class="header-left">
-      <div class="header-title">M.A.P.P.E.D.</div>
+      <div class="header-title">B.U.M.P.</div>
       <div id="search-container">
-        <!-- Hidden decoy inputs to capture Chrome's autofill engine without affecting search -->
         <input type="text" name="prevent_autofill_user" style="display:none !important;" tabindex="-1" aria-hidden="true" autocomplete="username">
         <input type="password" name="prevent_autofill_pass" style="display:none !important;" tabindex="-1" aria-hidden="true" autocomplete="current-password">
 
@@ -561,9 +575,8 @@
       <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="green" checked onchange="filterMarkers()"><span class="legend-dot dot-green"></span> Storm/Sewer</label>
       <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="pink" checked onchange="filterMarkers()"><span class="legend-dot dot-pink"></span> Fiber Optic</label>
       <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="yellow" checked onchange="filterMarkers()"><span class="legend-dot dot-yellow"></span> WE Energies</label>
-	  <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="copper" checked onchange="filterMarkers()"><span class="legend-dot dot-copper"></span> Telecom/Copper</label>
-	  <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="pulsing_alert" checked onchange="filterMarkers()"><span class="legend-dot dot-pulsing_alert"></span><span>Urgent Alert</span>
-</label>
+      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="copper" checked onchange="filterMarkers()"><span class="legend-dot dot-copper"></span> Telecom/Copper</label>
+      <label class="legend-item"><input type="checkbox" class="filter-checkbox" value="pulsing_alert" checked onchange="filterMarkers()"><span class="legend-dot dot-pulsing_alert"></span><span>Urgent Alert</span></label>
     </div>
   </div>
   
@@ -581,7 +594,6 @@
   </div>
 
   <script>
-    // SINGLE DECLARED INSTANCE
     let secureEsriLayers = [];
 
     const myBaseServices = [
@@ -591,7 +603,6 @@
       { name: "Traffic & WW", url: "https://services2.arcgis.com/SZYqn7iYnvAZ1Q4U/arcgis/rest/services/Traffic_Controls_and_WW_Utilities/MapServer" }
     ];
 
-    // FIREBASE INITIALIZATION CHECK
     if (!firebase.apps.length) {
       firebase.initializeApp({
         apiKey: "AIzaSyBrAnUfutqF33QJUKwRHXZHk9JRPHDGEr8",
@@ -611,76 +622,85 @@
     let activeMarkers = {}; 
     let searchResultMarker = null;
     let geofenceLayerGroup = L.layerGroup();
+
+    function showAppModal(title, message) {
+      alert(title + ": " + message);
+    }
 	
-	// 🔑 Global Auth State Listener
-firebase.auth().onAuthStateChanged(async (user) => {
-  currentUser = user; // Keeps your global currentUser variable updated
-  
-  const emailDisplay = document.getElementById("user-email-display");
-  const roleBadge = document.getElementById("user-role-badge");
-  
-  if (user) {
-    if (emailDisplay) {
-      emailDisplay.textContent = user.email || "Authenticated User";
-    }
-    
-    // Determine the user's role
-    let role = (currentUserProfile && currentUserProfile.role) ? currentUserProfile.role : null;
-    
-    if (!role) {
-      try {
-        const userDoc = await db.collection("users").doc(user.uid).get();
-        if (userDoc.exists) {
-          currentUserProfile = userDoc.data();
-          role = currentUserProfile.role || currentUserProfile.userRole || "User";
-        } else {
-          role = "User";
+    firebase.auth().onAuthStateChanged(async (user) => {
+      currentUser = user;
+      
+      const emailDisplay = document.getElementById("user-email-display");
+      const roleBadge = document.getElementById("user-role-badge");
+      const authBtn = document.getElementById("auth-btn");
+      
+      if (user) {
+        if (authBtn) {
+          authBtn.innerText = "Account";
+          authBtn.onclick = window.openAccountMenuModal;
         }
-      } catch (err) {
-        console.error("Error fetching user role:", err);
-        role = "User";
-      }
-    }
-    
-    // Update the role badge in the UI
-    if (roleBadge) {
-      roleBadge.textContent = role.replace('_', ' ').toUpperCase();
-      if (role === 'super_admin' || role === 'admin') {
-        roleBadge.style.background = '#dbeafe';
-        roleBadge.style.color = '#1e40af';
+        if (emailDisplay) {
+          emailDisplay.textContent = user.email || "Authenticated User";
+        }
+        
+        let role = (currentUserProfile && currentUserProfile.role) ? currentUserProfile.role : null;
+        
+        if (!role) {
+          try {
+            const userDoc = await db.collection("users").doc(user.uid).get();
+            if (userDoc.exists) {
+              currentUserProfile = userDoc.data();
+              role = currentUserProfile.role || currentUserProfile.userRole || "User";
+            } else {
+              role = "User";
+            }
+          } catch (err) {
+            console.error("Error fetching user role:", err);
+            role = "User";
+          }
+        }
+        
+        if (roleBadge) {
+          roleBadge.textContent = role.replace('_', ' ').toUpperCase();
+          if (role === 'super_admin' || role === 'admin') {
+            roleBadge.style.background = '#dbeafe';
+            roleBadge.style.color = '#1e40af';
+          } else {
+            roleBadge.style.background = '#f1f5f9';
+            roleBadge.style.color = '#475569';
+          }
+        }
+
+        const isSuperAdmin = (role === 'super_admin');
+        document.querySelectorAll('.super-admin-only-option').forEach(opt => {
+          opt.style.display = isSuperAdmin ? '' : 'none';
+          opt.disabled = !isSuperAdmin;
+        });
+
+        const adminBtn = document.getElementById("admin-manage-users-btn");
+        if (adminBtn) adminBtn.style.display = isSuperAdmin ? "block" : "none";
+
+        updateZonesPanelUI();
       } else {
-        roleBadge.style.background = '#f1f5f9';
-        roleBadge.style.color = '#475569';
+        if (authBtn) {
+          authBtn.innerText = "Login";
+          authBtn.onclick = window.openLoginChoiceModal;
+        }
+        if (emailDisplay) emailDisplay.textContent = "";
+        if (roleBadge) roleBadge.textContent = "";
+        currentUserProfile = null;
+
+        document.querySelectorAll('.super-admin-only-option').forEach(opt => {
+          opt.style.display = 'none';
+          opt.disabled = true;
+        });
+
+        const adminBtn = document.getElementById("admin-manage-users-btn");
+        if (adminBtn) adminBtn.style.display = "none";
+
+        updateZonesPanelUI();
       }
-    }
-
-    // Show or hide super_admin-only pin options while `role` is in scope
-    const isSuperAdmin = (role === 'super_admin');
-    document.querySelectorAll('.super-admin-only-option').forEach(opt => {
-      opt.style.display = isSuperAdmin ? '' : 'none';
-      opt.disabled = !isSuperAdmin;
     });
-
-  } else {
-    if (emailDisplay) {
-      emailDisplay.textContent = "";
-    }
-    if (roleBadge) {
-      roleBadge.textContent = "";
-    }
-    currentUserProfile = null;
-
-    // Hide and disable super_admin-only pin options when logged out
-    document.querySelectorAll('.super-admin-only-option').forEach(opt => {
-      opt.style.display = 'none';
-      opt.disabled = true;
-    });
-  }
-});
-
-
-    // Automatically check and update photo bubbles whenever the map zooms
-    // map.on('zoomend', updatePhotoMarkersVisibility);
 
     const MARSHFIELD_CENTER = [44.6688, -90.1718];
     const MARSHFIELD_ZOOM = 13;
@@ -698,14 +718,29 @@ firebase.auth().onAuthStateChanged(async (user) => {
       return R * c;
     }
 
+    function isPointInPolygon(lat, lng, polygonPoints) {
+      let inside = false;
+      for (let i = 0, j = polygonPoints.length - 1; i < polygonPoints.length; j = i++) {
+        const xi = polygonPoints[i].lat, yi = polygonPoints[i].lng;
+        const xj = polygonPoints[j].lat, yj = polygonPoints[j].lng;
+
+        const intersect = ((yi > lng) !== (yj > lng)) &&
+            (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
     function isWithinAllowedGeofences(lat, lng) {
       if (!currentUserProfile || !currentUserProfile.allowedGeofences || currentUserProfile.allowedGeofences.length === 0) {
         return true;
       }
-      
+
       const strictFences = currentUserProfile.allowedGeofences.filter(fence => {
+        const hasPolygon = Array.isArray(fence.polygon) && fence.polygon.length >= 3;
         const radius = fence.radiusMeters || fence.radius;
-        return radius != null && Number(radius) > 0;
+        const hasRadius = radius != null && Number(radius) > 0;
+        return hasPolygon || hasRadius;
       });
 
       if (strictFences.length === 0) {
@@ -713,29 +748,34 @@ firebase.auth().onAuthStateChanged(async (user) => {
       }
 
       for (const fence of strictFences) {
+        if (Array.isArray(fence.polygon) && fence.polygon.length >= 3) {
+          if (isPointInPolygon(lat, lng, fence.polygon)) {
+            return true;
+          }
+        }
+
         const loc = fence.location || fence.geopoint || fence.coords || fence.point || fence;
         const centerLat = loc.latitude ?? loc.lat;
         const centerLng = loc.longitude ?? loc.lng;
         const radius = fence.radiusMeters || fence.radius;
 
-        if (centerLat == null || centerLng == null) continue;
-
-        if (getDistanceMeters(centerLat, centerLng, lat, lng) <= radius) {
-          return true;
+        if (centerLat != null && centerLng != null && radius != null && Number(radius) > 0) {
+          if (getDistanceMeters(centerLat, centerLng, lat, lng) <= radius) {
+            return true;
+          }
         }
       }
 
       return false;
     }
 
-   const colorHexMap = {
+    const colorHexMap = {
       purple: '#8e44ad', blue: '#2980b9', red: '#c0392b',
       green: '#27ae60', pink: '#e91e63', yellow: '#f39c12',
       copper: '#b87333', pulsing_alert: '#dc2626'
     };
 
     function createSvgPinIcon(colorName) {
-      // Return distinct pulsing diamond beacon for urgent alerts
       if (colorName === 'pulsing_alert') {
         return L.divIcon({
           className: 'custom-svg-pin',
@@ -757,7 +797,6 @@ firebase.auth().onAuthStateChanged(async (user) => {
         });
       }
 
-      // Standard teardrop SVG pins
       const hex = colorHexMap[colorName] || colorHexMap.purple;
       const svg = `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="30" height="45">
@@ -785,26 +824,6 @@ firebase.auth().onAuthStateChanged(async (user) => {
       copper: createSvgPinIcon('copper'),
       pulsing_alert: createSvgPinIcon('pulsing_alert')
     };
-	
-	const pulsingAlertIcon = L.divIcon({
-  className: 'custom-div-icon',
-  html: `
-    <div class="alert-beacon-wrapper">
-      <div class="beacon-ring-1"></div>
-      <div class="beacon-ring-2"></div>
-      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- High-contrast outer diamond shape -->
-        <path d="M16 2L30 16L16 30L2 16L16 2Z" fill="#DC2626" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
-        <!-- Crisp white exclamation mark -->
-        <path d="M16 9.5V17.5" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round"/>
-        <circle cx="16" cy="22" r="1.6" fill="#FFFFFF"/>
-      </svg>
-    </div>
-  `,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],   // Anchors dead-center on the exact lat/lng
-  popupAnchor: [0, -16]   // Opens popup cleanly above the top point of the diamond
-});
 
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 21,
@@ -812,35 +831,16 @@ firebase.auth().onAuthStateChanged(async (user) => {
       attribution: '&copy; OpenStreetMap contributors'
     });
 
-    const satelliteLayer = L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    var leafOffLayer = L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 21,
       maxNativeZoom: 19,
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DigitalGlobe, GeoEye, Earthstar Geographics, and the GIS User Community'
+      attribution: 'Esri, DigitalGlobe, GeoEye, Earthstar Geographics, and the GIS User Community (Leaf-Off)'
     });
-	
-	// Wisconsin DNR Statewide Leaf-Off Imagery Layer (Dynamic & Auto-Reprojected)
-    // const leafOffLayer = L.esri.dynamicMapLayer({
-    //  url: 'https://dnrmaps.wi.gov/arcgis_image/rest/services/DW_Imagery/EN_Image_Basemap_Latest_Leaf_Off_Raster_Tile/MapServer',
-    //  opacity: 1.0,
-    //  format: 'png24',
-    //  maxZoom: 21,
-	//  maxNativeZoom: 15,
-    //  attribution: 'Tiles &copy; WI DNR / WROC Leaf-Off Aerial Photography'
-    // });
-	
- var leafOffLayer = L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-   // Alternatively, if connecting to the dedicated Esri Leaf-Off archive service:
-   maxZoom: 21,
-   maxNativeZoom: 19,
-   attribution: 'Esri, DigitalGlobe, GeoEye, Earthstar Geographics, and the GIS User Community (Leaf-Off)'
- });
 
-    // Dynamic View-Based Parcel Container Layer (Restricted by distance & zoom to prevent crashes)
     const wiParcelsLayer = L.layerGroup();
     let parcelFetchTimeout = null;
 
     function fetchParcelsForCurrentView() {
-      // 1. Zoom level check (must be at least zoom level 19)
       if (map.getZoom() < 19) {
         wiParcelsLayer.clearLayers();
         return;
@@ -850,13 +850,11 @@ firebase.auth().onAuthStateChanged(async (user) => {
       const southWest = bounds.getSouthWest();
       const northEast = bounds.getNorthEast();
 
-      // 2. Calculate physical distance across the visible map view (West to East)
       const viewWidthMeters = getDistanceMeters(
         southWest.lat, southWest.lng,
         southWest.lat, northEast.lng
       );
 
-      // 3. Restrict loading if the view width exceeds 1000 meters (~0.6 miles)
       const MAX_VIEW_DISTANCE_METERS = 1000;
 
       if (viewWidthMeters > MAX_VIEW_DISTANCE_METERS) {
@@ -917,7 +915,6 @@ firebase.auth().onAuthStateChanged(async (user) => {
       }, 400);
     }
 
-    // Public City of Marshfield Address & Street Name Annotations
     const addressLabelsLayer = L.esri.dynamicMapLayer({
       url: "https://mfldmaps.ci.marshfield.wi.us/server/rest/services/Public/Site_Address_Annotations/MapServer",
       opacity: 1.0,
@@ -931,16 +928,14 @@ firebase.auth().onAuthStateChanged(async (user) => {
       opacity: 1.0,
       format: "png24",
       zIndex: 1000,
-	  minZoom: 19
+      minZoom: 19
     });
 
-    // Initialize Map
     var map = L.map('map', { 
-  zoomControl: false, maxZoom: 21,
-  layers: [osmLayer, wiParcelsLayer, addressLabelsLayer, streetLabelsLayer] 
-}).setView(MARSHFIELD_CENTER, MARSHFIELD_ZOOM);
+      zoomControl: false, maxZoom: 21,
+      layers: [osmLayer, wiParcelsLayer, addressLabelsLayer, streetLabelsLayer] 
+    }).setView(MARSHFIELD_CENTER, MARSHFIELD_ZOOM);
 
-// ✅ Put updatePhotoMarkersVisibility and its listener here, after map is defined:
     const PHOTO_ZOOM_THRESHOLD = 16;
 
     function updatePhotoMarkersVisibility() {
@@ -962,7 +957,6 @@ firebase.auth().onAuthStateChanged(async (user) => {
     }
 
     map.on('zoomend', updatePhotoMarkersVisibility);
-
     map.on('moveend', fetchParcelsForCurrentView);
     map.on('layeradd', function(e) {
       if (e.layer === wiParcelsLayer) {
@@ -971,13 +965,11 @@ firebase.auth().onAuthStateChanged(async (user) => {
     });
 	
     const mapContainer = map.getContainer();
-
     mapContainer.addEventListener('mouseover', (e) => {
       if (e.target.closest('.leaflet-control-layers')) {
         map.scrollWheelZoom.disable();
       }
     });
-
     mapContainer.addEventListener('mouseout', (e) => {
       if (e.target.closest('.leaflet-control-layers')) {
         map.scrollWheelZoom.enable();
@@ -989,7 +981,6 @@ firebase.auth().onAuthStateChanged(async (user) => {
     const baseMaps = {
       "OpenStreetMap": osmLayer,
       "Satellite (Leaf-On)": leafOffLayer
-	  
     };
 
     const overlayMaps = {
@@ -1001,7 +992,6 @@ firebase.auth().onAuthStateChanged(async (user) => {
     L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
     L.control.zoom({ position: 'topright' }).addTo(map);
 	
-    // Safe, Built-in Distance Measurement Tool Control
     let isMeasuring = false;
     let measurePoints = [];
     let measureLine = null;
@@ -1088,7 +1078,6 @@ firebase.auth().onAuthStateChanged(async (user) => {
 	
     let arcgisLayerControl = null;
 
-// Custom Geolocate Control Button (Apple Maps Style Chevron)
     const GeolocateControl = L.Control.extend({
       options: { position: 'topright' },
       onAdd: function (map) {
@@ -1159,20 +1148,7 @@ firebase.auth().onAuthStateChanged(async (user) => {
             (error) => {
               button.style.backgroundColor = 'white';
               console.error("Geolocation error:", error);
-              switch(error.code) {
-                case error.PERMISSION_DENIED:
-                  alert("Location permission denied. Please enable location access in your browser settings.");
-                  break;
-                case error.POSITION_UNAVAILABLE:
-                  alert("Location information is currently unavailable.");
-                  break;
-                case error.TIMEOUT:
-                  alert("The request to get user location timed out.");
-                  break;
-                default:
-                  alert("An unknown error occurred while retrieving location.");
-                  break;
-              }
+              alert("Unable to retrieve your location.");
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
           );
@@ -1222,7 +1198,6 @@ firebase.auth().onAuthStateChanged(async (user) => {
     const markerClusterGroup = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40 });
     map.addLayer(markerClusterGroup);
 
-// 1. Define getMunicipalityName globally so any function can call it
     async function getMunicipalityName(lat, lng) {
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`, {
@@ -1230,12 +1205,9 @@ firebase.auth().onAuthStateChanged(async (user) => {
             'User-Agent': 'MarshfieldWebMappingApp/1.0'
           }
         });
-        
         if (!response.ok) throw new Error('Geocoding failed');
-        
         const data = await response.json();
         const address = data.address || {};
-        
         return address.city || address.town || address.village || address.municipality || address.county || 'Dropped Pin';
       } catch (error) {
         console.error("Reverse geocoding error:", error);
@@ -1243,8 +1215,8 @@ firebase.auth().onAuthStateChanged(async (user) => {
       }
     }
 
-  map.on('click', async function(e) {
-      if (isMeasuring || activeDrawingPinId !== null) return;
+    map.on('click', async function(e) {
+      if (isMeasuring || activeDrawingPinId !== null || isDrawingUserGeofence) return;
       if (!currentUser) return;
       if (!isWithinAllowedGeofences(e.latlng.lat, e.latlng.lng)) {
         showAppModal("Action Blocked", "This location is outside your allowed editing geofence.");
@@ -1254,12 +1226,10 @@ firebase.auth().onAuthStateChanged(async (user) => {
       const lat = e.latlng.lat;
       const lng = e.latlng.lng;
 
-      // 1. Fetch the dynamic municipality name
       const placeName = await getMunicipalityName(lat, lng);
       const defaultPinTitle = `${placeName} Pin`;
 
       try {
-        // 2. Create the new document reference in Firestore
         const newDocRef = db.collection("marshfield_pins").doc();
         const pinData = {
           lat: lat,
@@ -1269,16 +1239,13 @@ firebase.auth().onAuthStateChanged(async (user) => {
           color: "purple",
           imageUrls: [],
           polygonCoords: [],
-		  attribution: getPinAttribution(),
+          attribution: getPinAttribution(),
           userId: auth.currentUser.uid,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        // 3. Save it to Firestore
         await newDocRef.set(pinData);
 
-        // 4. Open your edit modal using the newly created pin's ID and data
-        // (Replace openEditModal with whatever function name your app uses to open the editor)
         if (typeof openEditModal === 'function') {
           openEditModal(newDocRef.id, pinData);
         }
@@ -1313,7 +1280,6 @@ firebase.auth().onAuthStateChanged(async (user) => {
       searchResults.style.display = "block";
 
       try {
-        // Use singleLine parameter with location bias for Marshfield area
         const center = map.getCenter();
         const geocodeUrl = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&singleLine=${encodeURIComponent(query)}&maxLocations=6&location=${center.lng},${center.lat}`;
 
@@ -1357,387 +1323,363 @@ firebase.auth().onAuthStateChanged(async (user) => {
     }
 
     function escapeHtml(str) {
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 		
-		function getPinAttribution() {
-  const currentUser = firebase.auth().currentUser;
-  const email = currentUser && currentUser.email ? currentUser.email : "guest@local";
-  const username = email.split('@')[0];
+    function getPinAttribution() {
+      const currentUser = firebase.auth().currentUser;
+      const email = currentUser && currentUser.email ? currentUser.email : "guest@local";
+      const username = email.split('@')[0];
 
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const day = now.getDate();
-  const year = String(now.getFullYear()).slice(-2);
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const day = now.getDate();
+      const year = String(now.getFullYear()).slice(-2);
 
-  return `${username} - ${month}/${day}/${year}`;
-}
-
-
-
-// 1. Popup content builder with robust legacy fallbacks and threaded comment support
-function buildPopupContent(data, pinId, canEditPin) {
-  let metaText = data.attribution;
-
-  // Fallback for legacy pins without a saved attribution string
-  const fallbackTimestamp = data.createdAt || data.updatedAt;
-  if (!metaText && fallbackTimestamp) {
-    const dateObj = fallbackTimestamp.toDate ? fallbackTimestamp.toDate() : new Date(fallbackTimestamp);
-    if (!isNaN(dateObj)) {
-      const month = dateObj.getMonth() + 1;
-      const day = dateObj.getDate();
-      const year = String(dateObj.getFullYear()).slice(-2);
-      const creatorPrefix = data.createdBy ? `Created by ${data.createdBy.split('@')[0]} - ` : 'Created - ';
-      metaText = `${creatorPrefix}${month}/${day}/${year}`;
-    }
-  }
-
-  const metaLine = metaText 
-    ? `<div style="font-size: 11px; color: #6b7280; margin-top: 6px; border-top: 1px solid #e5e7eb; padding-top: 4px;">${metaText}</div>` 
-    : '';
-
-  const comments = data.comments || [];
-  const legacyNote = data.text || data.description || data.note || '';
-  let contentHtml = "";
-
-  // Always show the legacy note if one exists
-  if (legacyNote) {
-    contentHtml += `<div style="font-size: 12px; color: #111827; white-space: pre-wrap; word-break: break-word;">${escapeHtml(legacyNote)}</div>`;
-  }
-
-  // If there are threaded comments, show the latest one underneath (or on its own if no legacy note)
-  if (comments.length > 0) {
-    const latest = comments[comments.length - 1];
-    const username = latest.userEmail ? latest.userEmail.split('@')[0] : 'Unknown';
-    const dividerStyle = legacyNote ? 'margin-top: 6px; padding-top: 6px; border-top: 1px dashed #cbd5e1;' : 'margin-top: 4px;';
-    
-    contentHtml += `<div style="font-size: 12px; color: #111827; ${dividerStyle} white-space: pre-wrap; word-break: break-word;"><b>${username}:</b> ${escapeHtml(latest.text)}</div>`;
-    if (comments.length > 1) {
-      contentHtml += `<div style="font-size: 10px; color: #6b7280; margin-top: 2px;">(${comments.length} total comments)</div>`;
-    }
-  } else if (!legacyNote) {
-    contentHtml = `<div style="font-size: 12px; color: #6b7280; font-style: italic;">No comments yet.</div>`;
-  }
-
-  // Build image gallery thumbnails cleanly
-  const images = data.images || (data.imageUrls ? data.imageUrls.map(url => ({ url: url })) : (data.imageUrl ? [{ url: data.imageUrl }] : []));
-  let imageGalleryHtml = "";
-  if (images.length > 0) {
-    const urlStrings = images.map(img => img.url);
-    const encodedImages = encodeURIComponent(JSON.stringify(urlStrings));
-
-    imageGalleryHtml = '<div class="image-gallery">' +  
-      images.map(function(img, idx) {
-        const deleteBtn = canEditPin ? '<button type="button" class="delete-img-btn" onclick="deletePinImage(\'' + pinId + '\', \'' + img.url + '\')" title="Remove photo">✕</button>' : '';
-        return '<div class="image-thumb-container"><img src="' + img.url + '" alt="photo" onclick="openLightbox(\'' + encodedImages + '\', ' + idx + ')" style="cursor: pointer;">' + deleteBtn + '</div>';
-      }).join('') + '</div>';
-  }
-
-  // Build edit/delete action buttons
-  const editDeleteBtns = canEditPin ? '<div class="pin-actions"><button onclick="openEditModal(\'' + pinId + '\')">Edit Pin</button><button onclick="deletePin(\'' + pinId + '\')">Delete Pin</button></div>' : '';
-  // Add a "View Comments" button right alongside your edit/delete actions
-  const commentsCount = (data.comments || []).length;
-  const commentBtnLabel = commentsCount > 0 ? `Comments (${commentsCount})` : `Comments`;
-  const viewCommentsBtn = `<div class="pin-actions" style="margin-top: 4px;"><button type="button" onclick="openCommentsModal('${pinId}')" style="background: #475569; color: white;">${commentBtnLabel}</button></div>`;
-  
-  // Check permission using your centralized function
-  const showAuditBtn = typeof canViewAuditTrail === 'function' ? canViewAuditTrail() : false;
-
-  const actionButtonsRow = `
-    <div style="display: flex; gap: 4px; margin-top: 6px;">
-      <button type="button" onclick="openCommentsModal('${pinId}')" style="background: #475569; color: white; flex: 1; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">${commentBtnLabel}</button>
-      ${showAuditBtn ? `<button type="button" onclick="openAuditModal('${pinId}')" style="background: #1e293b; color: white; flex: 1; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Changelog</button>` : ''}
-    </div>
-  `;
-  
-  return `
-    <div style="min-width: 160px; max-width: 250px;">
-      ${contentHtml}
-      ${imageGalleryHtml}
-      ${editDeleteBtns}
-	  ${actionButtonsRow}
-      ${metaLine}
-    </div>
-  `;
-}
-
-// Post a new comment to the pin's comment array (from Edit Modal)
-window.addPinCommentFromModal = async function() {
-  const pinId = document.getElementById("edit-pin-id").value;
-  const inputEl = document.getElementById("new-comment-input");
-  if (!pinId || !inputEl) return;
-
-  const text = inputEl.value.trim();
-  if (!text) {
-    alert("Please enter comment text before posting.");
-    return;
-  }
-
-  const userEmail = currentUser && currentUser.email ? currentUser.email : "guest@local";
-  
-  const newComment = {
-    userEmail: userEmail,
-    text: text,
-    timestamp: new Date().toISOString()
-  };
-
-  try {
-    const docRef = db.collection("marshfield_pins").doc(pinId);
-    
-    // 🛡️ Create an audit log entry for the comment
-    const activityEntry = {
-      userEmail: userEmail,
-      action: `Added a comment: "${text.substring(0, 30)}..."`,
-      timestamp: new Date().toISOString()
-    };
-
-    await docRef.update({
-      comments: firebase.firestore.FieldValue.arrayUnion(newComment),
-      activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    inputEl.value = ""; // Clear input box
-    
-    // Refresh the Edit Modal view to show the new comment immediately
-    window.openEditModal(pinId);
-  } catch (err) {
-    alert("Failed to post comment: " + err.message);
-  }
-};
-
-// Post a new comment directly from the Comments Modal (works outside geofence)
-window.addPinCommentFromCommentsModal = async function(pinId) {
-  const inputEl = document.getElementById("comments-modal-new-input");
-  if (!pinId || !inputEl) return;
-
-  const text = inputEl.value.trim();
-  if (!text) {
-    alert("Please enter comment text before posting.");
-    return;
-  }
-
-  const userEmail = currentUser && currentUser.email ? currentUser.email : "guest@local";
-
-  const newComment = {
-    userEmail: userEmail,
-    text: text,
-    timestamp: new Date().toISOString()
-  };
-
-  try {
-    const docRef = db.collection("marshfield_pins").doc(pinId);
-
-    const activityEntry = {
-      userEmail: userEmail,
-      action: `Added a comment: "${text.substring(0, 30)}..."`,
-      timestamp: new Date().toISOString()
-    };
-
-    await docRef.update({
-      comments: firebase.firestore.FieldValue.arrayUnion(newComment),
-      activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    // Refresh the Comments Modal view to show the new comment immediately
-    window.openCommentsModal(pinId);
-  } catch (err) {
-    alert("Failed to post comment: " + err.message);
-  }
-};
-
-window.openCommentsModal = async function(pinId) {
-  const modal = document.getElementById("comments-modal");
-  const titleEl = document.getElementById("comments-modal-title");
-  const bodyEl = document.getElementById("comments-modal-body");
-  
-  if (!modal || !bodyEl) return;
-
-  bodyEl.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px;">Loading comments...</div>';
-  modal.style.display = "flex";
-
-  try {
-    const doc = await db.collection("marshfield_pins").doc(pinId).get();
-    if (!doc.exists) {
-      bodyEl.innerHTML = '<span style="color: #dc2626;">Pin not found.</span>';
-      return;
+      return `${username} - ${month}/${day}/${year}`;
     }
 
-    const data = doc.data();
-    if (titleEl) titleEl.innerText = data.title || "Pin Comments & Activity";
+    function buildPopupContent(data, pinId, canEditPin) {
+      let metaText = data.attribution;
 
-    const comments = data.comments || [];
-    const legacyNote = data.description || data.text || data.note || "";
-    const isSuperAdmin = currentUserProfile && currentUserProfile.role === "super_admin";
+      const fallbackTimestamp = data.createdAt || data.updatedAt;
+      if (!metaText && fallbackTimestamp) {
+        const dateObj = fallbackTimestamp.toDate ? fallbackTimestamp.toDate() : new Date(fallbackTimestamp);
+        if (!isNaN(dateObj)) {
+          const month = dateObj.getMonth() + 1;
+          const day = dateObj.getDate();
+          const year = String(dateObj.getFullYear()).slice(-2);
+          const creatorPrefix = data.createdBy ? `Created by ${data.createdBy.split('@')[0]} - ` : 'Created - ';
+          metaText = `${creatorPrefix}${month}/${day}/${year}`;
+        }
+      }
 
-    let htmlParts = [];
+      const metaLine = metaText 
+        ? `<div style="font-size: 11px; color: #6b7280; margin-top: 6px; border-top: 1px solid #e5e7eb; padding-top: 4px;">${metaText}</div>` 
+        : '';
 
-    // 1. Show the permanent description if it exists
-    if (legacyNote.trim() !== "") {
-      htmlParts.push(`
-        <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px; border-radius: 6px; margin-bottom: 12px;">
-          <div style="font-weight: 600; font-size: 11px; color: #475569; margin-bottom: 2px;">Description</div>
-          <div style="white-space: pre-wrap; word-break: break-word; color: #1e293b;">${escapeHtml(legacyNote)}</div>
-        </div>
-      `);
-    }
+      const comments = data.comments || [];
+      const legacyNote = data.text || data.description || data.note || '';
+      let contentHtml = "";
 
-    // 2. Show Threaded Comments Feed
-    if (comments.length === 0 && legacyNote.trim() === "") {
-      htmlParts.push('<div style="text-align: center; color: #94a3b8; font-style: italic; padding: 20px;">No comments or descriptions yet.</div>');
-    } else if (comments.length > 0) {
-      htmlParts.push('<div style="font-weight: 600; font-size: 12px; color: #475569; margin-bottom: 6px;">Threaded Activity Feed:</div>');
-      
-      comments.forEach(comment => {
-        const timestamp = new Date(comment.timestamp || Date.now());
-        const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-        const username = comment.userEmail ? comment.userEmail.split('@')[0] : 'Unknown';
+      if (legacyNote) {
+        contentHtml += `<div style="font-size: 12px; color: #111827; white-space: pre-wrap; word-break: break-word;">${escapeHtml(legacyNote)}</div>`;
+      }
+
+      if (comments.length > 0) {
+        const latest = comments[comments.length - 1];
+        const username = latest.userEmail ? latest.userEmail.split('@')[0] : 'Unknown';
+        const dividerStyle = legacyNote ? 'margin-top: 6px; padding-top: 6px; border-top: 1px dashed #cbd5e1;' : 'margin-top: 4px;';
         
-        const deleteBtn = isSuperAdmin 
-          ? `<button type="button" onclick="deletePinComment('${pinId}', '${comment.timestamp}', true)" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
-          : '';
+        contentHtml += `<div style="font-size: 12px; color: #111827; ${dividerStyle} white-space: pre-wrap; word-break: break-word;"><b>${username}:</b> ${escapeHtml(latest.text)}</div>`;
+        if (comments.length > 1) {
+          contentHtml += `<div style="font-size: 10px; color: #6b7280; margin-top: 2px;">(${comments.length} total comments)</div>`;
+        }
+      } else if (!legacyNote) {
+        contentHtml = `<div style="font-size: 12px; color: #6b7280; font-style: italic;">No comments yet.</div>`;
+      }
 
-        htmlParts.push(`
-          <div style="padding: 8px 0; border-bottom: 1px solid #e2e8f0; position: relative;">
-            ${deleteBtn}
-            <div style="font-weight: 500; font-size: 11px; color: #1e293b;">${username} <span style="color: #94a3b8; font-weight: normal; font-size: 10px;">(${timeString})</span></div>
-            <div style="font-size: 12px; color: #334155; margin-top: 3px; white-space: pre-wrap; word-break: break-word;">${escapeHtml(comment.text)}</div>
-          </div>
-        `);
-      });
-    }
-	
-	// 3. Add a quick-comment input box directly inside the Comments Modal
-    if (currentUser) {
-      htmlParts.push(`
-        <div style="display: flex; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #cbd5e1;">
-          <input 
-            type="text" 
-            id="comments-modal-new-input" 
-            placeholder="Write a comment..." 
-            style="flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;"
-            onkeydown="if (event.key === 'Enter') addPinCommentFromCommentsModal('${pinId}')"
-          >
-          <button 
-            type="button" 
-            onclick="addPinCommentFromCommentsModal('${pinId}')" 
-            style="padding: 8px 14px; background: #2563eb; color: #ffffff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
-            Post
-          </button>
+      const images = data.images || (data.imageUrls ? data.imageUrls.map(url => ({ url: url })) : (data.imageUrl ? [{ url: data.imageUrl }] : []));
+      let imageGalleryHtml = "";
+      if (images.length > 0) {
+        const urlStrings = images.map(img => img.url);
+        const encodedImages = encodeURIComponent(JSON.stringify(urlStrings));
+
+        imageGalleryHtml = '<div class="image-gallery">' +  
+          images.map(function(img, idx) {
+            const deleteBtn = canEditPin ? '<button type="button" class="delete-img-btn" onclick="deletePinImage('' + pinId + '', '' + img.url + '')" title="Remove photo">✕</button>' : '';
+            return '<div class="image-thumb-container"><img src="' + img.url + '" alt="photo" onclick="openLightbox('' + encodedImages + '', ' + idx + ')" style="cursor: pointer;">' + deleteBtn + '</div>';
+          }).join('') + '</div>';
+      }
+
+      const editDeleteBtns = canEditPin ? '<div class="pin-actions"><button onclick="openEditModal('' + pinId + '')">Edit Pin</button><button onclick="deletePin('' + pinId + '')">Delete Pin</button></div>' : '';
+      const commentsCount = (data.comments || []).length;
+      const commentBtnLabel = commentsCount > 0 ? `Comments (${commentsCount})` : `Comments`;
+      
+      const showAuditBtn = typeof canViewAuditTrail === 'function' ? canViewAuditTrail() : false;
+
+      const actionButtonsRow = `
+        <div style="display: flex; gap: 4px; margin-top: 6px;">
+          <button type="button" onclick="openCommentsModal('${pinId}')" style="background: #475569; color: white; flex: 1; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">${commentBtnLabel}</button>
+          ${showAuditBtn ? `<button type="button" onclick="openAuditModal('${pinId}')" style="background: #1e293b; color: white; flex: 1; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Changelog</button>` : ''}
         </div>
-      `);
-    }
-
-    bodyEl.innerHTML = htmlParts.join('');
-  } catch (err) {
-    console.error("Error loading comments:", err);
-    bodyEl.innerHTML = '<span style="color: #dc2626;">Error loading comments.</span>';
-  }
-};
-
-window.closeCommentsModal = function() {
-  const modal = document.getElementById("comments-modal");
-  if (modal) modal.style.display = "none";
-};
-
-window.openAuditModal = async function(pinId) {
-  // Safeguard check using your centralized permission function
-  if (typeof canViewAuditTrail === 'function' && !canViewAuditTrail()) {
-    alert("You do not have permission to view the audit trail.");
-    return;
-  }
-
-  const modal = document.getElementById("audit-modal");
-  const titleEl = document.getElementById("audit-modal-title");
-  const bodyEl = document.getElementById("audit-modal-body");
-  
-  if (!modal || !bodyEl) return;
-
-  bodyEl.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px;">Loading audit trail...</div>';
-  modal.style.display = "flex";
-
-  try {
-    const doc = await db.collection("marshfield_pins").doc(pinId).get();
-    if (!doc.exists) {
-      bodyEl.innerHTML = '<span style="color: #dc2626;">Pin not found.</span>';
-      return;
-    }
-
-    const data = doc.data();
-    if (titleEl) titleEl.innerText = data.title ? `Audit Trail: ${data.title}` : "Audit Trail";
-
-    const activityLog = data.activityLog || [];
-
-    if (activityLog.length === 0) {
-      bodyEl.innerHTML = '<div style="text-align: center; color: #94a3b8; font-style: italic; padding: 20px;">No audit activity recorded yet.</div>';
-      return;
-    }
-
-    let htmlParts = ['<div style="font-weight: 600; font-size: 12px; color: #475569; margin-bottom: 6px;">Activity History:</div>'];
-
-    activityLog.forEach(entry => {
-      const timestamp = new Date(entry.timestamp || Date.now());
-      const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const username = entry.userEmail ? entry.userEmail.split('@')[0] : 'Unknown';
-
-      htmlParts.push(`
-        <div style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-          <div style="font-weight: 500; font-size: 11px; color: #1e293b;">${username} <span style="color: #94a3b8; font-weight: normal; font-size: 10px;">(${timeString})</span></div>
-          <div style="font-size: 12px; color: #334155; margin-top: 3px; white-space: pre-wrap; word-break: break-word;">${escapeHtml(entry.action || 'Action logged')}</div>
+      `;
+      
+      return `
+        <div style="min-width: 160px; max-width: 250px;">
+          ${contentHtml}
+          ${imageGalleryHtml}
+          ${editDeleteBtns}
+          ${actionButtonsRow}
+          ${metaLine}
         </div>
-      `);
-    });
+      `;
+    }
 
-    bodyEl.innerHTML = htmlParts.join('');
-  } catch (err) {
-    console.error("Error loading audit trail:", err);
-    bodyEl.innerHTML = '<span style="color: #dc2626;">Error loading audit trail.</span>';
-  }
-};
+    window.addPinCommentFromModal = async function() {
+      const pinId = document.getElementById("edit-pin-id").value;
+      const inputEl = document.getElementById("new-comment-input");
+      if (!pinId || !inputEl) return;
 
-window.closeAuditModal = function() {
-  const modal = document.getElementById("audit-modal");
-  if (modal) modal.style.display = "none";
-};
+      const text = inputEl.value.trim();
+      if (!text) {
+        alert("Please enter comment text before posting.");
+        return;
+      }
 
-// Super-admin moderation: delete a comment from the array
-window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsModal = false) {
-  if (!confirm("Are you sure you want to delete this comment?")) return;
+      const userEmail = currentUser && currentUser.email ? currentUser.email : "guest@local";
+      
+      const newComment = {
+        userEmail: userEmail,
+        text: text,
+        timestamp: new Date().toISOString()
+      };
 
-  try {
-    const docRef = db.collection("marshfield_pins").doc(pinId);
-    const docSnap = await docRef.get();
-    if (!docSnap.exists) return;
+      try {
+        const docRef = db.collection("marshfield_pins").doc(pinId);
+        
+        const activityEntry = {
+          userEmail: userEmail,
+          action: `Added a comment: "${text.substring(0, 30)}..."`,
+          timestamp: new Date().toISOString()
+        };
 
-    const data = docSnap.data();
-    const currentComments = data.comments || [];
-    const updatedComments = currentComments.filter(c => c.timestamp !== commentTimestamp);
+        await docRef.update({
+          comments: firebase.firestore.FieldValue.arrayUnion(newComment),
+          activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
 
-    const activityEntry = {
-      userEmail: currentUser ? currentUser.email : "guest@local",
-      action: "Deleted a user comment for moderation",
-      timestamp: new Date().toISOString()
+        inputEl.value = "";
+        window.openEditModal(pinId);
+      } catch (err) {
+        alert("Failed to post comment: " + err.message);
+      }
     };
 
-    await docRef.update({
-      comments: updatedComments,
-      activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    window.addPinCommentFromCommentsModal = async function(pinId) {
+      const inputEl = document.getElementById("comments-modal-new-input");
+      if (!pinId || !inputEl) return;
 
-    if (fromCommentsModal) {
-      window.openCommentsModal(pinId);
-    } else {
-      window.openEditModal(pinId);
-    }
-  } catch (err) {
-    alert("Failed to delete comment: " + err.message);
-  }
-};
+      const text = inputEl.value.trim();
+      if (!text) {
+        alert("Please enter comment text before posting.");
+        return;
+      }
 
+      const userEmail = currentUser && currentUser.email ? currentUser.email : "guest@local";
+
+      const newComment = {
+        userEmail: userEmail,
+        text: text,
+        timestamp: new Date().toISOString()
+      };
+
+      try {
+        const docRef = db.collection("marshfield_pins").doc(pinId);
+
+        const activityEntry = {
+          userEmail: userEmail,
+          action: `Added a comment: "${text.substring(0, 30)}..."`,
+          timestamp: new Date().toISOString()
+        };
+
+        await docRef.update({
+          comments: firebase.firestore.FieldValue.arrayUnion(newComment),
+          activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        window.openCommentsModal(pinId);
+      } catch (err) {
+        alert("Failed to post comment: " + err.message);
+      }
+    };
+
+    window.openCommentsModal = async function(pinId) {
+      const modal = document.getElementById("comments-modal");
+      const titleEl = document.getElementById("comments-modal-title");
+      const bodyEl = document.getElementById("comments-modal-body");
+      
+      if (!modal || !bodyEl) return;
+
+      bodyEl.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px;">Loading comments...</div>';
+      modal.style.display = "flex";
+
+      try {
+        const doc = await db.collection("marshfield_pins").doc(pinId).get();
+        if (!doc.exists) {
+          bodyEl.innerHTML = '<span style="color: #dc2626;">Pin not found.</span>';
+          return;
+        }
+
+        const data = doc.data();
+        if (titleEl) titleEl.innerText = data.title || "Pin Comments & Activity";
+
+        const comments = data.comments || [];
+        const legacyNote = data.description || data.text || data.note || "";
+        const isSuperAdmin = currentUserProfile && currentUserProfile.role === "super_admin";
+
+        let htmlParts = [];
+
+        if (legacyNote.trim() !== "") {
+          htmlParts.push(`
+            <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px; border-radius: 6px; margin-bottom: 12px;">
+              <div style="font-weight: 600; font-size: 11px; color: #475569; margin-bottom: 2px;">Description</div>
+              <div style="white-space: pre-wrap; word-break: break-word; color: #1e293b;">${escapeHtml(legacyNote)}</div>
+            </div>
+          `);
+        }
+
+        if (comments.length === 0 && legacyNote.trim() === "") {
+          htmlParts.push('<div style="text-align: center; color: #94a3b8; font-style: italic; padding: 20px;">No comments or descriptions yet.</div>');
+        } else if (comments.length > 0) {
+          htmlParts.push('<div style="font-weight: 600; font-size: 12px; color: #475569; margin-bottom: 6px;">Threaded Activity Feed:</div>');
+          
+          comments.forEach(comment => {
+            const timestamp = new Date(comment.timestamp || Date.now());
+            const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const username = comment.userEmail ? comment.userEmail.split('@')[0] : 'Unknown';
+            
+            const deleteBtn = isSuperAdmin 
+              ? `<button type="button" onclick="deletePinComment('${pinId}', '${comment.timestamp}', true)" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
+              : '';
+
+            htmlParts.push(`
+              <div style="padding: 8px 0; border-bottom: 1px solid #e2e8f0; position: relative;">
+                ${deleteBtn}
+                <div style="font-weight: 500; font-size: 11px; color: #1e293b;">${username} <span style="color: #94a3b8; font-weight: normal; font-size: 10px;">(${timeString})</span></div>
+                <div style="font-size: 12px; color: #334155; margin-top: 3px; white-space: pre-wrap; word-break: break-word;">${escapeHtml(comment.text)}</div>
+              </div>
+            `);
+          });
+        }
+	
+        if (currentUser) {
+          htmlParts.push(`
+            <div style="display: flex; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #cbd5e1;">
+              <input 
+                type="text" 
+                id="comments-modal-new-input" 
+                placeholder="Write a comment..." 
+                style="flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;"
+                onkeydown="if (event.key === 'Enter') addPinCommentFromCommentsModal('${pinId}')"
+              >
+              <button 
+                type="button" 
+                onclick="addPinCommentFromCommentsModal('${pinId}')" 
+                style="padding: 8px 14px; background: #2563eb; color: #ffffff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                Post
+              </button>
+            </div>
+          `);
+        }
+
+        bodyEl.innerHTML = htmlParts.join('');
+      } catch (err) {
+        console.error("Error loading comments:", err);
+        bodyEl.innerHTML = '<span style="color: #dc2626;">Error loading comments.</span>';
+      }
+    };
+
+    window.closeCommentsModal = function() {
+      const modal = document.getElementById("comments-modal");
+      if (modal) modal.style.display = "none";
+    };
+
+    window.openAuditModal = async function(pinId) {
+      if (typeof canViewAuditTrail === 'function' && !canViewAuditTrail()) {
+        alert("You do not have permission to view the audit trail.");
+        return;
+      }
+
+      const modal = document.getElementById("audit-modal");
+      const titleEl = document.getElementById("audit-modal-title");
+      const bodyEl = document.getElementById("audit-modal-body");
+      
+      if (!modal || !bodyEl) return;
+
+      bodyEl.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px;">Loading audit trail...</div>';
+      modal.style.display = "flex";
+
+      try {
+        const doc = await db.collection("marshfield_pins").doc(pinId).get();
+        if (!doc.exists) {
+          bodyEl.innerHTML = '<span style="color: #dc2626;">Pin not found.</span>';
+          return;
+        }
+
+        const data = doc.data();
+        if (titleEl) titleEl.innerText = data.title ? `Audit Trail: ${data.title}` : "Audit Trail";
+
+        const activityLog = data.activityLog || [];
+
+        if (activityLog.length === 0) {
+          bodyEl.innerHTML = '<div style="text-align: center; color: #94a3b8; font-style: italic; padding: 20px;">No audit activity recorded yet.</div>';
+          return;
+        }
+
+        let htmlParts = ['<div style="font-weight: 600; font-size: 12px; color: #475569; margin-bottom: 6px;">Activity History:</div>'];
+
+        activityLog.forEach(entry => {
+          const timestamp = new Date(entry.timestamp || Date.now());
+          const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+          const username = entry.userEmail ? entry.userEmail.split('@')[0] : 'Unknown';
+
+          htmlParts.push(`
+            <div style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+              <div style="font-weight: 500; font-size: 11px; color: #1e293b;">${username} <span style="color: #94a3b8; font-weight: normal; font-size: 10px;">(${timeString})</span></div>
+              <div style="font-size: 12px; color: #334155; margin-top: 3px; white-space: pre-wrap; word-break: break-word;">${escapeHtml(entry.action || 'Action logged')}</div>
+            </div>
+          `);
+        });
+
+        bodyEl.innerHTML = htmlParts.join('');
+      } catch (err) {
+        console.error("Error loading audit trail:", err);
+        bodyEl.innerHTML = '<span style="color: #dc2626;">Error loading audit trail.</span>';
+      }
+    };
+
+    window.closeAuditModal = function() {
+      const modal = document.getElementById("audit-modal");
+      if (modal) modal.style.display = "none";
+    };
+
+    window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsModal = false) {
+      if (!confirm("Are you sure you want to delete this comment?")) return;
+
+      try {
+        const docRef = db.collection("marshfield_pins").doc(pinId);
+        const docSnap = await docRef.get();
+        if (!docSnap.exists) return;
+
+        const data = docSnap.data();
+        const currentComments = data.comments || [];
+        const updatedComments = currentComments.filter(c => c.timestamp !== commentTimestamp);
+
+        const activityEntry = {
+          userEmail: currentUser ? currentUser.email : "guest@local",
+          action: "Deleted a user comment for moderation",
+          timestamp: new Date().toISOString()
+        };
+
+        await docRef.update({
+          comments: updatedComments,
+          activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        if (fromCommentsModal) {
+          window.openCommentsModal(pinId);
+        } else {
+          window.openEditModal(pinId);
+        }
+      } catch (err) {
+        alert("Failed to delete comment: " + err.message);
+      }
+    };
 		
-    // REAL-TIME FIRESTORE SYNC
     db.collection("marshfield_pins").onSnapshot(function(snapshot) {
       var statusDot = document.getElementById("status-dot");
       if (statusDot) statusDot.classList.add("online");
@@ -1751,7 +1693,7 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
         }
         if (change.type === "removed" && activeMarkers[id]) {
           markerClusterGroup.removeLayer(activeMarkers[id].marker);
-          if (activeMarkers[id].polygon) map.removeLayer(activeMarkers[id].polygon); // 👈 Added
+          if (activeMarkers[id].polygon) map.removeLayer(activeMarkers[id].polygon);
           delete activeMarkers[id];
         }
       });
@@ -1759,7 +1701,7 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
       console.error("Firestore sync error:", error);
     });
 
-   function renderPinMarker(id, data) {
+    function renderPinMarker(id, data) {
       var currentUser = auth.currentUser;
       var isOwner = currentUser && data.userId === currentUser.uid;
       var isSuperAdmin = typeof currentUserProfile !== 'undefined' && currentUserProfile && currentUserProfile.role === "super_admin";
@@ -1841,8 +1783,7 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
           polygonLayer.on('click', function(e) { L.DomEvent.stopPropagation(e); marker.openPopup(); });
         }
 
-        // Render Photo Blue Bubble Markers
-		const showPhotos = map.getZoom() >= PHOTO_ZOOM_THRESHOLD;
+        const showPhotos = map.getZoom() >= PHOTO_ZOOM_THRESHOLD;
 
         var photoMarkers = [];
         var images = data.images || [];
@@ -1870,7 +1811,6 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
               </div>
             `);
 
-            // Only add to map immediately if we are already zoomed in close enough
             if (showPhotos) {
               photoMarker.addTo(map);
             }
@@ -1977,97 +1917,51 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
         }
       }
     }
-	
-	let currentAuditLogs = [];
 
-function openAuditModalFromEdit() {
-  const modal = document.getElementById("audit-trail-modal");
-  const listContent = document.getElementById("audit-full-list-content");
-  if (!modal || !listContent) return;
-
-  if (currentAuditLogs.length === 0) {
-    listContent.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">No activity history recorded yet.</div>';
-  } else {
-    listContent.innerHTML = `<table style="width: 100%; border-collapse: collapse;">
-      <thead>
-        <tr style="border-bottom: 1px solid #cbd5e1; text-align: left; color: #475569;">
-          <th style="padding: 6px;">Time</th>
-          <th style="padding: 6px;">User</th>
-          <th style="padding: 6px;">Action</th>
-        </tr>
-      </thead>
-      <tbody>` + 
-      currentAuditLogs.slice().reverse().map(log => {
-        const timestamp = log.timestamp?.toDate ? log.timestamp.toDate() : new Date(log.timestamp || Date.now());
-        const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        const username = log.userEmail ? log.userEmail.split('@')[0] : 'Unknown';
-        return `<tr style="border-bottom: 1px solid #f1f5f9;">
-          <td style="padding: 6px; color: #64748b; white-space: nowrap;">${timeString}</td>
-          <td style="padding: 6px; font-weight: 500; color: #1e293b;">${username}</td>
-          <td style="padding: 6px; color: #334155;">${escapeHtml(log.action)}</td>
-        </tr>`;
-      }).join('') + `
-      </tbody>
-    </table>`;
-  }
-
-  modal.style.display = "flex";
-}
-
-function closeAuditModal() {
-  const modal = document.getElementById("audit-trail-modal");
-  if (modal) modal.style.display = "none";
-}
-
-window.openEditModal = function(id) {
-  const entry = activeMarkers[id];
-  if (!entry || !entry.data) {
+    window.openEditModal = function(id, fallbackData = null) {
+      const entry = activeMarkers[id];
+      const pinData = (entry && entry.data) ? entry.data : fallbackData;
+      if (!pinData) {
         alert("Could not load pin data for editing.");
         return;
       }
       
-      const pinData = entry.data;
-	  
-	 const isSuperAdmin = currentUserProfile && currentUserProfile.role === "super_admin";
+      const isSuperAdmin = currentUserProfile && currentUserProfile.role === "super_admin";
      
-	 const idField = document.getElementById("edit-pin-id");
+      const idField = document.getElementById("edit-pin-id");
       const titleField = document.getElementById("edit-title");
       const descField = document.getElementById("edit-description");
       const colorField = document.getElementById("edit-color");
       
       if (idField) idField.value = id;
       if (titleField) titleField.value = pinData.title || "";
-      if (descField) descField.value = pinData.description || pinData.text || pinData.note || "";
-      if (colorField) colorField.value = pinData.color || "purple";
+      
+      if (colorField) {
+        colorField.value = pinData.color || "purple";
+        if (pinData.color === "pulsing_alert" && !isSuperAdmin) {
+          colorField.disabled = true;
+          colorField.style.backgroundColor = "#f1f5f9";
+          colorField.style.cursor = "not-allowed";
+          colorField.title = "Only Super Admins can change Urgent Alert status.";
+        } else {
+          colorField.disabled = false;
+          colorField.style.backgroundColor = "#ffffff";
+          colorField.style.cursor = "pointer";
+          colorField.title = "";
+        }
+      }
 	  
-	  if (colorField) {
-  colorField.value = pinData.color || "purple";
-  if (pinData.color === "pulsing_alert" && !isSuperAdmin) {
-    colorField.disabled = true;
-    colorField.style.backgroundColor = "#f1f5f9";
-    colorField.style.cursor = "not-allowed";
-    colorField.title = "Only Super Admins can change Urgent Alert status.";
-  } else {
-    colorField.disabled = false;
-    colorField.style.backgroundColor = "#ffffff";
-    colorField.style.cursor = "pointer";
-    colorField.title = "";
-  }
-}
-	  
-	  if (descField) {
+      if (descField) {
         const existingDesc = pinData.description || pinData.text || pinData.note || "";
         descField.value = existingDesc;
 
         if (existingDesc.trim() !== "" && !isSuperAdmin) {
-          // 🔒 Lock the box so saved descriptions cannot be altered, unless you are super-admin
           descField.readOnly = true;
           descField.style.backgroundColor = "#f1f5f9";
           descField.style.color = "#475569";
           descField.style.cursor = "not-allowed";
           descField.title = "Saved descriptions are locked. Add updates in the comments below.";
         } else {
-          // ✏️ Allow entering a description once if none exists yet
           descField.readOnly = false;
           descField.style.backgroundColor = "#ffffff";
           descField.style.color = "#0f172a";
@@ -2076,10 +1970,8 @@ window.openEditModal = function(id) {
         }
       }
 
-    // 💬 Render Threaded Comments Feed inside the Modal
       const commentsContainer = document.getElementById("edit-comments-container");
       const comments = pinData.comments || [];
-      
 
       if (commentsContainer) {
         if (comments.length === 0) {
@@ -2128,64 +2020,61 @@ window.openEditModal = function(id) {
     };
 
     window.savePinEdits = async function() {
-  const idField = document.getElementById("edit-pin-id");
-  const titleField = document.getElementById("edit-title");
-  const descField = document.getElementById("edit-description");
-  const colorField = document.getElementById("edit-color");
-  const fileInput = document.getElementById("edit-file-input");
+      const idField = document.getElementById("edit-pin-id");
+      const titleField = document.getElementById("edit-title");
+      const descField = document.getElementById("edit-description");
+      const colorField = document.getElementById("edit-color");
+      const fileInput = document.getElementById("edit-file-input");
 
-  if (!idField || !titleField) return;
+      if (!idField || !titleField) return;
 
-  const id = idField.value;
-  const title = titleField.value.trim();
-  const color = colorField ? colorField.value : "purple";
+      const id = idField.value;
+      const title = titleField.value.trim();
+      const color = colorField ? colorField.value : "purple";
 
-  if (!id) return;
+      if (!id) return;
 
-  try {
-    if (fileInput && fileInput.files && fileInput.files.length > 0) {
-      await window.uploadPhotos(id, fileInput.files);
-    }
+      try {
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+          await window.uploadPhotos(id, fileInput.files);
+        }
 
-    const activityEntry = {
-      userEmail: currentUser ? currentUser.email : "guest@local",
-      action: "Updated pin details",
-      timestamp: new Date().toISOString()
-    };
+        const activityEntry = {
+          userEmail: currentUser ? currentUser.email : "guest@local",
+          action: "Updated pin details",
+          timestamp: new Date().toISOString()
+        };
 	
-	const editColorSelect = document.getElementById("edit-color");
-    const userRole = currentUserProfile?.role || currentUserProfile?.userRole || "User";
+        const editColorSelect = document.getElementById("edit-color");
+        const userRole = currentUserProfile?.role || currentUserProfile?.userRole || "User";
 
-    // Block non-super_admins from newly assigning pulsing_alert (allow if already locked as one)
-    if (color === "pulsing_alert" && userRole !== "super_admin" && (!editColorSelect || !editColorSelect.disabled)) {
-      showAppModal("Permission Denied", "Only Super Admins can assign Pulsing Red Alerts.");
-      return;
-    }
+        if (color === "pulsing_alert" && userRole !== "super_admin" && (!editColorSelect || !editColorSelect.disabled)) {
+          showAppModal("Permission Denied", "Only Super Admins can assign Pulsing Red Alerts.");
+          return;
+        }
 
-    const updatePayload = {
-      title: title,
-      color: color,
-      // attribution: getPinAttribution(), disabled so original pin creator name and date sticks
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry)
-    };
+        const updatePayload = {
+          title: title,
+          color: color,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry)
+        };
 
-    // Only save the description if it wasn't already locked
-    if (descField && !descField.readOnly) {
-      const newDesc = descField.value.trim();
-      if (newDesc !== "") {
-        updatePayload.description = newDesc;
+        if (descField && !descField.readOnly) {
+          const newDesc = descField.value.trim();
+          if (newDesc !== "") {
+            updatePayload.description = newDesc;
+          }
+        }
+
+        await db.collection("marshfield_pins").doc(id).update(updatePayload);
+        
+        const modal = document.getElementById("edit-modal");
+        if (modal) modal.style.display = "none";
+      } catch (err) {
+        alert("Error updating pin: " + err.message);
       }
-    }
-
-    await db.collection("marshfield_pins").doc(id).update(updatePayload);
-    
-    const modal = document.getElementById("edit-modal");
-    if (modal) modal.style.display = "none";
-  } catch (err) {
-    alert("Error updating pin: " + err.message);
-  }
-};
+    };
 
     window.deletePin = async function(id) {
       if (!confirm("Are you sure you want to delete this pin?")) return;
@@ -2196,15 +2085,14 @@ window.openEditModal = function(id) {
       }
     };
 
-let currentLightboxImages = [];
+    let currentLightboxImages = [];
     let currentLightboxIndex = 0;
     let currentZoom = 1;
     let panX = 0;
     let panY = 0;
     
-    // Interaction tracking states
     let isDragging = false;
-	let hasDragged = false;
+    let hasDragged = false;
     let startX = 0;
     let startY = 0;
     let initialPinchDistance = null;
@@ -2263,7 +2151,6 @@ let currentLightboxImages = [];
         counterEl.innerText = `Photo ${currentLightboxIndex + 1} of ${currentLightboxImages.length}`;
       }
       if (thumbsEl) {
-        // Build thumbnails only if they haven't been generated yet for this set
         if (!thumbsEl.dataset.initialized || thumbsEl.dataset.count !== String(currentLightboxImages.length)) {
           thumbsEl.dataset.initialized = "true";
           thumbsEl.dataset.count = currentLightboxImages.length;
@@ -2272,7 +2159,6 @@ let currentLightboxImages = [];
           }).join('');
         }
 
-        // Just update active styling on the fly instead of wiping HTML
         const thumbImgs = thumbsEl.querySelectorAll("img");
         thumbImgs.forEach((thumb, idx) => {
           if (idx === currentLightboxIndex) {
@@ -2288,12 +2174,10 @@ let currentLightboxImages = [];
       }
     }
 
-    // Attach Desktop & Mobile Event Listeners after DOM loads
     document.addEventListener("DOMContentLoaded", () => {
       const imgEl = document.getElementById("lightbox-img");
       if (!imgEl) return;
 
-      // 1. DESKTOP: Mouse wheel zoom
       imgEl.addEventListener("wheel", (e) => {
         e.preventDefault();
         const zoomIntensity = 0.15;
@@ -2305,10 +2189,9 @@ let currentLightboxImages = [];
         applyTransform(imgEl);
       }, { passive: false });
 
-      // 2. DESKTOP & MOBILE: Click / Tap to toggle zoom (only if not dragging)
       imgEl.addEventListener("click", () => {
         if (hasDragged) {
-          hasDragged = false; // Reset flag and ignore click after drag
+          hasDragged = false;
           return;
         }
         if (currentZoom === 1) {
@@ -2319,7 +2202,6 @@ let currentLightboxImages = [];
         applyTransform(imgEl);
       });
 
-      // 3. DESKTOP: Mouse Drag to Pan
       imgEl.addEventListener("mousedown", (e) => {
         if (currentZoom > 1) {
           isDragging = true;
@@ -2333,7 +2215,7 @@ let currentLightboxImages = [];
 
       window.addEventListener("mousemove", (e) => {
         if (!isDragging) return;
-        hasDragged = true; // Mark that movement occurred
+        hasDragged = true;
         panX = e.clientX - startX;
         panY = e.clientY - startY;
         applyTransform(imgEl);
@@ -2346,7 +2228,6 @@ let currentLightboxImages = [];
         }
       });
 
-      // 4. MOBILE: Touch Events (Swipe, Pinch-to-zoom & Finger Dragging)
       let touchStartX = 0;
       let touchStartY = 0;
 
@@ -2356,13 +2237,11 @@ let currentLightboxImages = [];
           touchStartY = e.touches[0].clientY;
           
           if (currentZoom > 1) {
-            // Single finger pan when zoomed in
             isDragging = true;
             startX = touchStartX - panX;
             startY = touchStartY - panY;
           }
         } else if (e.touches.length === 2) {
-          // Two finger pinch start
           isDragging = false;
           initialPinchDistance = getTouchDistance(e.touches[0], e.touches[1]);
           baseZoom = currentZoom;
@@ -2371,7 +2250,7 @@ let currentLightboxImages = [];
 
       imgEl.addEventListener("touchmove", (e) => {
         if (isDragging && e.touches.length === 1 && currentZoom > 1) {
-          hasDragged = true; // Mark movement
+          hasDragged = true;
           panX = e.touches[0].clientX - startX;
           panY = e.touches[0].clientY - startY;
           applyTransform(imgEl);
@@ -2385,19 +2264,17 @@ let currentLightboxImages = [];
       }, { passive: true });
 
       imgEl.addEventListener("touchend", (e) => {
-        // Check for swipe if we are at normal zoom (1x) and it was a single touch release
         if (currentZoom === 1 && e.changedTouches.length === 1) {
           const touchEndX = e.changedTouches[0].clientX;
           const touchEndY = e.changedTouches[0].clientY;
           const diffX = touchEndX - touchStartX;
           const diffY = touchEndY - touchStartY;
 
-          // Minimum swipe distance threshold (50px) and ensure it's a horizontal swipe
           if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
             if (diffX < 0) {
-              changeLightboxImage(1);  // Swiped left -> Next photo
+              changeLightboxImage(1);
             } else {
-              changeLightboxImage(-1); // Swiped right -> Previous photo
+              changeLightboxImage(-1);
             }
           }
         }
@@ -2410,34 +2287,31 @@ let currentLightboxImages = [];
         }
       });
 	  
-	  // 5. DESKTOP: Keyboard Navigation (Arrow keys & Escape)
-    window.addEventListener("keydown", (e) => {
-      const modal = document.getElementById("lightbox-modal");
-      if (!modal) return;
+      window.addEventListener("keydown", (e) => {
+        const modal = document.getElementById("lightbox-modal");
+        if (!modal) return;
 
-      // Check computed style to see if the modal is actually visible on screen
-      const computedDisplay = window.getComputedStyle(modal).display;
-      if (computedDisplay === "none" || computedDisplay === "") return;
+        const computedDisplay = window.getComputedStyle(modal).display;
+        if (computedDisplay === "none" || computedDisplay === "") return;
 
-      if (e.key === "Escape" || e.key === "Esc") {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        closeLightbox();
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        changeLightboxImage(1);
-      } else if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        changeLightboxImage(-1);
-      }
-    }, true); // Capture phase + stopImmediatePropagation locks out Leaflet completely
+        if (e.key === "Escape" || e.key === "Esc") {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          closeLightbox();
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          changeLightboxImage(1);
+        } else if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          changeLightboxImage(-1);
+        }
+      }, true);
     });
-	  
 
     function getTouchDistance(t1, t2) {
       const dx = t1.clientX - t2.clientX;
@@ -2456,7 +2330,7 @@ let currentLightboxImages = [];
       imgEl.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
     }
 
-	let activeDrawingPinId = null;
+    let activeDrawingPinId = null;
     let tempPolygonCoords = [];
     let tempDrawingPolyline = null;
     let tempDrawingMarkers = [];
@@ -2468,11 +2342,9 @@ let currentLightboxImages = [];
       activeDrawingPinId = pinId;
       tempPolygonCoords = [];
       
-      // Close any open marker popups and hide the edit modal
-      map.closePopup(); // 👈 ADDED HERE
+      map.closePopup();
       document.getElementById("edit-modal").style.display = "none";
 
-      // Show a floating instruction banner
       showDrawingBanner("Click on the map to outline the area. Double-click or click here to finish.");
     };
 
@@ -2487,18 +2359,15 @@ let currentLightboxImages = [];
       banner.innerHTML = `<span>${message}</span> <button onclick="finishPolygonDrawing()" style="background: #2ecc71; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">Finish</button> <button onclick="cancelPolygonDrawing()" style="background: #e74c3c; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer;">Cancel</button>`;
       banner.style.display = "flex";
 
-      // Listen to map clicks for drawing vertices
       map.on('click', onMapClickForDrawing);
     }
 
     function onMapClickForDrawing(e) {
       tempPolygonCoords.push([e.latlng.lat, e.latlng.lng]);
 
-      // Drop a small temporary marker for each vertex
       const vertexMarker = L.circleMarker(e.latlng, { radius: 5, color: '#8e44ad', fillColor: '#9b59b6', fillOpacity: 1 }).addTo(map);
       tempDrawingMarkers.push(vertexMarker);
 
-      // Redraw live preview line/polygon
       if (!tempDrawingPolyline) {
         tempDrawingPolyline = L.polygon(tempPolygonCoords, { color: '#8e44ad', weight: 2, fillColor: '#9b59b6', fillOpacity: 0.3 }).addTo(map);
       } else {
@@ -2512,7 +2381,6 @@ let currentLightboxImages = [];
       const banner = document.getElementById("drawing-mode-banner");
       if (banner) banner.style.display = "none";
 
-      // Clean up temp drawing visuals
       tempDrawingMarkers.forEach(m => map.removeLayer(m));
       tempDrawingMarkers = [];
       if (tempDrawingPolyline) {
@@ -2522,7 +2390,6 @@ let currentLightboxImages = [];
 
       if (tempPolygonCoords.length >= 3 && activeDrawingPinId) {
         try {
-          // 📍 Convert [[lat, lng], ...] into [{lat, lng}, ...] for Firestore
           const firestoreCoords = tempPolygonCoords.map(pt => ({ lat: pt[0], lng: pt[1] }));
 
           await db.collection("marshfield_pins").doc(activeDrawingPinId).update({
@@ -2535,7 +2402,6 @@ let currentLightboxImages = [];
         }
       }
 
-      // Reopen the edit modal
       if (activeDrawingPinId) {
         window.openEditModal(activeDrawingPinId);
       }
@@ -2578,255 +2444,231 @@ let currentLightboxImages = [];
       }
     };
 	
-	window.uploadPhotos = async function(pinId, files) {
-  if (!files || files.length === 0) return;
+    window.uploadPhotos = async function(pinId, files) {
+      if (!files || files.length === 0) return;
 
-  const fileArray = Array.from(files).filter(f => f.size <= 10 * 1024 * 1024);
-  if (fileArray.length === 0) {
-    alert("Selected file(s) exceed the 10MB limit.");
-    return;
-  }
+      const fileArray = Array.from(files).filter(f => f.size <= 10 * 1024 * 1024);
+      if (fileArray.length === 0) {
+        alert("Selected file(s) exceed the 10MB limit.");
+        return;
+      }
 
-  const progressContainer = document.getElementById("upload-progress-container");
-  const statusText = document.getElementById("upload-status-text");
-  const etaText = document.getElementById("upload-eta-text");
-  const progressBar = document.getElementById("upload-progress-bar");
-  const oldStatusEl = document.getElementById(`upload-status-${pinId}`) || document.getElementById("upload-status-modal");
+      const progressContainer = document.getElementById("upload-progress-container");
+      const statusText = document.getElementById("upload-status-text");
+      const etaText = document.getElementById("upload-eta-text");
+      const progressBar = document.getElementById("upload-progress-bar");
 
-  const totalBytesAllFiles = fileArray.reduce((sum, f) => sum + f.size, 0);
-  let completedBytesBeforeCurrent = 0;
-  const uploadStartTime = Date.now();
+      const totalBytesAllFiles = fileArray.reduce((sum, f) => sum + f.size, 0);
+      let completedBytesBeforeCurrent = 0;
+      const uploadStartTime = Date.now();
 
-  if (progressContainer) {
-    progressContainer.style.display = "block";
-    if (progressBar) progressBar.style.width = "0%";
-    if (statusText) statusText.innerText = `Preparing ${fileArray.length} file(s)...`;
-    if (etaText) etaText.innerText = "";
-  } else if (oldStatusEl) {
-    oldStatusEl.style.display = "block";
-    oldStatusEl.innerText = `Processing and uploading ${fileArray.length} image(s)...`;
-  }
+      if (progressContainer) {
+        progressContainer.style.display = "block";
+        if (progressBar) progressBar.style.width = "0%";
+        if (statusText) statusText.innerText = `Preparing ${fileArray.length} file(s)...`;
+        if (etaText) etaText.innerText = "";
+      }
 
-  try {
-    const docRef = db.collection("marshfield_pins").doc(pinId);
-    const docSnap = await docRef.get();
-    const existingData = docSnap.data() || {};
-    
-    // Legacy migration: convert old imageUrls strings into structured objects if needed
-    let existingImages = existingData.images || [];
-    if (existingImages.length === 0 && existingData.imageUrls && existingData.imageUrls.length > 0) {
-      existingImages = existingData.imageUrls.map(url => ({
-        url: url,
-        lat: existingData.lat || 44.6685,
-        lng: existingData.lng || -90.1717,
-        direction: null
-      }));
-    }
+      try {
+        const docRef = db.collection("marshfield_pins").doc(pinId);
+        const docSnap = await docRef.get();
+        const existingData = docSnap.data() || {};
+        
+        let existingImages = existingData.images || [];
+        if (existingImages.length === 0 && existingData.imageUrls && existingData.imageUrls.length > 0) {
+          existingImages = existingData.imageUrls.map(url => ({
+            url: url,
+            lat: existingData.lat || 44.6685,
+            lng: existingData.lng || -90.1717,
+            direction: null
+          }));
+        }
 
-    const newImageObjects = [];
+        const newImageObjects = [];
 
-    // 1. Loop through files, extract EXIF, and upload
-    for (let i = 0; i < fileArray.length; i++) {
-      const file = fileArray[i];
+        for (let i = 0; i < fileArray.length; i++) {
+          const file = fileArray[i];
 
-      if (statusText) statusText.innerText = `Checking EXIF (${i + 1}/${fileArray.length})...`;
-      const gps = await getFileGPS(file);
+          if (statusText) statusText.innerText = `Checking EXIF (${i + 1}/${fileArray.length})...`;
+          const gps = await getFileGPS(file);
 
-      const fileRef = storage.ref().child(`pins/${pinId}/${Date.now()}_${file.name}`);
-      
-      const downloadUrl = await new Promise((resolve, reject) => {
-        const uploadTask = fileRef.put(file);
-		
+          const fileRef = storage.ref().child(`pins/${pinId}/${Date.now()}_${file.name}`);
+          
+          const downloadUrl = await new Promise((resolve, reject) => {
+            const uploadTask = fileRef.put(file);
 
-        uploadTask.on(
-          "state_changed",
-          (snapshot) => {
-            const totalTransferred = completedBytesBeforeCurrent + snapshot.bytesTransferred;
-            const overallPercent = Math.min(100, Math.round((totalTransferred / totalBytesAllFiles) * 100));
+            uploadTask.on(
+              "state_changed",
+              (snapshot) => {
+                const totalTransferred = completedBytesBeforeCurrent + snapshot.bytesTransferred;
+                const overallPercent = Math.min(100, Math.round((totalTransferred / totalBytesAllFiles) * 100));
 
-            const elapsedSeconds = (Date.now() - uploadStartTime) / 1000;
-            let etaString = "";
-            if (elapsedSeconds > 0.5 && totalTransferred > 0) {
-              const bytesPerSec = totalTransferred / elapsedSeconds;
-              const remainingBytes = totalBytesAllFiles - totalTransferred;
-              const remainingSec = Math.ceil(remainingBytes / bytesPerSec);
-              etaString = remainingSec > 1 ? `~${remainingSec}s left` : "Almost done...";
-            }
+                const elapsedSeconds = (Date.now() - uploadStartTime) / 1000;
+                let etaString = "";
+                if (elapsedSeconds > 0.5 && totalTransferred > 0) {
+                  const bytesPerSec = totalTransferred / elapsedSeconds;
+                  const remainingBytes = totalBytesAllFiles - totalTransferred;
+                  const remainingSec = Math.ceil(remainingBytes / bytesPerSec);
+                  etaString = remainingSec > 1 ? `~${remainingSec}s left` : "Almost done...";
+                }
 
-            if (progressBar) progressBar.style.width = `${overallPercent}%`;
-            if (statusText) statusText.innerText = `Uploading (${i + 1}/${fileArray.length}) - ${overallPercent}%`;
-            if (etaText) etaText.innerText = etaString;
-          },
-          (error) => reject(error),
-          async () => {
-            const url = await uploadTask.snapshot.ref.getDownloadURL();
-            resolve(url);
+                if (progressBar) progressBar.style.width = `${overallPercent}%`;
+                if (statusText) statusText.innerText = `Uploading (${i + 1}/${fileArray.length}) - ${overallPercent}%`;
+                if (etaText) etaText.innerText = etaString;
+              },
+              (error) => reject(error),
+              async () => {
+                const url = await uploadTask.snapshot.ref.getDownloadURL();
+                resolve(url);
+              }
+            );
+          });
+
+          completedBytesBeforeCurrent += file.size;
+
+          if (gps) {
+            newImageObjects.push({ 
+              url: downloadUrl, 
+              lat: gps.lat, 
+              lng: gps.lng, 
+              direction: gps.direction 
+            });
+          } else {
+            newImageObjects.push({ 
+              url: downloadUrl, 
+              lat: existingData.lat || 44.6685, 
+              lng: existingData.lng || -90.1717,
+              direction: null 
+            });
           }
-        );
-      });
+        }
 
-      completedBytesBeforeCurrent += file.size;
+        if (statusText) statusText.innerText = "Saving to map...";
+        if (etaText) etaText.innerText = "";
 
-      // 2. Build structured image objects using EXIF GPS and direction
-      if (gps) {
-        newImageObjects.push({ 
-          url: downloadUrl, 
-          lat: gps.lat, 
-          lng: gps.lng, 
-          direction: gps.direction 
-        });
-      } else {
-        newImageObjects.push({ 
-          url: downloadUrl, 
-          lat: existingData.lat || 44.6685, 
-          lng: existingData.lng || -90.1717,
-          direction: null 
-        });
+        const combinedImages = [...existingImages, ...newImageObjects];
+
+        if (combinedImages.length > 0) {
+          const lats = combinedImages.map(img => img.lat);
+          const lngs = combinedImages.map(img => img.lng);
+          
+          const minLat = Math.min(...lats);
+          const maxLat = Math.max(...lats);
+          const minLng = Math.min(...lngs);
+          const maxLng = Math.max(...lngs);
+
+          const padding = 0.00005;
+	  
+          const activityEntry = {
+            userEmail: currentUser ? currentUser.email : "guest@local",
+            action: `Uploaded ${fileArray.length} new photo(s)`,
+            timestamp: new Date().toISOString()
+          };
+
+          const updatePayload = {
+            images: combinedImages,
+            imageUrls: combinedImages.map(img => img.url),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            lat: lats.reduce((sum, v) => sum + v, 0) / lats.length,
+            lng: lngs.reduce((sum, v) => sum + v, 0) / lngs.length,
+            polygonCoords: [
+              { lat: maxLat + padding, lng: minLng - padding },
+              { lat: maxLat + padding, lng: maxLng + padding },
+              { lat: minLat - padding, lng: maxLng + padding },
+              { lat: minLat - padding, lng: minLng - padding }
+            ],
+            activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry)
+          };
+
+          await docRef.update(updatePayload);
+        }
+      } catch (err) {
+        alert("Photo upload failed: " + err.message);
+      } finally {
+        if (progressContainer) {
+          progressContainer.style.display = "none";
+          if (progressBar) progressBar.style.width = "0%";
+        }
+      }
+    };
+
+    async function deletePinImage(pinId, targetUrl) {
+      if (!confirm("Are you sure you want to delete this photo? This will also readjust the pin's polygon boundary.")) {
+        return;
+      }
+
+      try {
+        try {
+          const storageRef = storage.refFromURL(targetUrl);
+          await storageRef.delete();
+        } catch (storageErr) {
+          console.warn("Storage file could not be found or was already deleted:", storageErr);
+        }
+
+        const docRef = db.collection("marshfield_pins").doc(pinId);
+        const docSnap = await docRef.get();
+        if (!docSnap.exists) return;
+
+        const data = docSnap.data();
+        
+        let currentImages = data.images || [];
+        if (currentImages.length === 0 && data.imageUrls && data.imageUrls.length > 0) {
+          currentImages = data.imageUrls.map(url => ({
+            url: url,
+            lat: data.lat || 44.6685,
+            lng: data.lng || -90.1717
+          }));
+        } else if (currentImages.length === 0 && data.imageUrl) {
+          currentImages = [{
+            url: data.imageUrl,
+            lat: data.lat || 44.6685,
+            lng: data.lng || -90.1717
+          }];
+        }
+
+        const updatedImages = currentImages.filter(img => img.url !== targetUrl);
+	
+        const activityEntry = {
+          userEmail: currentUser ? currentUser.email : "guest@local",
+          action: "Deleted a photo and readjusted boundary",
+          timestamp: new Date().toISOString()
+        };
+
+        const updatePayload = {
+          images: updatedImages,
+          imageUrls: updatedImages.map(img => img.url),
+          activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry)
+        };
+
+        if (updatedImages.length > 0) {
+          const lats = updatedImages.map(img => img.lat);
+          const lngs = updatedImages.map(img => img.lng);
+          
+          const minLat = Math.min(...lats);
+          const maxLat = Math.max(...lats);
+          const minLng = Math.min(...lngs);
+          const maxLng = Math.max(...lngs);
+
+          updatePayload.lat = lats.reduce((sum, val) => sum + val, 0) / lats.length;
+          updatePayload.lng = lngs.reduce((sum, val) => sum + val, 0) / lngs.length;
+
+          const padding = 0.00005;
+          updatePayload.polygonCoords = [
+            { lat: maxLat + padding, lng: minLng - padding },
+            { lat: maxLat + padding, lng: maxLng + padding },
+            { lat: minLat - padding, lng: maxLng + padding },
+            { lat: minLat - padding, lng: minLng - padding }
+          ];
+        } else {
+          updatePayload.polygonCoords = [];
+        }
+
+        await docRef.update(updatePayload);
+      } catch (err) {
+        alert("Failed to delete image and update boundary: " + err.message);
       }
     }
 
-    if (statusText) statusText.innerText = "Saving to map...";
-    if (etaText) etaText.innerText = "";
-
-    // 3. Combine existing images and newly uploaded images
-    const combinedImages = [...existingImages, ...newImageObjects];
-
-    if (combinedImages.length > 0) {
-      const lats = combinedImages.map(img => img.lat);
-      const lngs = combinedImages.map(img => img.lng);
-      
-      const minLat = Math.min(...lats);
-      const maxLat = Math.max(...lats);
-      const minLng = Math.min(...lngs);
-      const maxLng = Math.max(...lngs);
-
-      const padding = 0.00005; // ~5 meter buffer
-	  
-      const activityEntry = {
-        userEmail: currentUser ? currentUser.email : "guest@local",
-        action: `Uploaded ${fileArray.length} new photo(s)`,
-        timestamp: new Date().toISOString()
-      };
-
-      const updatePayload = {
-        images: combinedImages,
-        imageUrls: combinedImages.map(img => img.url),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        lat: lats.reduce((sum, v) => sum + v, 0) / lats.length,
-        lng: lngs.reduce((sum, v) => sum + v, 0) / lngs.length,
-        polygonCoords: [
-          { lat: maxLat + padding, lng: minLng - padding },
-          { lat: maxLat + padding, lng: maxLng + padding },
-          { lat: minLat - padding, lng: maxLng + padding },
-          { lat: minLat - padding, lng: minLng - padding }
-        ],
-        activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry)
-      };
-
-      await docRef.update(updatePayload);
-    }
-  } catch (err) {
-    alert("Photo upload failed: " + err.message);
-  } finally {
-    if (progressContainer) {
-      progressContainer.style.display = "none";
-      if (progressBar) progressBar.style.width = "0%";
-    }
-    if (oldStatusEl) {
-      oldStatusEl.style.display = "none";
-    }
-  }
-};
-
-async function deletePinImage(pinId, targetUrl) {
-  if (!confirm("Are you sure you want to delete this photo? This will also readjust the pin's polygon boundary.")) {
-    return;
-  }
-
-  try {
-    // 1. Delete the physical file from Firebase Storage
-    try {
-      const storageRef = storage.refFromURL(targetUrl);
-      await storageRef.delete();
-    } catch (storageErr) {
-      console.warn("Storage file could not be found or was already deleted:", storageErr);
-    }
-
-    // 2. Fetch Firestore document
-    const docRef = db.collection("marshfield_pins").doc(pinId);
-    const docSnap = await docRef.get();
-    if (!docSnap.exists) return;
-
-    const data = docSnap.data();
-    
-    // 3. Robustly handle legacy pins that use imageUrls or imageUrl instead of .images
-    let currentImages = data.images || [];
-    if (currentImages.length === 0 && data.imageUrls && data.imageUrls.length > 0) {
-      currentImages = data.imageUrls.map(url => ({
-        url: url,
-        lat: data.lat || 44.6685,
-        lng: data.lng || -90.1717
-      }));
-    } else if (currentImages.length === 0 && data.imageUrl) {
-      currentImages = [{
-        url: data.imageUrl,
-        lat: data.lat || 44.6685,
-        lng: data.lng || -90.1717
-      }];
-    }
-
-    // 4. Filter out ONLY the targeted image
-    const updatedImages = currentImages.filter(img => img.url !== targetUrl);
-	
-	// 🛡️ Create the audit log entry for photo deletion
-    const activityEntry = {
-      userEmail: currentUser ? currentUser.email : "guest@local",
-      action: "Deleted a photo and readjusted boundary",
-      timestamp: new Date().toISOString()
-    };
-
-    const updatePayload = {
-      images: updatedImages,
-      imageUrls: updatedImages.map(img => img.url), // Keeps backward compatibility
-	  activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry) // 👈 Appends to history
-    };
-
-    // 5. Readjust or shrink polygon bounds based on remaining photos
-    if (updatedImages.length > 0) {
-      const lats = updatedImages.map(img => img.lat);
-      const lngs = updatedImages.map(img => img.lng);
-      
-      const minLat = Math.min(...lats);
-      const maxLat = Math.max(...lats);
-      const minLng = Math.min(...lngs);
-      const maxLng = Math.max(...lngs);
-
-      updatePayload.lat = lats.reduce((sum, val) => sum + val, 0) / lats.length;
-      updatePayload.lng = lngs.reduce((sum, val) => sum + val, 0) / lngs.length;
-
-      const padding = 0.00005; // ~5 meter buffer
-      updatePayload.polygonCoords = [
-        { lat: maxLat + padding, lng: minLng - padding },
-        { lat: maxLat + padding, lng: maxLng + padding },
-        { lat: minLat - padding, lng: maxLng + padding },
-        { lat: minLat - padding, lng: minLng - padding }
-      ];
-    } else {
-      updatePayload.polygonCoords = [];
-    }
-
-    // 6. Save updates to Firestore
-    await docRef.update(updatePayload);
-
-    // 7. Refresh map display
-    if (typeof loadPins === 'function') loadPins();
-    
-  } catch (err) {
-    alert("Failed to delete image and update boundary: " + err.message);
-  }
-}
-
-    // Helper to read EXIF GPS metadata from an uploaded file
     function getFileGPS(file) {
       return new Promise((resolve) => {
         EXIF.getData(file, function() {
@@ -2834,7 +2676,7 @@ async function deletePinImage(pinId, targetUrl) {
           const latRef = EXIF.getTag(this, "GPSLatitudeRef");
           const lngTag = EXIF.getTag(this, "GPSLongitude");
           const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
-          const directionTag = EXIF.getTag(this, "GPSImgDirection"); // 🧭 Camera heading (0-360°)
+          const directionTag = EXIF.getTag(this, "GPSImgDirection");
 
           if (!latTag || !lngTag) {
             resolve(null);
@@ -2907,13 +2749,13 @@ async function deletePinImage(pinId, targetUrl) {
 
         if (checkedColors.includes(pinColor)) {
           if (!markerClusterGroup.hasLayer(marker)) markerClusterGroup.addLayer(marker);
-          if (polygon && !map.hasLayer(polygon)) polygon.addTo(map); // 👈 Added
+          if (polygon && !map.hasLayer(polygon)) polygon.addTo(map);
         } else {
           if (markerClusterGroup.hasLayer(marker)) {
             marker.closePopup();
             markerClusterGroup.removeLayer(marker);
           }
-          if (polygon && map.hasLayer(polygon)) map.removeLayer(polygon); // 👈 Added
+          if (polygon && map.hasLayer(polygon)) map.removeLayer(polygon);
         }
       });
     };
@@ -2944,12 +2786,10 @@ async function deletePinImage(pinId, targetUrl) {
           radiusMeters: null 
         };
 
-        // Use set with merge: true so it creates the user document on the fly if it doesn't exist
         await userRef.set({
           allowedGeofences: firebase.firestore.FieldValue.arrayUnion(newLocation)
         }, { merge: true });
 
-        // Safely initialize profile structure if null
         if (!currentUserProfile) {
           currentUserProfile = {};
         }
@@ -3063,7 +2903,16 @@ async function deletePinImage(pinId, targetUrl) {
             row.appendChild(deleteBtn);
             zonesList.appendChild(row);
 
-            if (radius != null && radius > 0) {
+            if (Array.isArray(zone.polygon) && zone.polygon.length >= 3) {
+              const polyLatLngs = zone.polygon.map(p => [p.lat, p.lng]);
+              L.polygon(polyLatLngs, {
+                color: '#3498db',
+                fillColor: '#3498db',
+                fillOpacity: 0.08,
+                weight: 2,
+                dashArray: '4, 6'
+              }).bindTooltip(name).addTo(geofenceLayerGroup);
+            } else if (radius != null && radius > 0) {
               L.circle([lat, lng], {
                 radius: radius,
                 color: '#3498db',
@@ -3085,50 +2934,6 @@ async function deletePinImage(pinId, targetUrl) {
     window.jumpToZone = function(lat, lng) {
       map.flyTo([lat, lng], 15, { duration: 1.5 });
     };
-
-    auth.onAuthStateChanged(async user => {
-      currentUser = user;
-      const authBtn = document.getElementById("auth-btn");
-      if (authBtn) {
-        authBtn.innerText = user ? "Account" : "Login";
-        authBtn.onclick = user ? window.openAccountMenuModal : window.openLoginChoiceModal;
-      }
-
-      if (user) {
-        try {
-          const userDoc = await db.collection("users").doc(user.uid).get();
-          if (userDoc.exists) {
-            currentUserProfile = userDoc.data();
-            updateZonesPanelUI();
-
-            const firstZone = currentUserProfile.allowedGeofences?.[0];
-            if (firstZone) {
-              const loc = firstZone.location || firstZone.geopoint || firstZone.coords || firstZone.point || firstZone;
-              const lat = loc.latitude ?? loc.lat;
-              const lng = loc.longitude ?? loc.lng;
-              if (lat != null && lng != null) {
-                map.flyTo([lat, lng], 15, { duration: 1.5 });
-              }
-            }
-          } else {
-            currentUserProfile = null;
-            updateZonesPanelUI();
-          }
-        } catch (err) {
-          console.error("Error fetching user profile:", err);
-          currentUserProfile = null;
-          updateZonesPanelUI();
-        }
-      } else {
-        currentUserProfile = null;
-        updateZonesPanelUI();
-      }
-
-      Object.keys(activeMarkers).forEach(id => {
-        const { marker, data } = activeMarkers[id];
-        renderPinMarker(id, data);
-      });
-    });
 
     async function logoutUser() { 
       secureEsriLayers.forEach(layer => {
@@ -3186,7 +2991,6 @@ async function deletePinImage(pinId, targetUrl) {
       }
     }
 
-    // CITY ARCGIS AUTH & SECURE DYNAMIC LAYERS (High Performance & Flawless Culling)
     async function generateArcGISToken() {
       const username = document.getElementById("arcgis-user").value.trim();
       const password = document.getElementById("arcgis-pass").value.trim();
@@ -3240,13 +3044,12 @@ async function deletePinImage(pinId, targetUrl) {
       const utilityOverlays = {};
 
       myBaseServices.forEach(service => {
-        // High-performance server-rendered dynamic map layers with automatic zoom culling
         const dynamicLayer = L.esri.dynamicMapLayer({
           url: service.url,
           token: token,
           opacity: 0.85,
           format: "png24",
-          minZoom: 16 // Automatically hides completely when zoomed out, eliminating all lag
+          minZoom: 16
         });
 
         secureEsriLayers.push(dynamicLayer);
@@ -3268,7 +3071,6 @@ async function deletePinImage(pinId, targetUrl) {
       alert("City ArcGIS secure utility layers loaded successfully! They will appear automatically when you zoom in close.");
     }
 
-    // LAZY-LOADED KMZ FIBER LAYERS
     const kmzLayersCache = {
       pbd03: null,
       pbd07: null,
@@ -3276,7 +3078,7 @@ async function deletePinImage(pinId, targetUrl) {
     };
 
     const kmzFilePaths = {
-      pbd03: './' + encodeURI('Wausau PBD03.kmz'),
+      pbd03: './KMZs/' + encodeURI('Wausau PBD03.kmz'),
       pbd07: './KMZs/PBD07.kmz',
       pbd09: './KMZs/PBD09.kmz'
     };
@@ -3329,9 +3131,361 @@ async function deletePinImage(pinId, targetUrl) {
       });
       toggleKmzLayers();
     }
+
+    // ==========================================
+    // 👥 USER & GEOFENCE MANAGEMENT CONTROLLER
+    // ==========================================
+    let allManagedUsers = [];
+    let pendingNewUserPolygon = [];
+    let geofenceDrawTarget = null;
+    let userDrawLayer = null;
+    let userDrawMarkers = [];
+    let isDrawingUserGeofence = false;
+    let previewGeofenceLayer = null;
+
+    window.toggleCreateUserSection = function() {
+      const body = document.getElementById("create-user-form-body");
+      const icon = document.getElementById("create-user-toggle-icon");
+      if (body.style.display === "none") {
+        body.style.display = "block";
+        icon.innerText = "▾";
+      } else {
+        body.style.display = "none";
+        icon.innerText = "▸";
+      }
+    };
+
+    async function loadAllUsersForAdmin() {
+      const listEl = document.getElementById("users-directory-list");
+      listEl.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-size: 12px;">Loading users...</div>';
+
+      try {
+        const snap = await db.collection("users").get();
+        allManagedUsers = [];
+        snap.forEach(doc => {
+          allManagedUsers.push({ uid: doc.id, ...doc.data() });
+        });
+        allManagedUsers.sort((a, b) => (a.email || a.uid).localeCompare(b.email || b.uid));
+        renderUsersList();
+      } catch (err) {
+        console.error("Error loading users:", err);
+        listEl.innerHTML = `<div style="color: #dc2626; font-size: 12px; padding: 10px;">Failed to load users: ${err.message}</div>`;
+      }
+    }
+
+    window.renderUsersList = function() {
+      const listEl = document.getElementById("users-directory-list");
+      const filterText = (document.getElementById("user-search-filter")?.value || "").toLowerCase();
+
+      const filtered = allManagedUsers.filter(u => {
+        const identifier = (u.email || u.uid || "").toLowerCase();
+        return identifier.includes(filterText);
+      });
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 16px; font-size: 12px;">No matching users found.</div>';
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(u => {
+        const displayEmail = u.email || `UID: ${u.uid.slice(0, 8)}...`;
+        const role = u.role || u.userRole || "User";
+        const fences = Array.isArray(u.allowedGeofences) ? u.allowedGeofences : [];
+
+        const fenceTagsHtml = fences.length === 0
+          ? '<span style="font-size: 11px; color: #94a3b8; font-style: italic;">Unrestricted (No geofences)</span>'
+          : fences.map((f, idx) => {
+              const isPoly = Array.isArray(f.polygon) && f.polygon.length >= 3;
+              const badgeIcon = isPoly ? '⬠' : (f.radiusMeters ? '⭕' : '📍');
+              const fenceName = escapeHtml(f.name || `Zone ${idx + 1}`);
+              return `
+                <span style="display: inline-flex; align-items: center; gap: 4px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 2px 6px; border-radius: 4px; font-size: 11px;">
+                  <span onclick="previewUserFence('${u.uid}', ${idx})" style="cursor: pointer; text-decoration: underline;" title="Click to preview on map">${badgeIcon} ${fenceName}</span>
+                  <button type="button" onclick="deleteUserGeofence('${u.uid}', ${idx})" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 11px; padding: 0 2px;" title="Remove geofence">✕</button>
+                </span>
+              `;
+            }).join('');
+
+        return `
+          <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; background: #ffffff;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <div style="font-weight: 600; font-size: 13px; color: #1e293b; overflow: hidden; text-overflow: ellipsis;">
+                ${escapeHtml(displayEmail)}
+              </div>
+              <select onchange="updateExistingUserRole('${u.uid}', this.value)" style="padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f8fafc; cursor: pointer;">
+                <option value="User" ${role === 'User' ? 'selected' : ''}>Standard User</option>
+                <option value="admin" ${role === 'admin' ? 'selected' : ''}>Admin</option>
+                <option value="super_admin" ${role === 'super_admin' ? 'selected' : ''}>Super Admin</option>
+              </select>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
+              ${fenceTagsHtml}
+              <button type="button" onclick="startUserGeofenceDraw('${u.uid}')" style="background: #f1f5f9; border: 1px dashed #94a3b8; color: #334155; padding: 2px 7px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 500;">
+                + Add Polygon Fence
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    };
+
+    window.updateExistingUserRole = async function(uid, newRole) {
+      try {
+        await db.collection("users").doc(uid).update({ role: newRole });
+        const userObj = allManagedUsers.find(u => u.uid === uid);
+        if (userObj) userObj.role = newRole;
+
+        if (currentUser && uid === currentUser.uid && currentUserProfile) {
+          currentUserProfile.role = newRole;
+        }
+      } catch (err) {
+        alert("Failed to update user role: " + err.message);
+        await loadAllUsersForAdmin();
+      }
+    };
+
+    window.deleteUserGeofence = async function(uid, fenceIndex) {
+      const userObj = allManagedUsers.find(u => u.uid === uid);
+      if (!userObj || !userObj.allowedGeofences) return;
+
+      const fenceName = userObj.allowedGeofences[fenceIndex]?.name || "this geofence";
+      if (!confirm(`Remove "${fenceName}" from ${userObj.email || uid}?`)) return;
+
+      try {
+        const updatedFences = [...userObj.allowedGeofences];
+        updatedFences.splice(fenceIndex, 1);
+
+        await db.collection("users").doc(uid).update({
+          allowedGeofences: updatedFences
+        });
+
+        userObj.allowedGeofences = updatedFences;
+        renderUsersList();
+      } catch (err) {
+        alert("Failed to delete geofence: " + err.message);
+      }
+    };
+
+    window.previewUserFence = function(uid, fenceIndex) {
+      const userObj = allManagedUsers.find(u => u.uid === uid);
+      const fence = userObj?.allowedGeofences?.[fenceIndex];
+      if (!fence) return;
+
+      if (previewGeofenceLayer) {
+        map.removeLayer(previewGeofenceLayer);
+        previewGeofenceLayer = null;
+      }
+
+      document.getElementById("user-management-modal").style.display = "none";
+
+      if (Array.isArray(fence.polygon) && fence.polygon.length >= 3) {
+        const latLngs = fence.polygon.map(p => [p.lat, p.lng]);
+        previewGeofenceLayer = L.polygon(latLngs, { color: '#2563eb', weight: 3, fillOpacity: 0.2 }).addTo(map);
+        map.fitBounds(previewGeofenceLayer.getBounds(), { padding: [40, 40] });
+      } else {
+        const loc = fence.location || fence.geopoint || fence.coords || fence;
+        const lat = loc.latitude ?? loc.lat;
+        const lng = loc.longitude ?? loc.lng;
+        const radius = fence.radiusMeters || fence.radius || 500;
+        if (lat != null && lng != null) {
+          previewGeofenceLayer = L.circle([lat, lng], { radius: radius, color: '#2563eb', weight: 3, fillOpacity: 0.2 }).addTo(map);
+          map.flyTo([lat, lng], 15);
+        }
+      }
+
+      let banner = document.getElementById("user-geofence-banner");
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "user-geofence-banner";
+        banner.style.cssText = "position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 10px 18px; border-radius: 20px; z-index: 4000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 13px; display: flex; align-items: center; gap: 10px;";
+        document.body.appendChild(banner);
+      }
+      banner.innerHTML = `
+        <span>Previewing: <b>${escapeHtml(fence.name || 'Geofence')}</b></span>
+        <button onclick="closeFencePreview()" style="background: #3b82f6; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Back to Users</button>
+      `;
+      banner.style.display = "flex";
+    };
+
+    window.closeFencePreview = function() {
+      const banner = document.getElementById("user-geofence-banner");
+      if (banner) banner.style.display = "none";
+      if (previewGeofenceLayer) {
+        map.removeLayer(previewGeofenceLayer);
+        previewGeofenceLayer = null;
+      }
+      document.getElementById("user-management-modal").style.display = "flex";
+    };
+
+    window.startUserGeofenceDraw = function(targetUid) {
+      geofenceDrawTarget = targetUid;
+      isDrawingUserGeofence = true;
+      let drawnCoords = [];
+
+      document.getElementById("user-management-modal").style.display = "none";
+      if (previewGeofenceLayer) {
+        map.removeLayer(previewGeofenceLayer);
+        previewGeofenceLayer = null;
+      }
+
+      let banner = document.getElementById("user-geofence-banner");
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "user-geofence-banner";
+        banner.style.cssText = "position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 10px 18px; border-radius: 20px; z-index: 4000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 13px; display: flex; align-items: center; gap: 10px;";
+        document.body.appendChild(banner);
+      }
+      banner.innerHTML = `
+        <span>Click map points to outline allowed geofence.</span>
+        <button id="finish-user-fence-btn" style="background: #22c55e; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">Done</button>
+        <button id="cancel-user-fence-btn" style="background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer;">Cancel</button>
+      `;
+      banner.style.display = "flex";
+
+      function onMapClick(e) {
+        drawnCoords.push({ lat: e.latlng.lat, lng: e.latlng.lng });
+        const dot = L.circleMarker(e.latlng, { radius: 5, color: '#8e44ad', fillOpacity: 1 }).addTo(map);
+        userDrawMarkers.push(dot);
+
+        const latLngs = drawnCoords.map(c => [c.lat, c.lng]);
+        if (!userDrawLayer) {
+          userDrawLayer = L.polygon(latLngs, { color: '#8e44ad', weight: 2, fillOpacity: 0.25 }).addTo(map);
+        } else {
+          userDrawLayer.setLatLngs(latLngs);
+        }
+      }
+
+      function cleanup() {
+        isDrawingUserGeofence = false;
+        map.off('click', onMapClick);
+        banner.style.display = "none";
+        userDrawMarkers.forEach(m => map.removeLayer(m));
+        userDrawMarkers = [];
+        if (userDrawLayer) {
+          map.removeLayer(userDrawLayer);
+          userDrawLayer = null;
+        }
+      }
+
+      map.on('click', onMapClick);
+
+      document.getElementById("cancel-user-fence-btn").onclick = () => {
+        cleanup();
+        document.getElementById("user-management-modal").style.display = "flex";
+      };
+
+      document.getElementById("finish-user-fence-btn").onclick = async () => {
+        cleanup();
+
+        if (drawnCoords.length < 3) {
+          alert("A polygon geofence requires at least 3 points.");
+          document.getElementById("user-management-modal").style.display = "flex";
+          return;
+        }
+
+        if (geofenceDrawTarget === 'NEW_USER') {
+          pendingNewUserPolygon = drawnCoords;
+          const statusEl = document.getElementById("new-user-geofence-status");
+          if (statusEl) {
+            statusEl.innerText = `✅ ${drawnCoords.length} points ready`;
+            statusEl.style.color = "#16a34a";
+          }
+          document.getElementById("user-management-modal").style.display = "flex";
+        } else {
+          const zoneName = prompt("Enter a name for this geofence zone:", "Assigned Zone");
+          if (!zoneName) {
+            document.getElementById("user-management-modal").style.display = "flex";
+            return;
+          }
+
+          const avgLat = drawnCoords.reduce((s, p) => s + p.lat, 0) / drawnCoords.length;
+          const avgLng = drawnCoords.reduce((s, p) => s + p.lng, 0) / drawnCoords.length;
+
+          const newFence = {
+            name: zoneName.trim(),
+            location: new firebase.firestore.GeoPoint(avgLat, avgLng),
+            polygon: drawnCoords,
+            radiusMeters: null
+          };
+
+          try {
+            await db.collection("users").doc(geofenceDrawTarget).update({
+              allowedGeofences: firebase.firestore.FieldValue.arrayUnion(newFence)
+            });
+            await loadAllUsersForAdmin();
+          } catch (err) {
+            alert("Failed to save geofence: " + err.message);
+          }
+          document.getElementById("user-management-modal").style.display = "flex";
+        }
+      };
+    };
+
+    window.submitNewUser = async function() {
+      const email = document.getElementById("new-user-email").value.trim();
+      const tempPassword = document.getElementById("new-user-password").value.trim();
+      const role = document.getElementById("new-user-role").value;
+      const zoneName = document.getElementById("new-user-zone-name").value.trim() || "Assigned Zone";
+
+      if (!email || tempPassword.length < 6) {
+        alert("Please enter a valid email and a temporary password of at least 6 characters.");
+        return;
+      }
+
+      try {
+        let secondaryApp = firebase.apps.find(app => app.name === "SecondaryUserCreator");
+        if (!secondaryApp) {
+          secondaryApp = firebase.initializeApp(firebase.app().options, "SecondaryUserCreator");
+        }
+        const secondaryAuth = secondaryApp.auth();
+
+        const userCred = await secondaryAuth.createUserWithEmailAndPassword(email, tempPassword);
+        const newUid = userCred.user.uid;
+        await secondaryAuth.signOut();
+
+        const allowedGeofences = [];
+        if (pendingNewUserPolygon.length >= 3) {
+          const avgLat = pendingNewUserPolygon.reduce((s, p) => s + p.lat, 0) / pendingNewUserPolygon.length;
+          const avgLng = pendingNewUserPolygon.reduce((s, p) => s + p.lng, 0) / pendingNewUserPolygon.length;
+
+          allowedGeofences.push({
+            name: zoneName,
+            location: new firebase.firestore.GeoPoint(avgLat, avgLng),
+            polygon: pendingNewUserPolygon,
+            radiusMeters: null
+          });
+        }
+
+        await db.collection("users").doc(newUid).set({
+          email: email,
+          role: role,
+          mustChangePassword: true,
+          allowedGeofences: allowedGeofences,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdBy: currentUser.email
+        });
+
+        document.getElementById("new-user-email").value = "";
+        document.getElementById("new-user-password").value = "";
+        document.getElementById("new-user-zone-name").value = "";
+        pendingNewUserPolygon = [];
+        const statusEl = document.getElementById("new-user-geofence-status");
+        if (statusEl) {
+          statusEl.innerText = "No polygon drawn (Unrestricted)";
+          statusEl.style.color = "#64748b";
+        }
+
+        alert(`User ${email} created successfully!`);
+        await loadAllUsersForAdmin();
+      } catch (err) {
+        console.error("Error creating user:", err);
+        alert("Failed to create user: " + err.message);
+      }
+    };
   </script>
 
-<!-- Edit Pin Modal -->
+  <!-- Edit Pin Modal -->
   <div id="edit-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 3000;">
     <div class="modal-content" style="background: white; padding: 20px; border-radius: 8px; width: 360px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
       <h3>Edit Pin</h3>
@@ -3340,18 +3494,15 @@ async function deletePinImage(pinId, targetUrl) {
       <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Title:</label>
       <input type="text" id="edit-title" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
 	  
-	  <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Description:</label>
+      <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Description:</label>
       <textarea id="edit-description" rows="2" placeholder="Primary pin details or legacy summary..." style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 4px; font-family: inherit; font-size: 13px;"></textarea>
       
-      <!-- Replace the old single note textarea with this comment section layout -->
       <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Threaded Comments & Activity:</label>
       
-      <!-- Container that displays the scrollable list of past comments -->
       <div id="edit-comments-container" style="max-height: 140px; overflow-y: auto; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; margin-top: 4px; margin-bottom: 8px;">
         <span style="font-size: 12px; color: #888;">No comments yet.</span>
       </div>
 
-      <!-- Input box to type a new comment -->
       <div style="display: flex; gap: 6px; margin-bottom: 12px;">
         <input type="text" id="new-comment-input" placeholder="Type a comment or field update..." style="flex: 1; padding: 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px;" />
         <button type="button" onclick="addPinCommentFromModal()" style="padding: 8px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">Post</button>
@@ -3375,20 +3526,16 @@ async function deletePinImage(pinId, targetUrl) {
       <label style="display: block; margin-top: 10px; font-size: 13px; font-weight: 500;">Add More Photos:</label>
       <input type="file" id="edit-file-input" multiple accept="image/*" style="width: 100%; margin-top: 4px; font-size: 12px;">
 	  
-	 
-	  
-    <!-- Rich Progress Bar Container (replaces upload-status-modal) -->
-<div id="upload-progress-container" style="display: none; margin-top: 8px; background: #f1f5f9; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
-  <div style="display: flex; justify-content: space-between; font-size: 11px; color: #334155; margin-bottom: 4px; font-weight: 500;">
-    <span id="upload-status-text">Preparing...</span>
-    <span id="upload-eta-text"></span>
-  </div>
-  <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-    <div id="upload-progress-bar" style="width: 0%; height: 100%; background: #2563eb; transition: width 0.15s ease;"></div>
-  </div>
-</div>
+      <div id="upload-progress-container" style="display: none; margin-top: 8px; background: #f1f5f9; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #334155; margin-bottom: 4px; font-weight: 500;">
+          <span id="upload-status-text">Preparing...</span>
+          <span id="upload-eta-text"></span>
+        </div>
+        <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+          <div id="upload-progress-bar" style="width: 0%; height: 100%; background: #2563eb; transition: width 0.15s ease;"></div>
+        </div>
+      </div>
 
-      <!-- 📍 PLACED BELOW PHOTOS -->
       <label style="display: block; margin-top: 16px; font-size: 13px; font-weight: 500;">Affected Area Boundary:</label>
       <div style="display: flex; gap: 8px; margin-top: 4px; margin-bottom: 10px;">
         <button type="button" onclick="initPolygonDrawing()" style="flex: 1; padding: 6px; background: #8e44ad; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">✏️ Draw / Edit Boundary</button>
@@ -3412,8 +3559,8 @@ async function deletePinImage(pinId, targetUrl) {
       </button>
       
       <button type="button" onclick="window.closeLoginChoiceModal(); window.openArcGISLoginModal();" style="display: none; width: 100%; padding: 10px; margin-bottom: 16px; background: #f0f9ff; border: 1px solid #0284c7; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #0284c7;">
-  🚽 Sewer / Storm / Traffic Login
-	  </button>
+        🚽 Sewer / Storm / Traffic Login
+      </button>
 
       <button type="button" onclick="window.closeLoginChoiceModal()" style="width: 100%; padding: 8px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Cancel</button>
     </div>
@@ -3425,17 +3572,20 @@ async function deletePinImage(pinId, targetUrl) {
       <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1e293b;">Account & Utilities</h3>
       
       <button type="button" onclick="window.closeAccountMenuModal(); window.openArcGISLoginModal();" style="display: none; width: 100%; padding: 10px; margin-bottom: 10px; background: #f0f9ff; border: 1px solid #0284c7; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #0284c7;">
-  🚽 ArcGIS Utility Login
-	  </button>
+        🚽 ArcGIS Utility Login
+      </button>
+
+      <button type="button" id="admin-manage-users-btn" onclick="window.closeAccountMenuModal(); window.openUserManagementModal();" style="display: none; width: 100%; padding: 10px; margin-bottom: 12px; background: #eff6ff; border: 1px solid #2563eb; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 600; color: #1d4ed8;">
+        👥 Manage Users & Geofences
+      </button>
       
-	<!-- User Email & Role Display -->
-  <div id="user-auth-status" style="padding: 4px 0 12px 0; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
-    Signed in as:<br>
-    <strong id="user-email-display" style="color: #1e293b; font-size: 13px; display: block; margin-top: 2px;"></strong>
-    <div style="margin-top: 6px;">
-      <span id="user-role-badge" style="display: inline-block; padding: 2px 6px; background: #e2e8f0; color: #334155; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase;">Loading role...</span>
-    </div>
-  </div>
+      <div id="user-auth-status" style="padding: 4px 0 12px 0; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
+        Signed in as:<br>
+        <strong id="user-email-display" style="color: #1e293b; font-size: 13px; display: block; margin-top: 2px;"></strong>
+        <div style="margin-top: 6px;">
+          <span id="user-role-badge" style="display: inline-block; padding: 2px 6px; background: #e2e8f0; color: #334155; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase;">Loading role...</span>
+        </div>
+      </div>
 	  
       <button type="button" onclick="window.closeAccountMenuModal(); logoutUser();" style="width: 100%; padding: 10px; margin-bottom: 16px; background: #fef2f2; border: 1px solid #dc2626; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; color: #dc2626;">
         🚪 Log Out of Firebase
@@ -3445,23 +3595,22 @@ async function deletePinImage(pinId, targetUrl) {
     </div>
   </div>
   
-   <!-- View All Comments / Activity Modal -->
-<div id="comments-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
-  <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 450px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px;">
-      <h3 id="comments-modal-title" style="margin: 0; font-size: 16px; color: #1e293b;">Pin Comments & Activity</h3>
-      <button type="button" onclick="closeCommentsModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">✕</button>
-    </div>
-    
-    <div id="comments-modal-body" style="overflow-y: auto; flex: 1; padding-right: 4px; font-size: 13px; color: #334155;">
-      <!-- Populated dynamically -->
-    </div>
-    
-    <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 10px; text-align: right;">
-      <button type="button" onclick="closeCommentsModal()" style="padding: 6px 12px; background: #64748b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Close</button>
+  <!-- View All Comments / Activity Modal -->
+  <div id="comments-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 450px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px;">
+        <h3 id="comments-modal-title" style="margin: 0; font-size: 16px; color: #1e293b;">Pin Comments & Activity</h3>
+        <button type="button" onclick="closeCommentsModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">✕</button>
+      </div>
+      
+      <div id="comments-modal-body" style="overflow-y: auto; flex: 1; padding-right: 4px; font-size: 13px; color: #334155;">
+      </div>
+      
+      <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 10px; text-align: right;">
+        <button type="button" onclick="closeCommentsModal()" style="padding: 6px 12px; background: #64748b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Close</button>
+      </div>
     </div>
   </div>
-</div>
 
   <!-- App Login Modal (Firebase) -->
   <div id="login-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
@@ -3517,7 +3666,6 @@ async function deletePinImage(pinId, targetUrl) {
       <button type="button" onclick="changeLightboxImage(1)" style="position: absolute; right: -50px; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; padding: 10px 15px; cursor: pointer; border-radius: 4px;">❯</button>
     </div>
     
-    <!-- Counter & Thumbnail Strip Container -->
     <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 90vw;">
       <div id="lightbox-counter" style="color: white; font-size: 14px; font-family: sans-serif;"></div>
       <div id="lightbox-thumbnails" style="display: flex; gap: 6px; overflow-x: auto; max-width: 100%; padding: 4px;"></div>
@@ -3525,22 +3673,98 @@ async function deletePinImage(pinId, targetUrl) {
   </div>
   
   <!-- Standalone Audit Trail Modal -->
-<div id="audit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
-  <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 450px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px;">
-      <h3 id="audit-modal-title" style="margin: 0; font-size: 16px; color: #1e293b;">Audit Trail</h3>
-      <button type="button" onclick="closeAuditModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">✕</button>
-    </div>
-    
-    <div id="audit-modal-body" style="overflow-y: auto; flex: 1; padding-right: 4px; font-size: 13px; color: #334155;">
-      <!-- Populated dynamically -->
-    </div>
-    
-    <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 10px; text-align: right;">
-      <button type="button" onclick="closeAuditModal()" style="padding: 6px 12px; background: #64748b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Close</button>
+  <div id="audit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 450px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px;">
+        <h3 id="audit-modal-title" style="margin: 0; font-size: 16px; color: #1e293b;">Audit Trail</h3>
+        <button type="button" onclick="closeAuditModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;">✕</button>
+      </div>
+      
+      <div id="audit-modal-body" style="overflow-y: auto; flex: 1; padding-right: 4px; font-size: 13px; color: #334155;">
+      </div>
+      
+      <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 10px; text-align: right;">
+        <button type="button" onclick="closeAuditModal()" style="padding: 6px 12px; background: #64748b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Close</button>
+      </div>
     </div>
   </div>
-</div>
+
+  <!-- User & Geofence Management Modal -->
+  <div id="user-management-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 3500; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 20px; border-radius: 8px; width: 92%; max-width: 540px; max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.25); font-family: sans-serif;">
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;">
+        <h3 style="margin: 0; font-size: 18px; color: #1e293b;">User & Geofence Management</h3>
+        <button type="button" onclick="closeUserManagementModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b;">✕</button>
+      </div>
+
+      <div style="overflow-y: auto; flex: 1; padding-right: 4px;">
+        
+        <!-- Section 1: Create New User -->
+        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+          <div onclick="toggleCreateUserSection()" style="font-weight: 600; font-size: 13px; color: #1e293b; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+            <span>➕ Create New User Account</span>
+            <span id="create-user-toggle-icon">▸</span>
+          </div>
+          
+          <div id="create-user-form-body" style="display: none; margin-top: 12px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #475569;">Email Address:</label>
+                <input type="email" id="new-user-email" placeholder="user@example.com" style="width: 100%; padding: 7px; margin-top: 2px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #475569;">Temporary Password:</label>
+                <input type="text" id="new-user-password" placeholder="Min. 6 characters" style="width: 100%; padding: 7px; margin-top: 2px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px;">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #475569;">Role:</label>
+                <select id="new-user-role" style="width: 100%; padding: 7px; margin-top: 2px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; font-size: 12px;">
+                  <option value="User">Standard User</option>
+                  <option value="admin">Admin</option>
+                  <option value="super_admin">Super Admin</option>
+                </select>
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #475569;">Initial Geofence Name:</label>
+                <input type="text" id="new-user-zone-name" placeholder="e.g., North Sector" style="width: 100%; padding: 7px; margin-top: 2px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px;">
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <button type="button" onclick="startUserGeofenceDraw('NEW_USER')" style="padding: 7px 10px; background: #8e44ad; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;">
+                ✏️ Draw Polygon Geofence
+              </button>
+              <span id="new-user-geofence-status" style="font-size: 11px; color: #64748b;">No polygon drawn (Unrestricted)</span>
+              <button type="button" onclick="submitNewUser()" style="padding: 7px 14px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;">
+                Create User
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Existing Users Directory -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-weight: 600; font-size: 13px; color: #1e293b;">Existing Users</span>
+            <input type="text" id="user-search-filter" oninput="renderUsersList()" placeholder="Filter by email..." style="padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 180px;">
+          </div>
+          
+          <div id="users-directory-list" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="text-align: center; color: #64748b; padding: 20px; font-size: 12px;">Loading users...</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 10px; text-align: right;">
+        <button type="button" onclick="closeUserManagementModal()" style="padding: 7px 14px; background: #64748b; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;">Close</button>
+      </div>
+    </div>
+  </div>
   
 </body>
 </html>
