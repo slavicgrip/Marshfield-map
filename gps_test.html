@@ -503,12 +503,12 @@
 	
     function canViewAuditTrail() {
       if (!currentUserProfile) return false;
-      return currentUserProfile.canViewAudit === true || currentUserProfile.role === "super_admin";
+      return currentUserProfile.canViewAudit === true || ['super_admin', 'Owner'].includes(currentUserProfile.role);
     }
 	  
     window.openUserManagementModal = async function() {
-      if (!currentUserProfile || currentUserProfile.role !== 'super_admin') {
-        alert("Permission denied: Super Admin access required.");
+      if (!currentUserProfile || !['super_admin', 'Owner', 'Supervisor'].includes(currentUserProfile.role)) {
+        alert("Permission denied: Management access required.");
         return;
       }
       document.getElementById("user-management-modal").style.display = "flex";
@@ -662,7 +662,7 @@
         
         if (roleBadge) {
           roleBadge.textContent = role.replace('_', ' ').toUpperCase();
-          if (role === 'super_admin' || role === 'admin') {
+          if (['super_admin', 'Owner'].includes(role)) {
             roleBadge.style.background = '#dbeafe';
             roleBadge.style.color = '#1e40af';
           } else {
@@ -671,25 +671,48 @@
           }
         }
 
-        const isSuperAdmin = (role === 'super_admin');
+        const isPrivileged = ['super_admin', 'Owner', 'Supervisor'].includes(role);
         document.querySelectorAll('.super-admin-only-option').forEach(opt => {
-          opt.style.display = isSuperAdmin ? '' : 'none';
-          opt.disabled = !isSuperAdmin;
+          opt.style.display = isPrivileged ? '' : 'none';
+          opt.disabled = !isPrivileged;
         });
 
         const adminBtn = document.getElementById("admin-manage-users-btn");
-        if (adminBtn) adminBtn.style.display = isSuperAdmin ? "block" : "none";
+        if (adminBtn) adminBtn.style.display = isPrivileged ? "block" : "none";
 
         updateZonesPanelUI();
-		// ➔ AUTO-JUMP TO USER'S FIRST SAVED GEOFENCE ON LOGIN
-        const primaryZone = currentUserProfile?.allowedGeofences?.[0];
-        if (primaryZone) {
-          const loc = primaryZone.location || primaryZone.geopoint || primaryZone.coords || primaryZone.point || primaryZone;
-          const lat = loc.latitude ?? loc.lat;
-          const lng = loc.longitude ?? loc.lng;
-          if (lat != null && lng != null) {
-            map.flyTo([lat, lng], 15, { duration: 1.5 });
-          }
+		
+        // ➔ 3-TIER LOGIN MAP JUMP HIERARCHY
+        const zones = currentUserProfile?.allowedGeofences || [];
+        let targetLat = null;
+        let targetLng = null;
+
+        // Tier 1: Check for a strict geofence first (polygon or radius)
+        const firstGeofence = zones.find(zone => {
+          const hasPolygon = Array.isArray(zone.polygon) && zone.polygon.length >= 3;
+          const radius = zone.radiusMeters || zone.radius;
+          const hasRadius = radius != null && Number(radius) > 0;
+          return hasPolygon || hasRadius;
+        });
+
+        if (firstGeofence) {
+          const loc = firstGeofence.location || firstGeofence.geopoint || firstGeofence.coords || firstGeofence.point || firstGeofence;
+          targetLat = loc.latitude ?? loc.lat;
+          targetLng = loc.longitude ?? loc.lng;
+        } 
+        // Tier 2: If no geofence is set, use the first saved jump-to location/pin
+        else if (zones.length > 0) {
+          const firstJumpTo = zones[0];
+          const loc = firstJumpTo.location || firstJumpTo.geopoint || firstJumpTo.coords || firstJumpTo.point || firstJumpTo;
+          targetLat = loc.latitude ?? loc.lat;
+          targetLng = loc.longitude ?? loc.lng;
+        }
+
+        // Tier 3: Fly to target if found, otherwise default to Marshfield, WI center
+        if (targetLat != null && targetLng != null) {
+          map.flyTo([targetLat, targetLng], 15, { duration: 1.5 });
+        } else {
+          map.flyTo(MARSHFIELD_CENTER, MARSHFIELD_ZOOM, { duration: 1.5 });
         }
       } else {
         if (authBtn) {
@@ -754,6 +777,9 @@
       });
 
       if (strictFences.length === 0) {
+        if (currentUserProfile?.role === 'Tech') {
+          return false; // Techs without geofences cannot edit globally
+        }
         return true; 
       }
 
@@ -1528,7 +1554,7 @@
 
         const comments = data.comments || [];
         const legacyNote = data.description || data.text || data.note || "";
-        const isSuperAdmin = currentUserProfile && currentUserProfile.role === "super_admin";
+        const isPrivileged = currentUserProfile && ['super_admin', 'Owner'].includes(currentUserProfile.role);
 
         let htmlParts = [];
 
@@ -1551,7 +1577,7 @@
             const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
             const username = comment.userEmail ? comment.userEmail.split('@')[0] : 'Unknown';
             
-            const deleteBtn = isSuperAdmin 
+            const deleteBtn = isPrivileged 
               ? `<button type="button" onclick="deletePinComment('${pinId}', '${comment.timestamp}', true)" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
               : '';
 
@@ -1714,13 +1740,13 @@
     function renderPinMarker(id, data) {
       var currentUser = auth.currentUser;
       var isOwner = currentUser && data.userId === currentUser.uid;
-      var isSuperAdmin = typeof currentUserProfile !== 'undefined' && currentUserProfile && currentUserProfile.role === "super_admin";
+      var isPrivileged = typeof currentUserProfile !== 'undefined' && currentUserProfile && ['super_admin', 'Owner'].includes(currentUserProfile.role);
       
       var pinLat = data.lat ?? data.latitude;
       var pinLng = data.lng ?? data.longitude;
       var isGeofenceAllowed = typeof isWithinAllowedGeofences === 'function' && isWithinAllowedGeofences(pinLat, pinLng);
       
-      var canEditPin = currentUser && (isOwner || isSuperAdmin || isGeofenceAllowed);
+      var canEditPin = currentUser && (isOwner || isPrivileged || isGeofenceAllowed);
 
       var pinColor = data.color && markerIcons[data.color] ? data.color : 'purple';
       var chosenIcon = markerIcons[pinColor];
@@ -1936,7 +1962,7 @@
         return;
       }
       
-      const isSuperAdmin = currentUserProfile && currentUserProfile.role === "super_admin";
+      const isPrivileged = currentUserProfile && ['super_admin', 'Owner'].includes(currentUserProfile.role);
      
       const idField = document.getElementById("edit-pin-id");
       const titleField = document.getElementById("edit-title");
@@ -1948,11 +1974,11 @@
       
       if (colorField) {
         colorField.value = pinData.color || "purple";
-        if (pinData.color === "pulsing_alert" && !isSuperAdmin) {
+        if (pinData.color === "pulsing_alert" && !isPrivileged) {
           colorField.disabled = true;
           colorField.style.backgroundColor = "#f1f5f9";
           colorField.style.cursor = "not-allowed";
-          colorField.title = "Only Super Admins can change Urgent Alert status.";
+          colorField.title = "Only Super Admins and Owners can change Urgent Alert status.";
         } else {
           colorField.disabled = false;
           colorField.style.backgroundColor = "#ffffff";
@@ -1965,7 +1991,7 @@
         const existingDesc = pinData.description || pinData.text || pinData.note || "";
         descField.value = existingDesc;
 
-        if (existingDesc.trim() !== "" && !isSuperAdmin) {
+        if (existingDesc.trim() !== "" && !isPrivileged) {
           descField.readOnly = true;
           descField.style.backgroundColor = "#f1f5f9";
           descField.style.color = "#475569";
@@ -1992,7 +2018,7 @@
             const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             const username = comment.userEmail ? comment.userEmail.split('@')[0] : 'Unknown';
             
-            const deleteBtn = isSuperAdmin 
+            const deleteBtn = isPrivileged 
               ? `<button type="button" onclick="deletePinComment('${id}', '${comment.timestamp}')" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
               : '';
 
@@ -2057,9 +2083,10 @@
 	
         const editColorSelect = document.getElementById("edit-color");
         const userRole = currentUserProfile?.role || currentUserProfile?.userRole || "User";
+        const isPrivileged = ['super_admin', 'Owner'].includes(userRole);
 
-        if (color === "pulsing_alert" && userRole !== "super_admin" && (!editColorSelect || !editColorSelect.disabled)) {
-          showAppModal("Permission Denied", "Only Super Admins can assign Pulsing Red Alerts.");
+        if (color === "pulsing_alert" && !isPrivileged && (!editColorSelect || !editColorSelect.disabled)) {
+          showAppModal("Permission Denied", "Only Super Admins and Owners can assign Pulsing Red Alerts.");
           return;
         }
 
@@ -3223,8 +3250,9 @@
                 ${escapeHtml(displayEmail)}
               </div>
               <select onchange="updateExistingUserRole('${u.uid}', this.value)" style="padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f8fafc; cursor: pointer;">
-                <option value="User" ${role === 'User' ? 'selected' : ''}>Standard User</option>
-                <option value="admin" ${role === 'admin' ? 'selected' : ''}>Admin</option>
+                <option value="Tech" ${role === 'Tech' ? 'selected' : ''}>Tech</option>
+                <option value="Supervisor" ${role === 'Supervisor' ? 'selected' : ''}>Supervisor</option>
+                <option value="Owner" ${role === 'Owner' ? 'selected' : ''}>Owner</option>
                 <option value="super_admin" ${role === 'super_admin' ? 'selected' : ''}>Super Admin</option>
               </select>
             </div>
@@ -3733,11 +3761,11 @@
               <div>
                 <label style="display: block; font-size: 11px; font-weight: 600; color: #475569;">Role:</label>
                 <select id="new-user-role" style="width: 100%; padding: 7px; margin-top: 2px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; font-size: 12px;">
-  <option value="Tech">Tech</option>
-  <option value="Supervisor">Supervisor</option>
-  <option value="Owner">Owner</option>
-  <option value="super_admin">Super Admin</option>
-</select>
+                  <option value="Tech">Tech</option>
+                  <option value="Supervisor">Supervisor</option>
+                  <option value="Owner">Owner</option>
+                  <option value="super_admin">Super Admin</option>
+                </select>
               </div>
               <div>
                 <label style="display: block; font-size: 11px; font-weight: 600; color: #475569;">Initial Geofence Name:</label>
