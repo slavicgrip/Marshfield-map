@@ -1899,11 +1899,10 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
           entry.polygon = polygonLayer;
         }
 
-        // Re-render Photo Direction Arrows for existing marker update
-       var photoMarkers = [];
+       // Re-render Photo Direction Arrows for existing marker update
+        var photoMarkers = [];
         var images = data.images || [];
         
-        // Prepare encoded images array for the lightbox
         var urlStrings = images.map(img => img.url);
         var encodedImages = encodeURIComponent(JSON.stringify(urlStrings));
 
@@ -1915,25 +1914,20 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
               iconSize: [14, 14],
               iconAnchor: [7, 7]
             });
-
-            var headingHtml = img.direction != null 
-              ? `<br><span style="font-size: 11px; color: #555;">Heading: ${Math.round(img.direction)}°</span>` 
-              : '';
-
             var photoMarker = L.marker([img.lat, img.lng], { icon: bubbleIcon });
             
-            // Popup shows thumbnail; clicking it launches your zoomable lightbox
             photoMarker.bindPopup(`
               <div style="text-align: center;">
-                <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; cursor: pointer; margin-bottom: 4px;" onclick="openLightbox('${encodedImages}', ${idx})">${headingHtml}
+                <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; cursor: pointer; margin-bottom: 4px;" onclick="openLightbox('${encodedImages}', ${idx})">
               </div>
             `);
-
+            
             photoMarker.addTo(map);
             photoMarkers.push(photoMarker);
           }
         });
         entry.photoMarkers = photoMarkers;
+      } // <-- Closes the main 'else' block of renderPinMarker
 
       if (entry.marker.dragging) {
         isDraggable ? entry.marker.dragging.enable() : entry.marker.dragging.disable();
@@ -1943,18 +1937,16 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
       var imageGalleryHtml = "";
       
       if (imagesListForGallery.length > 0) {
-        var urlStrings = imagesListForGallery.map(img => img.url);
-        var encodedImages = encodeURIComponent(JSON.stringify(urlStrings));
+        var urlStringsGallery = imagesListForGallery.map(img => img.url);
+        var encodedImagesGallery = encodeURIComponent(JSON.stringify(urlStringsGallery));
 
         imageGalleryHtml = '<div class="image-gallery">' +  
           imagesListForGallery.map(function(img, idx) {
             var deleteBtn = canEditPin ? '<button type="button" class="delete-img-btn" onclick="deletePinImage(\'' + id + '\', \'' + img.url + '\')" title="Remove photo">✕</button>' : '';
-            return '<div class="image-thumb-container"><img src="' + img.url + '" alt="photo" onclick="openLightbox(\'' + encodedImages + '\', ' + idx + ')" style="cursor: pointer;">' + deleteBtn + '</div>';
+            return '<div class="image-thumb-container"><img src="' + img.url + '" alt="photo" onclick="openLightbox(\'' + encodedImagesGallery + '\', ' + idx + ')" style="cursor: pointer;">' + deleteBtn + '</div>';
           }).join('') + '</div>';
       }
 
-      var editDeleteBtns = canEditPin ? '<div class="pin-actions"><button onclick="openEditModal(\'' + id + '\')">Edit Pin</button><button onclick="deletePin(\'' + id + '\')">Delete Pin</button></div>' : '';
-      
       entry.marker.bindPopup(buildPopupContent(data, id, canEditPin));
 
       var checkedColors = Array.from(document.querySelectorAll('.filter-checkbox:checked')).map(function(cb) { return cb.value; });
@@ -1966,7 +1958,7 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
           markerClusterGroup.removeLayer(entry.marker);
         }
       }
-    }
+    } // <-- Closes the renderPinMarker function properly
 	
 	let currentAuditLogs = [];
 
