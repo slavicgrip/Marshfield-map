@@ -47,6 +47,23 @@
 
   <style>
   
+  	.photo-bubble-icon {
+  background: transparent;
+  border: none;
+}
+.photo-bubble-icon div {
+  width: 14px;
+  height: 14px;
+  background: #2563eb;
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  transition: transform 0.2s ease;
+}
+.photo-bubble-icon div:hover {
+  transform: scale(1.3);
+}
+  
  .alert-beacon-wrapper {
   position: relative;
   width: 32px;
@@ -661,6 +678,10 @@ firebase.auth().onAuthStateChanged(async (user) => {
   }
 });
 
+
+    // Automatically check and update photo bubbles whenever the map zooms
+    // map.on('zoomend', updatePhotoMarkersVisibility);
+
     const MARSHFIELD_CENTER = [44.6688, -90.1718];
     const MARSHFIELD_ZOOM = 13;
 
@@ -914,11 +935,33 @@ firebase.auth().onAuthStateChanged(async (user) => {
     });
 
     // Initialize Map
-    const map = L.map('map', { 
-      zoomControl: false,
-      maxZoom: 21,
-      layers: [osmLayer, wiParcelsLayer, addressLabelsLayer, streetLabelsLayer] 
-    }).setView(MARSHFIELD_CENTER, MARSHFIELD_ZOOM);
+    var map = L.map('map', { 
+  zoomControl: false, maxZoom: 21,
+  layers: [osmLayer, wiParcelsLayer, addressLabelsLayer, streetLabelsLayer] 
+}).setView(MARSHFIELD_CENTER, MARSHFIELD_ZOOM);
+
+// ✅ Put updatePhotoMarkersVisibility and its listener here, after map is defined:
+    const PHOTO_ZOOM_THRESHOLD = 16;
+
+    function updatePhotoMarkersVisibility() {
+      const currentZoom = map.getZoom();
+      const showPhotos = currentZoom >= PHOTO_ZOOM_THRESHOLD;
+
+      Object.keys(activeMarkers).forEach(id => {
+        const entry = activeMarkers[id];
+        if (entry && entry.photoMarkers) {
+          entry.photoMarkers.forEach(marker => {
+            if (showPhotos) {
+              if (!map.hasLayer(marker)) marker.addTo(map);
+            } else {
+              if (map.hasLayer(marker)) map.removeLayer(marker);
+            }
+          });
+        }
+      });
+    }
+
+    map.on('zoomend', updatePhotoMarkersVisibility);
 
     map.on('moveend', fetchParcelsForCurrentView);
     map.on('layeradd', function(e) {
@@ -1716,7 +1759,7 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
       console.error("Firestore sync error:", error);
     });
 
-    function renderPinMarker(id, data) {
+   function renderPinMarker(id, data) {
       var currentUser = auth.currentUser;
       var isOwner = currentUser && data.userId === currentUser.uid;
       var isSuperAdmin = typeof currentUserProfile !== 'undefined' && currentUserProfile && currentUserProfile.role === "super_admin";
@@ -1749,13 +1792,8 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
           offset: [0, -25]
         });
 
-        marker.on('mouseover', function(e) {
-          this.openTooltip();
-        });
-        
-        marker.on('mouseout', function(e) {
-          this.closeTooltip();
-        });
+        marker.on('mouseover', function(e) { this.openTooltip(); });
+        marker.on('mouseout', function(e) { this.closeTooltip(); });
 
         marker.on('dragstart', function() {
           markerClusterGroup.removeLayer(marker);
@@ -1797,50 +1835,73 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
             interactive: true
           }).addTo(map);
 
-          polygonLayer.bindTooltip(tooltipHtml, {
-            direction: 'top',
-            sticky: true
-          });
-
-          polygonLayer.on('mouseover', function(e) {
-            e.target.setStyle({ fillOpacity: 0.6, weight: 3 });
-          });
-          polygonLayer.on('mouseout', function(e) {
-            e.target.setStyle({ fillOpacity: 0.3, weight: 2 });
-          });
-          polygonLayer.on('click', function(e) { 
-            L.DomEvent.stopPropagation(e); 
-            marker.openPopup(); 
-          });
+          polygonLayer.bindTooltip(tooltipHtml, { direction: 'top', sticky: true });
+          polygonLayer.on('mouseover', function(e) { e.target.setStyle({ fillOpacity: 0.6, weight: 3 }); });
+          polygonLayer.on('mouseout', function(e) { e.target.setStyle({ fillOpacity: 0.3, weight: 2 }); });
+          polygonLayer.on('click', function(e) { L.DomEvent.stopPropagation(e); marker.openPopup(); });
         }
 
-        entry = { marker: marker, polygon: polygonLayer, data: data };
+        // Render Photo Blue Bubble Markers
+		const showPhotos = map.getZoom() >= PHOTO_ZOOM_THRESHOLD;
+
+        var photoMarkers = [];
+        var images = data.images || [];
+        var urlStrings = images.map(img => img.url);
+        var encodedImages = encodeURIComponent(JSON.stringify(urlStrings));
+
+        images.forEach((img, idx) => {
+          if (img.lat && img.lng) {
+            var bubbleIcon = L.divIcon({
+              className: 'photo-bubble-icon',
+              html: `<div></div>`,
+              iconSize: [14, 14],
+              iconAnchor: [7, 7]
+            });
+
+            var headingHtml = img.direction != null 
+              ? `<br><span style="font-size: 11px; color: #555;">Heading: ${Math.round(img.direction)}°</span>` 
+              : '';
+
+            var photoMarker = L.marker([img.lat, img.lng], { icon: bubbleIcon });
+            
+            photoMarker.bindPopup(`
+              <div style="text-align: center;">
+                <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; cursor: pointer; margin-bottom: 4px;" onclick="openLightbox('${encodedImages}', ${idx})">${headingHtml}
+              </div>
+            `);
+
+            // Only add to map immediately if we are already zoomed in close enough
+            if (showPhotos) {
+              photoMarker.addTo(map);
+            }
+            photoMarkers.push(photoMarker);
+          }
+        });
+
+        entry = { marker: marker, polygon: polygonLayer, photoMarkers: photoMarkers, data: data };
         activeMarkers[id] = entry;
         markerClusterGroup.addLayer(marker);
 
       } else {
-        markerClusterGroup.removeLayer(entry.marker);
+        if (!activeMarkers[id]) {
+          activeMarkers[id] = entry;
+        }
 
+        if (entry.photoMarkers) {
+          entry.photoMarkers.forEach(m => map.removeLayer(m));
+        }
+
+        markerClusterGroup.removeLayer(entry.marker);
         entry.data = data;
         entry.marker.setIcon(chosenIcon);
         entry.marker.setLatLng([pinLat, pinLng]);
 
-        if (entry.marker.getTooltip()) {
-          entry.marker.unbindTooltip();
-        }
-        
-        entry.marker.bindTooltip(tooltipHtml, {
-          direction: 'top',
-          offset: [0, -25]
-        });
+        if (entry.marker.getTooltip()) entry.marker.unbindTooltip();
+        entry.marker.bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -25] });
 
         entry.marker.off('mouseover mouseout');
-        entry.marker.on('mouseover', function(e) {
-          this.openTooltip();
-        });
-        entry.marker.on('mouseout', function(e) {
-          this.closeTooltip();
-        });
+        entry.marker.on('mouseover', function(e) { this.openTooltip(); });
+        entry.marker.on('mouseout', function(e) { this.closeTooltip(); });
 
         markerClusterGroup.addLayer(entry.marker);
 
@@ -1849,10 +1910,10 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
           entry.polygon = null;
         }
         
+        var polygonLayer = null;
         if (data.polygonCoords && Array.isArray(data.polygonCoords) && data.polygonCoords.length > 0) {
           var leafletCoords = data.polygonCoords.map(pt => Array.isArray(pt) ? pt : [pt.lat, pt.lng]);
-
-          var polygonLayer = L.polygon(leafletCoords, {
+          polygonLayer = L.polygon(leafletCoords, {
             color: colorHexMap[pinColor] || '#8e44ad',
             fillColor: colorHexMap[pinColor] || '#9b59b6',
             fillOpacity: 0.3,
@@ -1860,47 +1921,50 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
             interactive: true
           }).addTo(map);
 
-          polygonLayer.bindTooltip(tooltipHtml, {
-            direction: 'top',
-            sticky: true
-          });
-
-          polygonLayer.on('mouseover', function(e) {
-            e.target.setStyle({ fillOpacity: 0.6, weight: 3 });
-          });
-          polygonLayer.on('mouseout', function(e) {
-            e.target.setStyle({ fillOpacity: 0.3, weight: 2 });
-          });
-          polygonLayer.on('click', function(e) { 
-            L.DomEvent.stopPropagation(e); 
-            entry.marker.openPopup(); 
-          });
+          polygonLayer.bindTooltip(tooltipHtml, { direction: 'top', sticky: true });
+          polygonLayer.on('mouseover', function(e) { e.target.setStyle({ fillOpacity: 0.6, weight: 3 }); });
+          polygonLayer.on('mouseout', function(e) { e.target.setStyle({ fillOpacity: 0.3, weight: 2 }); });
+          polygonLayer.on('click', function(e) { L.DomEvent.stopPropagation(e); entry.marker.openPopup(); });
 
           entry.polygon = polygonLayer;
         }
+
+        var photoMarkers = [];
+        var images = data.images || [];
+        var urlStrings = images.map(img => img.url);
+        var encodedImages = encodeURIComponent(JSON.stringify(urlStrings));
+
+        images.forEach((img, idx) => {
+          if (img.lat && img.lng) {
+            var bubbleIcon = L.divIcon({
+              className: 'photo-bubble-icon',
+              html: `<div></div>`,
+              iconSize: [14, 14],
+              iconAnchor: [7, 7]
+            });
+            var photoMarker = L.marker([img.lat, img.lng], { icon: bubbleIcon });
+            
+            var headingHtml = img.direction != null 
+              ? `<br><span style="font-size: 11px; color: #555;">Heading: ${Math.round(img.direction)}°</span>` 
+              : '';
+
+            photoMarker.bindPopup(`
+              <div style="text-align: center;">
+                <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; cursor: pointer; margin-bottom: 4px;" onclick="openLightbox('${encodedImages}', ${idx})">${headingHtml}
+              </div>
+            `);
+            
+            photoMarker.addTo(map);
+            photoMarkers.push(photoMarker);
+          }
+        });
+        entry.photoMarkers = photoMarkers;
       }
 
       if (entry.marker.dragging) {
         isDraggable ? entry.marker.dragging.enable() : entry.marker.dragging.disable();
       }
 
-      var images = data.images || (data.imageUrls ? data.imageUrls.map(url => ({ url: url })) : (data.imageUrl ? [{ url: data.imageUrl }] : []));
-      var imageGalleryHtml = "";
-      
-      if (images.length > 0) {
-        var urlStrings = images.map(img => img.url);
-        var encodedImages = encodeURIComponent(JSON.stringify(urlStrings));
-
-        imageGalleryHtml = '<div class="image-gallery">' +  
-          images.map(function(img, idx) {
-            var deleteBtn = canEditPin ? '<button type="button" class="delete-img-btn" onclick="deletePinImage(\'' + id + '\', \'' + img.url + '\')" title="Remove photo">✕</button>' : '';
-            return '<div class="image-thumb-container"><img src="' + img.url + '" alt="photo" onclick="openLightbox(\'' + encodedImages + '\', ' + idx + ')" style="cursor: pointer;">' + deleteBtn + '</div>';
-          }).join('') + '</div>';
-      }
-
-      var editDeleteBtns = canEditPin ? '<div class="pin-actions"><button onclick="openEditModal(\'' + id + '\')">Edit Pin</button><button onclick="deletePin(\'' + id + '\')">Delete Pin</button></div>' : '';
-      
-      var dataWithDesc = Object.assign({}, data, { text: (data.description || data.note || '') + imageGalleryHtml + editDeleteBtns });
       entry.marker.bindPopup(buildPopupContent(data, id, canEditPin));
 
       var checkedColors = Array.from(document.querySelectorAll('.filter-checkbox:checked')).map(function(cb) { return cb.value; });
@@ -2554,7 +2618,8 @@ let currentLightboxImages = [];
       existingImages = existingData.imageUrls.map(url => ({
         url: url,
         lat: existingData.lat || 44.6685,
-        lng: existingData.lng || -90.1717
+        lng: existingData.lng || -90.1717,
+        direction: null
       }));
     }
 
@@ -2571,6 +2636,7 @@ let currentLightboxImages = [];
       
       const downloadUrl = await new Promise((resolve, reject) => {
         const uploadTask = fileRef.put(file);
+		
 
         uploadTask.on(
           "state_changed",
@@ -2601,14 +2667,20 @@ let currentLightboxImages = [];
 
       completedBytesBeforeCurrent += file.size;
 
-      // 2. Build structured image objects using EXIF GPS or fallback to existing pin center
+      // 2. Build structured image objects using EXIF GPS and direction
       if (gps) {
-        newImageObjects.push({ url: downloadUrl, lat: gps.lat, lng: gps.lng });
+        newImageObjects.push({ 
+          url: downloadUrl, 
+          lat: gps.lat, 
+          lng: gps.lng, 
+          direction: gps.direction 
+        });
       } else {
         newImageObjects.push({ 
           url: downloadUrl, 
           lat: existingData.lat || 44.6685, 
-          lng: existingData.lng || -90.1717 
+          lng: existingData.lng || -90.1717,
+          direction: null 
         });
       }
     }
@@ -2630,7 +2702,6 @@ let currentLightboxImages = [];
 
       const padding = 0.00005; // ~5 meter buffer
 	  
-	  // 🛡️ Create the audit log entry for photo uploads
       const activityEntry = {
         userEmail: currentUser ? currentUser.email : "guest@local",
         action: `Uploaded ${fileArray.length} new photo(s)`,
@@ -2639,18 +2710,17 @@ let currentLightboxImages = [];
 
       const updatePayload = {
         images: combinedImages,
-        imageUrls: combinedImages.map(img => img.url), // Maintained for backwards compatibility
-        // attribution: getPinAttribution(), disabled so original pin creator name and date sticks
+        imageUrls: combinedImages.map(img => img.url),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        lat: lats.reduce((sum, v) => sum + v, 0) / lats.length, // Average center point
+        lat: lats.reduce((sum, v) => sum + v, 0) / lats.length,
         lng: lngs.reduce((sum, v) => sum + v, 0) / lngs.length,
         polygonCoords: [
-          { lat: maxLat + padding, lng: minLng - padding }, // Top-Left
-          { lat: maxLat + padding, lng: maxLng + padding }, // Top-Right
-          { lat: minLat - padding, lng: maxLng + padding }, // Bottom-Right
-          { lat: minLat - padding, lng: minLng - padding }  // Bottom-Left
+          { lat: maxLat + padding, lng: minLng - padding },
+          { lat: maxLat + padding, lng: maxLng + padding },
+          { lat: minLat - padding, lng: maxLng + padding },
+          { lat: minLat - padding, lng: minLng - padding }
         ],
-		activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry) // 👈 Appends to history
+        activityLog: firebase.firestore.FieldValue.arrayUnion(activityEntry)
       };
 
       await docRef.update(updatePayload);
@@ -2764,6 +2834,7 @@ async function deletePinImage(pinId, targetUrl) {
           const latRef = EXIF.getTag(this, "GPSLatitudeRef");
           const lngTag = EXIF.getTag(this, "GPSLongitude");
           const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
+          const directionTag = EXIF.getTag(this, "GPSImgDirection"); // 🧭 Camera heading (0-360°)
 
           if (!latTag || !lngTag) {
             resolve(null);
@@ -2778,7 +2849,8 @@ async function deletePinImage(pinId, targetUrl) {
 
           resolve({
             lat: convertToDecimal(latTag, latRef),
-            lng: convertToDecimal(lngTag, lngRef)
+            lng: convertToDecimal(lngTag, lngRef),
+            direction: directionTag != null ? Number(directionTag) : null
           });
         });
       });
