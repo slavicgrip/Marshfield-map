@@ -1820,18 +1820,22 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
         var images = data.images || [];
         images.forEach((img) => {
           if (img.lat && img.lng) {
-            var heading = img.direction != null ? Math.round(img.direction) + '°' : 'Not recorded';
             var bubbleIcon = L.divIcon({
               className: 'photo-bubble-icon',
               html: `<div></div>`,
               iconSize: [14, 14],
               iconAnchor: [7, 7]
             });
+
+            // Only show the heading line if GPSImgDirection was actually recorded
+            var headingHtml = img.direction != null 
+              ? `<br><span style="font-size: 11px; color: #555;">Heading: ${Math.round(img.direction)}°</span>` 
+              : '';
+
             var photoMarker = L.marker([img.lat, img.lng], { icon: bubbleIcon });
             photoMarker.bindPopup(`
               <div style="text-align: center;">
-                <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;"><br>
-                <span style="font-size: 11px; color: #555;">Heading: ${heading}</span>
+                <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;">${headingHtml}
               </div>
             `);
             photoMarker.addTo(map);
@@ -1892,24 +1896,28 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
         var images = data.images || [];
         images.forEach((img) => {
           if (img.lat && img.lng) {
-            var heading = img.direction != null ? Math.round(img.direction) + '°' : 'Not recorded';
             var bubbleIcon = L.divIcon({
               className: 'photo-bubble-icon',
               html: `<div></div>`,
               iconSize: [14, 14],
               iconAnchor: [7, 7]
             });
+
+            var headingHtml = img.direction != null 
+              ? `<br><span style="font-size: 11px; color: #555;">Heading: ${Math.round(img.direction)}°</span>` 
+              : '';
+
             var photoMarker = L.marker([img.lat, img.lng], { icon: bubbleIcon });
             photoMarker.bindPopup(`
               <div style="text-align: center;">
-                <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;"><br>
-                <span style="font-size: 11px; color: #555;">Heading: ${heading}</span>
+                <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;">${headingHtml}
               </div>
             `);
             photoMarker.addTo(map);
             photoMarkers.push(photoMarker);
           }
-        });y.photoMarkers = photoMarkers;
+        });
+        entry.photoMarkers = photoMarkers;
       }
 
       if (entry.marker.dragging) {
