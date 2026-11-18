@@ -2845,7 +2845,19 @@
     window.removeUserLocation = async function(index) {
       if (!currentUser || !currentUserProfile || !currentUserProfile.allowedGeofences) return;
       
-      const zoneName = currentUserProfile.allowedGeofences[index]?.name || "this location";
+      const targetZone = currentUserProfile.allowedGeofences[index];
+      if (!targetZone) return;
+
+      const isStrictGeofence = (Array.isArray(targetZone.polygon) && targetZone.polygon.length >= 3) || 
+                               (targetZone.radiusMeters != null && Number(targetZone.radiusMeters) > 0) ||
+                               (targetZone.radius != null && Number(targetZone.radius) > 0);
+
+      if (currentUserProfile.role === 'Tech' && isStrictGeofence) {
+        alert("Permission denied: Assigned geofences cannot be deleted.");
+        return;
+      }
+
+      const zoneName = targetZone.name || "this location";
       if (!confirm(`Remove "${zoneName}" from your saved locations?`)) return;
 
       try {
@@ -2893,6 +2905,7 @@
       geofenceLayerGroup.clearLayers();
 
       const userZones = currentUserProfile?.allowedGeofences;
+      const isTech = currentUserProfile?.role === 'Tech';
 
       if (userZones && userZones.length > 0) {
         zonesList.innerHTML = "";
@@ -2902,6 +2915,8 @@
           const lat = loc.latitude ?? loc.lat;
           const lng = loc.longitude ?? loc.lng;
           const radius = zone.radiusMeters || zone.radius;
+          const isPolygon = Array.isArray(zone.polygon) && zone.polygon.length >= 3;
+          const isStrictGeofence = isPolygon || (radius != null && Number(radius) > 0);
           const name = zone.name || `Location ${index + 1}`;
 
           if (lat != null && lng != null) {
@@ -2911,36 +2926,45 @@
             const btn = document.createElement("button");
             btn.type = "button";
             btn.className = "zone-btn";
-            btn.innerHTML = `<span>📍 ${name}</span>`;
+            // Use a shield icon for assigned admin/strict fences, pin icon for personal bookmarks
+            btn.innerHTML = `<span>${isStrictGeofence ? '🛡️' : '📍'} ${escapeHtml(name)}</span>`;
             btn.onclick = () => jumpToZone(lat, lng);
 
-            const renameBtn = document.createElement("button");
-            renameBtn.type = "button";
-            renameBtn.className = "zone-rename-btn";
-            renameBtn.innerHTML = "✏️";
-            renameBtn.title = "Rename location";
-            renameBtn.style.background = "none";
-            renameBtn.style.border = "none";
-            renameBtn.style.cursor = "pointer";
-            renameBtn.style.padding = "0 4px";
-            renameBtn.onclick = (e) => {
-              e.stopPropagation();
-              renameUserLocation(index, name);
-            };
-
-            const deleteBtn = document.createElement("button");
-            deleteBtn.type = "button";
-            deleteBtn.className = "zone-delete-btn";
-            deleteBtn.innerHTML = "✕";
-            deleteBtn.title = "Remove location";
-            deleteBtn.onclick = () => removeUserLocation(index);
-
             row.appendChild(btn);
-            row.appendChild(renameBtn);
-            row.appendChild(deleteBtn);
+
+            // If the user is a Tech and this is a strict admin geofence, lock it (hide delete & rename)
+            const isLockedForTech = isTech && isStrictGeofence;
+
+            if (!isLockedForTech) {
+              const renameBtn = document.createElement("button");
+              renameBtn.type = "button";
+              renameBtn.className = "zone-rename-btn";
+              renameBtn.innerHTML = "✏️";
+              renameBtn.title = "Rename location";
+              renameBtn.style.background = "none";
+              renameBtn.style.border = "none";
+              renameBtn.style.cursor = "pointer";
+              renameBtn.style.padding = "0 4px";
+              renameBtn.onclick = (e) => {
+                e.stopPropagation();
+                renameUserLocation(index, name);
+              };
+
+              const deleteBtn = document.createElement("button");
+              deleteBtn.type = "button";
+              deleteBtn.className = "zone-delete-btn";
+              deleteBtn.innerHTML = "✕";
+              deleteBtn.title = "Remove location";
+              deleteBtn.onclick = () => removeUserLocation(index);
+
+              row.appendChild(renameBtn);
+              row.appendChild(deleteBtn);
+            }
+
             zonesList.appendChild(row);
 
-            if (Array.isArray(zone.polygon) && zone.polygon.length >= 3) {
+            // Render the geofence boundary shape on the map so it's always visible
+            if (isPolygon) {
               const polyLatLngs = zone.polygon.map(p => [p.lat, p.lng]);
               L.polygon(polyLatLngs, {
                 color: '#3498db',
