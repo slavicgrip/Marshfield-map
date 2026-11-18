@@ -954,7 +954,7 @@ const PHOTO_ZOOM_THRESHOLD = 16; // Level 16 = street/neighborhood level
     });
 
     // Initialize Map
-    const map = L.map('map', { 
+    var map = L.map('map', {
       zoomControl: false,
       maxZoom: 21,
       layers: [osmLayer, wiParcelsLayer, addressLabelsLayer, streetLabelsLayer] 
