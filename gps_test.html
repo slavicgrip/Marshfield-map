@@ -680,7 +680,7 @@ firebase.auth().onAuthStateChanged(async (user) => {
 
 
     // Automatically check and update photo bubbles whenever the map zooms
-    map.on('zoomend', updatePhotoMarkersVisibility);
+    // map.on('zoomend', updatePhotoMarkersVisibility);
 
     const MARSHFIELD_CENTER = [44.6688, -90.1718];
     const MARSHFIELD_ZOOM = 13;
@@ -961,6 +961,7 @@ firebase.auth().onAuthStateChanged(async (user) => {
       });
     }
 
+    map.on('zoomend', updatePhotoMarkersVisibility);
 
     map.on('moveend', fetchParcelsForCurrentView);
     map.on('layeradd', function(e) {
