@@ -678,6 +678,29 @@ firebase.auth().onAuthStateChanged(async (user) => {
   }
 });
 
+const PHOTO_ZOOM_THRESHOLD = 16; // Level 16 = street/neighborhood level
+
+    function updatePhotoMarkersVisibility() {
+      const currentZoom = map.getZoom();
+      const showPhotos = currentZoom >= PHOTO_ZOOM_THRESHOLD;
+
+      Object.keys(activeMarkers).forEach(id => {
+        const entry = activeMarkers[id];
+        if (entry && entry.photoMarkers) {
+          entry.photoMarkers.forEach(marker => {
+            if (showPhotos) {
+              if (!map.hasLayer(marker)) marker.addTo(map);
+            } else {
+              if (map.hasLayer(marker)) map.removeLayer(marker);
+            }
+          });
+        }
+      });
+    }
+
+    // Automatically check and update photo bubbles whenever the map zooms
+    map.on('zoomend', updatePhotoMarkersVisibility);
+
     const MARSHFIELD_CENTER = [44.6688, -90.1718];
     const MARSHFIELD_ZOOM = 13;
 
@@ -1816,6 +1839,8 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
         }
 
         // Render Photo Blue Bubble Markers
+		const showPhotos = map.getZoom() >= PHOTO_ZOOM_THRESHOLD;
+
         var photoMarkers = [];
         var images = data.images || [];
         var urlStrings = images.map(img => img.url);
@@ -1842,7 +1867,10 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
               </div>
             `);
 
-            photoMarker.addTo(map);
+            // Only add to map immediately if we are already zoomed in close enough
+            if (showPhotos) {
+              photoMarker.addTo(map);
+            }
             photoMarkers.push(photoMarker);
           }
         });
