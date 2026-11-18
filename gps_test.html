@@ -3212,11 +3212,12 @@
               <div style="font-weight: 600; font-size: 13px; color: #1e293b; overflow: hidden; text-overflow: ellipsis;">
                 ${escapeHtml(displayEmail)}
               </div>
-              <select onchange="updateExistingUserRole('${u.uid}', this.value)" style="padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f8fafc; cursor: pointer;">
-                <option value="User" ${role === 'User' ? 'selected' : ''}>Standard User</option>
-                <option value="admin" ${role === 'admin' ? 'selected' : ''}>Admin</option>
-                <option value="super_admin" ${role === 'super_admin' ? 'selected' : ''}>Super Admin</option>
-              </select>
+             <select onchange="updateExistingUserRole('${u.uid}', this.value)" style="padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f8fafc; cursor: pointer;">
+  <option value="Tech" ${role === 'Tech' ? 'selected' : ''}>Tech</option>
+  <option value="Supervisor" ${role === 'Supervisor' ? 'selected' : ''}>Supervisor</option>
+  <option value="Owner" ${role === 'Owner' ? 'selected' : ''}>Owner</option>
+  <option value="super_admin" ${role === 'super_admin' ? 'selected' : ''}>Super Admin</option>
+</select>
             </div>
 
             <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
@@ -3723,10 +3724,11 @@
               <div>
                 <label style="display: block; font-size: 11px; font-weight: 600; color: #475569;">Role:</label>
                 <select id="new-user-role" style="width: 100%; padding: 7px; margin-top: 2px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; font-size: 12px;">
-                  <option value="User">Standard User</option>
-                  <option value="admin">Admin</option>
-                  <option value="super_admin">Super Admin</option>
-                </select>
+  <option value="Tech">Tech</option>
+  <option value="Supervisor">Supervisor</option>
+  <option value="Owner">Owner</option>
+  <option value="super_admin">Super Admin</option>
+</select>
               </div>
               <div>
                 <label style="display: block; font-size: 11px; font-weight: 600; color: #475569;">Initial Geofence Name:</label>
