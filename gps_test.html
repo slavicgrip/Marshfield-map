@@ -678,25 +678,6 @@ firebase.auth().onAuthStateChanged(async (user) => {
   }
 });
 
-const PHOTO_ZOOM_THRESHOLD = 16; // Level 16 = street/neighborhood level
-
-    function updatePhotoMarkersVisibility() {
-      const currentZoom = map.getZoom();
-      const showPhotos = currentZoom >= PHOTO_ZOOM_THRESHOLD;
-
-      Object.keys(activeMarkers).forEach(id => {
-        const entry = activeMarkers[id];
-        if (entry && entry.photoMarkers) {
-          entry.photoMarkers.forEach(marker => {
-            if (showPhotos) {
-              if (!map.hasLayer(marker)) marker.addTo(map);
-            } else {
-              if (map.hasLayer(marker)) map.removeLayer(marker);
-            }
-          });
-        }
-      });
-    }
 
     // Automatically check and update photo bubbles whenever the map zooms
     map.on('zoomend', updatePhotoMarkersVisibility);
