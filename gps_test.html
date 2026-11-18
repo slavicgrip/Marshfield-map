@@ -47,23 +47,21 @@
 
   <style>
   
-  	  .photo-direction-arrow {
+  	.photo-bubble-icon {
   background: transparent;
   border: none;
 }
-.photo-direction-arrow div {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
+.photo-bubble-icon div {
+  width: 14px;
+  height: 14px;
   background: #2563eb;
-  color: white;
   border: 2px solid white;
   border-radius: 50%;
-  font-size: 12px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.3);
   transition: transform 0.2s ease;
+}
+.photo-bubble-icon div:hover {
+  transform: scale(1.3);
 }
   
  .alert-beacon-wrapper {
@@ -1817,23 +1815,23 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
           polygonLayer.on('click', function(e) { L.DomEvent.stopPropagation(e); marker.openPopup(); });
         }
 
-        // Render Photo Direction Arrows
+        // Render Photo Blue Bubble Markers
         var photoMarkers = [];
         var images = data.images || [];
         images.forEach((img) => {
           if (img.lat && img.lng) {
-            var heading = img.direction != null ? img.direction : 0;
-            var arrowIcon = L.divIcon({
-              className: 'photo-direction-arrow',
-              html: `<div style="transform: rotate(${heading}deg);">⬆</div>`,
-              iconSize: [24, 24],
-              iconAnchor: [12, 12]
+            var heading = img.direction != null ? Math.round(img.direction) + '°' : 'Not recorded';
+            var bubbleIcon = L.divIcon({
+              className: 'photo-bubble-icon',
+              html: `<div></div>`,
+              iconSize: [14, 14],
+              iconAnchor: [7, 7]
             });
-            var photoMarker = L.marker([img.lat, img.lng], { icon: arrowIcon });
+            var photoMarker = L.marker([img.lat, img.lng], { icon: bubbleIcon });
             photoMarker.bindPopup(`
               <div style="text-align: center;">
                 <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;"><br>
-                <span style="font-size: 11px; color: #555;">Heading: ${img.direction != null ? Math.round(img.direction) + '°' : 'Not recorded'}</span>
+                <span style="font-size: 11px; color: #555;">Heading: ${heading}</span>
               </div>
             `);
             photoMarker.addTo(map);
@@ -1890,29 +1888,28 @@ window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsMo
         }
 
         // Re-render Photo Direction Arrows for existing marker update
-        var photoMarkers = [];
+       var photoMarkers = [];
         var images = data.images || [];
         images.forEach((img) => {
           if (img.lat && img.lng) {
-            var heading = img.direction != null ? img.direction : 0;
-            var arrowIcon = L.divIcon({
-              className: 'photo-direction-arrow',
-              html: `<div style="transform: rotate(${heading}deg);">⬆</div>`,
-              iconSize: [24, 24],
-              iconAnchor: [12, 12]
+            var heading = img.direction != null ? Math.round(img.direction) + '°' : 'Not recorded';
+            var bubbleIcon = L.divIcon({
+              className: 'photo-bubble-icon',
+              html: `<div></div>`,
+              iconSize: [14, 14],
+              iconAnchor: [7, 7]
             });
-            var photoMarker = L.marker([img.lat, img.lng], { icon: arrowIcon });
+            var photoMarker = L.marker([img.lat, img.lng], { icon: bubbleIcon });
             photoMarker.bindPopup(`
               <div style="text-align: center;">
                 <img src="${img.url}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 4px; margin-bottom: 4px;"><br>
-                <span style="font-size: 11px; color: #555;">Heading: ${img.direction != null ? Math.round(img.direction) + '°' : 'Not recorded'}</span>
+                <span style="font-size: 11px; color: #555;">Heading: ${heading}</span>
               </div>
             `);
             photoMarker.addTo(map);
             photoMarkers.push(photoMarker);
           }
-        });
-        entry.photoMarkers = photoMarkers;
+        });y.photoMarkers = photoMarkers;
       }
 
       if (entry.marker.dragging) {
