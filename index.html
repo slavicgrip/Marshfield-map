@@ -995,6 +995,12 @@
       attribution: 'Esri, DigitalGlobe, GeoEye, Earthstar Geographics, and the GIS User Community (Leaf-Off)'
     });
 
+    const esriStreetLayer = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 21,
+      maxNativeZoom: 19,
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012'
+    });
+
     const wiParcelsLayer = L.layerGroup();
     let parcelFetchTimeout = null;
 
@@ -1138,6 +1144,7 @@
 
     const baseMaps = {
       "OpenStreetMap": osmLayer,
+      "Esri Street Map": esriStreetLayer,
       "Satellite (Leaf-On)": leafOffLayer
     };
 
@@ -1498,6 +1505,14 @@
       return `${username} - ${month}/${day}/${year}`;
     }
 
+    function getCardinalDirection(degrees) {
+      if (degrees == null || isNaN(degrees)) return "";
+      const directions = ["North", "Northeast", "East", "Southeast", "South", "Southwest", "West", "Northwest"];
+      const normalized = ((Number(degrees) % 360) + 360) % 360;
+      const index = Math.round(normalized / 45) % 8;
+      return directions[index];
+    }
+
     function buildPopupContent(data, pinId, canEditPin) {
       let metaText = data.attribution;
 
@@ -1848,6 +1863,9 @@
         if (change.type === "removed" && activeMarkers[id]) {
           markerClusterGroup.removeLayer(activeMarkers[id].marker);
           if (activeMarkers[id].polygon) map.removeLayer(activeMarkers[id].polygon);
+          if (activeMarkers[id].photoMarkers) {
+            activeMarkers[id].photoMarkers.forEach(m => map.removeLayer(m));
+          }
           delete activeMarkers[id];
         }
       });
@@ -1973,7 +1991,7 @@
             });
 
             var headingHtml = img.direction != null 
-              ? `<br><span style="font-size: 11px; color: #555;">Heading: ${Math.round(img.direction)}°</span>` 
+              ? `<br><span style="font-size: 11px; color: #555;">Heading: ${Math.round(img.direction)}° (${getCardinalDirection(img.direction)})</span>` 
               : '';
 
             var photoMarker = L.marker([img.lat, img.lng], { icon: bubbleIcon });
@@ -2058,7 +2076,7 @@
             var photoMarker = L.marker([img.lat, img.lng], { icon: bubbleIcon });
             
             var headingHtml = img.direction != null 
-              ? `<br><span style="font-size: 11px; color: #555;">Heading: ${Math.round(img.direction)}°</span>` 
+              ? `<br><span style="font-size: 11px; color: #555;">Heading: ${Math.round(img.direction)}° (${getCardinalDirection(img.direction)})</span>` 
               : '';
 
             photoMarker.bindPopup(`
