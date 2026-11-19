@@ -643,6 +643,15 @@
       return ROLE_RANK[roleName] ?? 0;
     }
 
+    function createActivityEntry(action, email = null) {
+      return {
+        userEmail: email || (currentUser && currentUser.email ? currentUser.email : "guest@local"),
+        userRole: currentUserProfile?.role || currentUserProfile?.userRole || "User",
+        action: action,
+        timestamp: new Date().toISOString()
+      };
+    }
+
     function isPinCreatorHigherRole(pinData) {
       if (!pinData || !currentUser) return false;
       if (pinData.userId && pinData.userId === currentUser.uid) return false;
@@ -1526,11 +1535,7 @@
       try {
         const docRef = db.collection("marshfield_pins").doc(pinId);
         
-        const activityEntry = {
-          userEmail: userEmail,
-          action: `Added a comment: "${text.substring(0, 30)}..."`,
-          timestamp: new Date().toISOString()
-        };
+        const activityEntry = createActivityEntry(`Added a comment: "${text.substring(0, 30)}..."`, userEmail);
 
         await docRef.update({
           comments: firebase.firestore.FieldValue.arrayUnion(newComment),
@@ -1566,11 +1571,7 @@
       try {
         const docRef = db.collection("marshfield_pins").doc(pinId);
 
-        const activityEntry = {
-          userEmail: userEmail,
-          action: `Added a comment: "${text.substring(0, 30)}..."`,
-          timestamp: new Date().toISOString()
-        };
+        const activityEntry = createActivityEntry(`Added a comment: "${text.substring(0, 30)}..."`, userEmail);
 
         await docRef.update({
           comments: firebase.firestore.FieldValue.arrayUnion(newComment),
@@ -1713,10 +1714,12 @@
           const timestamp = new Date(entry.timestamp || Date.now());
           const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
           const username = entry.userEmail ? entry.userEmail.split('@')[0] : 'Unknown';
+          const roleLabel = entry.userRole ? String(entry.userRole).replace('_', ' ').toUpperCase() : '';
+          const metaSuffix = roleLabel ? `${timeString} · ${escapeHtml(roleLabel)}` : timeString;
 
           htmlParts.push(`
             <div style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-              <div style="font-weight: 500; font-size: 11px; color: #1e293b;">${username} <span style="color: #94a3b8; font-weight: normal; font-size: 10px;">(${timeString})</span></div>
+              <div style="font-weight: 500; font-size: 11px; color: #1e293b;">${username} <span style="color: #94a3b8; font-weight: normal; font-size: 10px;">(${metaSuffix})</span></div>
               <div style="font-size: 12px; color: #334155; margin-top: 3px; white-space: pre-wrap; word-break: break-word;">${escapeHtml(entry.action || 'Action logged')}</div>
             </div>
           `);
@@ -1751,11 +1754,7 @@
         const currentComments = data.comments || [];
         const updatedComments = currentComments.filter(c => c.timestamp !== commentTimestamp);
 
-        const activityEntry = {
-          userEmail: currentUser ? currentUser.email : "guest@local",
-          action: "Deleted a user comment for moderation",
-          timestamp: new Date().toISOString()
-        };
+        const activityEntry = createActivityEntry("Deleted a user comment for moderation");
 
         await docRef.update({
           comments: updatedComments,
@@ -2186,11 +2185,7 @@
           await window.uploadPhotos(id, fileInput.files);
         }
 
-        const activityEntry = {
-          userEmail: currentUser ? currentUser.email : "guest@local",
-          action: "Updated pin details",
-          timestamp: new Date().toISOString()
-        };
+        const activityEntry = createActivityEntry("Updated pin details");
 	
         const editColorSelect = document.getElementById("edit-color");
         const userRole = currentUserProfile?.role || currentUserProfile?.userRole || "User";
@@ -2725,11 +2720,7 @@
 
           const padding = 0.00005;
 	  
-          const activityEntry = {
-            userEmail: currentUser ? currentUser.email : "guest@local",
-            action: `Uploaded ${fileArray.length} new photo(s)`,
-            timestamp: new Date().toISOString()
-          };
+          const activityEntry = createActivityEntry(`Uploaded ${fileArray.length} new photo(s)`);
 
           const updatePayload = {
             images: combinedImages,
@@ -2808,11 +2799,7 @@
 
         const updatedImages = currentImages.filter(img => img.url !== targetUrl);
 	
-        const activityEntry = {
-          userEmail: currentUser ? currentUser.email : "guest@local",
-          action: "Deleted a photo and readjusted boundary",
-          timestamp: new Date().toISOString()
-        };
+        const activityEntry = createActivityEntry("Deleted a photo and readjusted boundary");
 
         const updatePayload = {
           images: updatedImages,
