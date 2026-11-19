@@ -3454,6 +3454,11 @@
         return;
       }
 
+      const maxInitialUsers = 5;
+      const totalMatched = filtered.length;
+      const visibleUsers = filterText ? filtered : filtered.slice(0, maxInitialUsers);
+      const hiddenCount = totalMatched - visibleUsers.length;
+
       const assignableRoles = [
         { value: 'User', label: 'Fallback User' },
         { value: 'Tech', label: 'Tech' },
@@ -3463,7 +3468,7 @@
         { value: 'super_admin', label: 'Super Admin' }
       ].filter(r => myRole === 'super_admin' || getRoleRank(r.value) < myRank);
 
-      listEl.innerHTML = filtered.map(u => {
+      listEl.innerHTML = visibleUsers.map(u => {
         const displayEmail = u.email || `UID: ${u.uid.slice(0, 8)}...`;
         const role = u.role || u.userRole || "User";
         const fences = Array.isArray(u.allowedGeofences) ? u.allowedGeofences : [];
@@ -3483,6 +3488,9 @@
                 </span>
               `;
             }).join('');
+      if (hiddenCount > 0) {
+        listEl.innerHTML += `<div style="text-align: center; color: #64748b; font-size: 11px; padding: 6px 4px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 4px;">Showing ${visibleUsers.length} of ${totalMatched} users (${hiddenCount} more). Type in the search box to find a specific user.</div>`;
+      }
 
         const roleOptionsHtml = assignableRoles.map(r =>
           `<option value="${r.value}" ${role === r.value ? 'selected' : ''}>${r.label}</option>`
