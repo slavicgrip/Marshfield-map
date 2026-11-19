@@ -1377,7 +1377,7 @@
       if (isMeasuring || activeDrawingPinId !== null || isDrawingUserGeofence) return;
       if (!currentUser) return;
       if (!isWithinAllowedGeofences(e.latlng.lat, e.latlng.lng)) {
-        showAppModal("Action Blocked", "This location is outside your allowed editing geofence.");
+        showAppModal("Action Blocked", "This location is outside your allowed editing territory.");
         return;
       }
 
@@ -1921,7 +1921,7 @@
           markerClusterGroup.addLayer(marker);
 
           if (!isWithinAllowedGeofences(newLatLng.lat, newLatLng.lng)) {
-            alert("Action blocked: This location is outside your allowed editing geofence.");
+            alert("Action blocked: This location is outside your allowed editing territory.");
             e.target.setLatLng([pinLat, pinLng]);
             return;
           }
@@ -2108,7 +2108,7 @@
       const pinLng = pinData.lng ?? pinData.longitude;
       if (['Tech', 'Supervisor'].includes(getCurrentUserRole()) && pinLat != null && pinLng != null) {
         if (!isWithinAllowedGeofences(pinLat, pinLng)) {
-          alert("Action blocked: This pin is outside your allowed editing geofence.");
+          alert("Action blocked: This pin is outside your allowed editing territory.");
           return;
         }
       }
@@ -2235,7 +2235,7 @@
         const pinLat = entry.data.lat ?? entry.data.latitude;
         const pinLng = entry.data.lng ?? entry.data.longitude;
         if (pinLat != null && pinLng != null && !isWithinAllowedGeofences(pinLat, pinLng)) {
-          alert("Action blocked: Cannot save edits to a pin outside your allowed geofence.");
+          alert("Action blocked: Cannot save edits to a pin outside your allowed territory.");
           return;
         }
       }
@@ -2297,7 +2297,7 @@
         
         if (['Tech', 'Supervisor'].includes(getCurrentUserRole()) && pinLat != null && pinLng != null && typeof isWithinAllowedGeofences === 'function') {
           if (!isWithinAllowedGeofences(pinLat, pinLng)) {
-            alert("Action blocked: This pin is outside your allowed editing geofence.");
+            alert("Action blocked: This pin is outside your allowed editing territory.");
             return;
           }
         }
@@ -2824,7 +2824,7 @@
         const pinLat = entry.data.lat ?? entry.data.latitude;
         const pinLng = entry.data.lng ?? entry.data.longitude;
         if (pinLat != null && pinLng != null && !isWithinAllowedGeofences(pinLat, pinLng)) {
-          alert("Action blocked: This pin is outside your allowed editing geofence.");
+          alert("Action blocked: This pin is outside your allowed editing territory.");
           return;
         }
       }
@@ -3048,7 +3048,7 @@
                                (targetZone.radius != null && Number(targetZone.radius) > 0);
 
       if (['Tech', 'Supervisor'].includes(getCurrentUserRole()) && isStrictGeofence) {
-        alert("Permission denied: Assigned geofences cannot be deleted.");
+        alert("Permission denied: Assigned territories cannot be deleted.");
         return;
       }
 
@@ -3471,7 +3471,7 @@
         const selectId = `role-select-${u.uid}`;
 
         const fenceTagsHtml = fences.length === 0
-          ? '<span style="font-size: 11px; color: #94a3b8; font-style: italic;">Unrestricted (No geofences)</span>'
+          ? '<span style="font-size: 11px; color: #94a3b8; font-style: italic;">Unrestricted (No territories)</span>'
           : fences.map((f, idx) => {
               const isPoly = Array.isArray(f.polygon) && f.polygon.length >= 3;
               const badgeIcon = isPoly ? '⬠' : (f.radiusMeters ? '⭕' : '📍');
@@ -3479,7 +3479,7 @@
               return `
                 <span style="display: inline-flex; align-items: center; gap: 4px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 2px 6px; border-radius: 4px; font-size: 11px;">
                   <span onclick="previewUserFence('${u.uid}', ${idx})" style="cursor: pointer; text-decoration: underline;" title="Click to preview on map">${badgeIcon} ${fenceName}</span>
-                  <button type="button" onclick="deleteUserGeofence('${u.uid}', ${idx})" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 11px; padding: 0 2px;" title="Remove geofence">✕</button>
+                  <button type="button" onclick="deleteUserGeofence('${u.uid}', ${idx})" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 11px; padding: 0 2px;" title="Remove territory">✕</button>
                 </span>
               `;
             }).join('');
@@ -3566,7 +3566,7 @@
       const userObj = allManagedUsers.find(u => u.uid === uid);
       if (!userObj || !userObj.allowedGeofences) return;
 
-      const fenceName = userObj.allowedGeofences[fenceIndex]?.name || "this geofence";
+      const fenceName = userObj.allowedGeofences[fenceIndex]?.name || "this territory";
       if (!confirm(`Remove "${fenceName}" from ${userObj.email || uid}?`)) return;
 
       userObj.allowedGeofences.splice(fenceIndex, 1);
@@ -3648,7 +3648,7 @@
         document.body.appendChild(banner);
       }
       banner.innerHTML = `
-        <span>Previewing: <b>${escapeHtml(fence.name || 'Geofence')}</b></span>
+        <span>Previewing: <b>${escapeHtml(fence.name || 'Territory')}</b></span>
         <button onclick="closeFencePreview()" style="background: #3b82f6; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Back to Users</button>
       `;
       banner.style.display = "flex";
@@ -3683,7 +3683,7 @@
         document.body.appendChild(banner);
       }
       banner.innerHTML = `
-        <span>Click map points to outline allowed geofence.</span>
+        <span>Click map points to outline allowed territory.</span>
         <button id="finish-user-fence-btn" style="background: #22c55e; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">Done</button>
         <button id="cancel-user-fence-btn" style="background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer;">Cancel</button>
       `;
@@ -3725,7 +3725,7 @@
         cleanup();
 
         if (drawnCoords.length < 3) {
-          alert("A polygon geofence requires at least 3 points.");
+          alert("A polygon territory requires at least 3 points.");
           document.getElementById("user-management-modal").style.display = "flex";
           return;
         }
@@ -3739,7 +3739,7 @@
           }
           document.getElementById("user-management-modal").style.display = "flex";
         } else {
-          const zoneName = prompt("Enter a name for this geofence zone:", "Assigned Zone");
+          const zoneName = prompt("Enter a name for this territory:", "Assigned Territory");
           if (!zoneName) {
             document.getElementById("user-management-modal").style.display = "flex";
             return;
@@ -3761,7 +3761,7 @@
             });
             await loadAllUsersForAdmin();
           } catch (err) {
-            alert("Failed to save geofence: " + err.message);
+            alert("Failed to save territory: " + err.message);
           }
           document.getElementById("user-management-modal").style.display = "flex";
         }
@@ -3823,7 +3823,7 @@
         pendingNewUserPolygon = [];
         const statusEl = document.getElementById("new-user-geofence-status");
         if (statusEl) {
-          statusEl.innerText = "No polygon drawn (Unrestricted)";
+          statusEl.innerText = "No territory drawn (Unrestricted)";
           statusEl.style.color = "#64748b";
         }
 
@@ -4091,16 +4091,16 @@
                 </select>
               </div>
               <div>
-                <label style="display: block; font-size: 11px; font-weight: 600; color: #475569;">Initial Geofence Name:</label>
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #475569;">Initial Territory Name:</label>
                 <input type="text" id="new-user-zone-name" placeholder="e.g., North Sector" style="width: 100%; padding: 7px; margin-top: 2px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px;">
               </div>
             </div>
 
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
               <button type="button" onclick="startUserGeofenceDraw('NEW_USER')" style="padding: 7px 10px; background: #8e44ad; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;">
-                ✏️ Draw Polygon Geofence
+                ✏️ Draw Territory
               </button>
-              <span id="new-user-geofence-status" style="font-size: 11px; color: #64748b;">No polygon drawn (Unrestricted)</span>
+              <span id="new-user-geofence-status" style="font-size: 11px; color: #64748b;">No territory drawn (Unrestricted)</span>
               <button type="button" onclick="submitNewUser()" style="padding: 7px 14px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;">
                 Create User
               </button>
