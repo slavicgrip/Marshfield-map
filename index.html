@@ -527,7 +527,7 @@
 	
     function canViewAuditTrail() {
       if (!currentUserProfile) return false;
-      return currentUserProfile.canViewAudit === true || ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(currentUserProfile.role);
+      return currentUserProfile.canViewAudit === true || ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(getCurrentUserRole());
     }
 	  
     window.openUserManagementModal = async function() {
@@ -692,6 +692,15 @@
       return ROLE_RANK[roleName] ?? 0;
     }
 
+    function getCurrentUserRole() {
+      if (!currentUserProfile) return "User";
+      return currentUserProfile.role || currentUserProfile.userRole || "User";
+    }
+
+    function canManagePulsingAlerts(roleName = getCurrentUserRole()) {
+      return ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(roleName);
+    }
+
     function createActivityEntry(action, email = null) {
       return {
         userEmail: email || (currentUser && currentUser.email ? currentUser.email : "guest@local"),
@@ -760,10 +769,10 @@
           }
         }
 
-        const isPrivileged = ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(role);
+        const canAssignUrgentAlert = canManagePulsingAlerts(role);
         document.querySelectorAll('.super-admin-only-option').forEach(opt => {
-          opt.style.display = isPrivileged ? '' : 'none';
-          opt.disabled = !isPrivileged;
+          opt.style.display = canAssignUrgentAlert ? '' : 'none';
+          opt.disabled = !canAssignUrgentAlert;
         });
 
         const canManageUsers = ['super_admin', 'Owner', 'Manager'].includes(role);
@@ -873,6 +882,11 @@
     }
 
     function isWithinAllowedGeofences(lat, lng) {
+      const role = getCurrentUserRole();
+      if (['super_admin', 'Owner', 'Manager'].includes(role)) {
+        return true;
+      }
+
       if (!currentUserProfile || !currentUserProfile.allowedGeofences || currentUserProfile.allowedGeofences.length === 0) {
         return true;
       }
@@ -885,7 +899,7 @@
       });
 
       if (strictFences.length === 0) {
-        if (['Tech', 'Supervisor'].includes(currentUserProfile?.role)) {
+        if (['Tech', 'Supervisor'].includes(getCurrentUserRole())) {
           return false; // Techs and Supervisors without geofences cannot edit globally
         }
         return true; 
@@ -1363,7 +1377,7 @@
       if (isMeasuring || activeDrawingPinId !== null || isDrawingUserGeofence) return;
       if (!currentUser) return;
       if (!isWithinAllowedGeofences(e.latlng.lat, e.latlng.lng)) {
-        showAppModal("Action Blocked", "This location is outside your allowed editing geofence.");
+        showAppModal("Action Blocked", "This location is outside your allowed editing territory.");
         return;
       }
 
@@ -1655,7 +1669,7 @@
 
         const comments = data.comments || [];
         const legacyNote = data.description || data.text || data.note || "";
-        const canModerateComments = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(currentUserProfile.role);
+        const canModerateComments = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(getCurrentUserRole());
 
         let htmlParts = [];
 
@@ -1786,7 +1800,7 @@
     };
 
     window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsModal = false) {
-      const canModerate = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(currentUserProfile.role);
+      const canModerate = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(getCurrentUserRole());
       if (!canModerate) {
         alert("Permission denied: You do not have permission to delete comments.");
         return;
@@ -1907,7 +1921,7 @@
           markerClusterGroup.addLayer(marker);
 
           if (!isWithinAllowedGeofences(newLatLng.lat, newLatLng.lng)) {
-            alert("Action blocked: This location is outside your allowed editing geofence.");
+            alert("Action blocked: This location is outside your allowed editing territory.");
             e.target.setLatLng([pinLat, pinLng]);
             return;
           }
@@ -2092,14 +2106,15 @@
 
       const pinLat = pinData.lat ?? pinData.latitude;
       const pinLng = pinData.lng ?? pinData.longitude;
-      if (['Tech', 'Supervisor'].includes(currentUserProfile?.role) && pinLat != null && pinLng != null) {
+      if (['Tech', 'Supervisor'].includes(getCurrentUserRole()) && pinLat != null && pinLng != null) {
         if (!isWithinAllowedGeofences(pinLat, pinLng)) {
-          alert("Action blocked: This pin is outside your allowed editing geofence.");
+          alert("Action blocked: This pin is outside your allowed editing territory.");
           return;
         }
       }
       
-      const isPrivileged = currentUserProfile && ['super_admin', 'Owner', 'Manager'].includes(currentUserProfile.role);
+      const activeRole = getCurrentUserRole();
+      const canManageUrgentAlert = canManagePulsingAlerts(activeRole);
      
       const idField = document.getElementById("edit-pin-id");
       const titleField = document.getElementById("edit-title");
@@ -2110,12 +2125,17 @@
       if (titleField) titleField.value = pinData.title || "";
       
       if (colorField) {
+        const alertOpt = colorField.querySelector('option[value="pulsing_alert"]');
+        if (alertOpt) {
+          alertOpt.style.display = canManageUrgentAlert ? '' : 'none';
+          alertOpt.disabled = !canManageUrgentAlert;
+        }
         colorField.value = pinData.color || "purple";
-        if (pinData.color === "pulsing_alert" && !isPrivileged) {
+        if (pinData.color === "pulsing_alert" && !canManageUrgentAlert) {
           colorField.disabled = true;
           colorField.style.backgroundColor = "#f1f5f9";
           colorField.style.cursor = "not-allowed";
-          colorField.title = "Only Super Admins and Owners can change Urgent Alert status.";
+          colorField.title = "Only Supervisors, Managers, Owners, and Super Admins can change Urgent Alert status.";
         } else {
           colorField.disabled = false;
           colorField.style.backgroundColor = "#ffffff";
@@ -2128,7 +2148,8 @@
         const existingDesc = pinData.description || pinData.text || pinData.note || "";
         descField.value = existingDesc;
 
-        if (existingDesc.trim() !== "" && !isPrivileged) {
+        const canEditLockedDesc = ['super_admin', 'Owner', 'Manager'].includes(activeRole);
+        if (existingDesc.trim() !== "" && !canEditLockedDesc) {
           descField.readOnly = true;
           descField.style.backgroundColor = "#f1f5f9";
           descField.style.color = "#475569";
@@ -2155,7 +2176,7 @@
             const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             const username = comment.userEmail ? comment.userEmail.split('@')[0] : 'Unknown';
             
-            const canModerateComments = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(currentUserProfile.role);
+            const canModerateComments = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(getCurrentUserRole());
             const deleteBtn = canModerateComments 
               ? `<button type="button" onclick="deletePinComment('${id}', '${comment.timestamp}')" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
               : '';
@@ -2210,11 +2231,11 @@
         alert("Action blocked: You cannot edit a pin created by someone with a higher role.");
         return;
       }
-      if (entry && entry.data && ['Tech', 'Supervisor'].includes(currentUserProfile?.role)) {
+      if (entry && entry.data && ['Tech', 'Supervisor'].includes(getCurrentUserRole())) {
         const pinLat = entry.data.lat ?? entry.data.latitude;
         const pinLng = entry.data.lng ?? entry.data.longitude;
         if (pinLat != null && pinLng != null && !isWithinAllowedGeofences(pinLat, pinLng)) {
-          alert("Action blocked: Cannot save edits to a pin outside your allowed geofence.");
+          alert("Action blocked: Cannot save edits to a pin outside your allowed territory.");
           return;
         }
       }
@@ -2232,11 +2253,11 @@
         const activityEntry = createActivityEntry("Updated pin details");
 	
         const editColorSelect = document.getElementById("edit-color");
-        const userRole = currentUserProfile?.role || currentUserProfile?.userRole || "User";
-        const isPrivileged = ['super_admin', 'Owner'].includes(userRole);
+        const userRole = getCurrentUserRole();
+        const canAssignAlert = canManagePulsingAlerts(userRole);
 
-        if (color === "pulsing_alert" && !isPrivileged && (!editColorSelect || !editColorSelect.disabled)) {
-          showAppModal("Permission Denied", "Only Super Admins and Owners can assign Pulsing Red Alerts.");
+        if (color === "pulsing_alert" && !canAssignAlert && (!editColorSelect || !editColorSelect.disabled)) {
+          showAppModal("Permission Denied", "Only Supervisors, Managers, Owners, and Super Admins can assign Pulsing Red Alerts.");
           return;
         }
 
@@ -2274,9 +2295,9 @@
         const pinLat = entry.data.lat ?? entry.data.latitude;
         const pinLng = entry.data.lng ?? entry.data.longitude;
         
-        if (['Tech', 'Supervisor'].includes(currentUserProfile?.role) && pinLat != null && pinLng != null && typeof isWithinAllowedGeofences === 'function') {
+        if (['Tech', 'Supervisor'].includes(getCurrentUserRole()) && pinLat != null && pinLng != null && typeof isWithinAllowedGeofences === 'function') {
           if (!isWithinAllowedGeofences(pinLat, pinLng)) {
-            alert("Action blocked: This pin is outside your allowed editing geofence.");
+            alert("Action blocked: This pin is outside your allowed editing territory.");
             return;
           }
         }
@@ -2799,11 +2820,11 @@
         alert("Action blocked: You cannot delete photos from a pin created by someone with a higher role.");
         return;
       }
-      if (entry && entry.data && ['Tech', 'Supervisor'].includes(currentUserProfile?.role)) {
+      if (entry && entry.data && ['Tech', 'Supervisor'].includes(getCurrentUserRole())) {
         const pinLat = entry.data.lat ?? entry.data.latitude;
         const pinLng = entry.data.lng ?? entry.data.longitude;
         if (pinLat != null && pinLng != null && !isWithinAllowedGeofences(pinLat, pinLng)) {
-          alert("Action blocked: This pin is outside your allowed editing geofence.");
+          alert("Action blocked: This pin is outside your allowed editing territory.");
           return;
         }
       }
@@ -3026,8 +3047,8 @@
                                (targetZone.radiusMeters != null && Number(targetZone.radiusMeters) > 0) ||
                                (targetZone.radius != null && Number(targetZone.radius) > 0);
 
-      if (currentUserProfile.role === 'Tech' && isStrictGeofence) {
-        alert("Permission denied: Assigned geofences cannot be deleted.");
+      if (['Tech', 'Supervisor'].includes(getCurrentUserRole()) && isStrictGeofence) {
+        alert("Permission denied: Assigned territories cannot be deleted.");
         return;
       }
 
@@ -3079,7 +3100,7 @@
       geofenceLayerGroup.clearLayers();
 
       const userZones = currentUserProfile?.allowedGeofences;
-      const isTech = currentUserProfile?.role === 'Tech';
+      const isGeofenceLockedRole = ['Tech', 'Supervisor'].includes(getCurrentUserRole());
 
       if (userZones && userZones.length > 0) {
         zonesList.innerHTML = "";
@@ -3105,9 +3126,9 @@
 
             row.appendChild(btn);
 
-            const isLockedForTech = isTech && isStrictGeofence;
+            const isLockedGeofence = isGeofenceLockedRole && isStrictGeofence;
 
-            if (!isLockedForTech) {
+            if (!isLockedGeofence) {
               const renameBtn = document.createElement("button");
               renameBtn.type = "button";
               renameBtn.className = "zone-rename-btn";
@@ -3433,6 +3454,11 @@
         return;
       }
 
+      const maxInitialUsers = 5;
+      const totalMatched = filtered.length;
+      const visibleUsers = filterText ? filtered : filtered.slice(0, maxInitialUsers);
+      const hiddenCount = totalMatched - visibleUsers.length;
+
       const assignableRoles = [
         { value: 'User', label: 'Fallback User' },
         { value: 'Tech', label: 'Tech' },
@@ -3442,7 +3468,7 @@
         { value: 'super_admin', label: 'Super Admin' }
       ].filter(r => myRole === 'super_admin' || getRoleRank(r.value) < myRank);
 
-      listEl.innerHTML = filtered.map(u => {
+      listEl.innerHTML = visibleUsers.map(u => {
         const displayEmail = u.email || `UID: ${u.uid.slice(0, 8)}...`;
         const role = u.role || u.userRole || "User";
         const fences = Array.isArray(u.allowedGeofences) ? u.allowedGeofences : [];
@@ -3450,7 +3476,7 @@
         const selectId = `role-select-${u.uid}`;
 
         const fenceTagsHtml = fences.length === 0
-          ? '<span style="font-size: 11px; color: #94a3b8; font-style: italic;">Unrestricted (No geofences)</span>'
+          ? '<span style="font-size: 11px; color: #94a3b8; font-style: italic;">Unrestricted (No territories)</span>'
           : fences.map((f, idx) => {
               const isPoly = Array.isArray(f.polygon) && f.polygon.length >= 3;
               const badgeIcon = isPoly ? '⬠' : (f.radiusMeters ? '⭕' : '📍');
@@ -3458,10 +3484,13 @@
               return `
                 <span style="display: inline-flex; align-items: center; gap: 4px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 2px 6px; border-radius: 4px; font-size: 11px;">
                   <span onclick="previewUserFence('${u.uid}', ${idx})" style="cursor: pointer; text-decoration: underline;" title="Click to preview on map">${badgeIcon} ${fenceName}</span>
-                  <button type="button" onclick="deleteUserGeofence('${u.uid}', ${idx})" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 11px; padding: 0 2px;" title="Remove geofence">✕</button>
+                  <button type="button" onclick="deleteUserGeofence('${u.uid}', ${idx})" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 11px; padding: 0 2px;" title="Remove territory">✕</button>
                 </span>
               `;
             }).join('');
+      if (hiddenCount > 0) {
+        listEl.innerHTML += `<div style="text-align: center; color: #64748b; font-size: 11px; padding: 6px 4px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 4px;">Showing ${visibleUsers.length} of ${totalMatched} users (${hiddenCount} more). Type in the search box to find a specific user.</div>`;
+      }
 
         const roleOptionsHtml = assignableRoles.map(r =>
           `<option value="${r.value}" ${role === r.value ? 'selected' : ''}>${r.label}</option>`
@@ -3495,7 +3524,7 @@
             <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
               ${fenceTagsHtml}
               <button type="button" onclick="startUserGeofenceDraw('${u.uid}')" style="background: #f1f5f9; border: 1px dashed #94a3b8; color: #334155; padding: 2px 7px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 500;">
-                + Add Polygon Fence
+                + Draw Territory
               </button>
             </div>
           </div>
@@ -3545,7 +3574,7 @@
       const userObj = allManagedUsers.find(u => u.uid === uid);
       if (!userObj || !userObj.allowedGeofences) return;
 
-      const fenceName = userObj.allowedGeofences[fenceIndex]?.name || "this geofence";
+      const fenceName = userObj.allowedGeofences[fenceIndex]?.name || "this territory";
       if (!confirm(`Remove "${fenceName}" from ${userObj.email || uid}?`)) return;
 
       userObj.allowedGeofences.splice(fenceIndex, 1);
@@ -3627,7 +3656,7 @@
         document.body.appendChild(banner);
       }
       banner.innerHTML = `
-        <span>Previewing: <b>${escapeHtml(fence.name || 'Geofence')}</b></span>
+        <span>Previewing: <b>${escapeHtml(fence.name || 'Territory')}</b></span>
         <button onclick="closeFencePreview()" style="background: #3b82f6; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Back to Users</button>
       `;
       banner.style.display = "flex";
@@ -3662,7 +3691,7 @@
         document.body.appendChild(banner);
       }
       banner.innerHTML = `
-        <span>Click map points to outline allowed geofence.</span>
+        <span>Click map points to outline allowed territory.</span>
         <button id="finish-user-fence-btn" style="background: #22c55e; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">Done</button>
         <button id="cancel-user-fence-btn" style="background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer;">Cancel</button>
       `;
@@ -3704,7 +3733,7 @@
         cleanup();
 
         if (drawnCoords.length < 3) {
-          alert("A polygon geofence requires at least 3 points.");
+          alert("A polygon territory requires at least 3 points.");
           document.getElementById("user-management-modal").style.display = "flex";
           return;
         }
@@ -3718,7 +3747,7 @@
           }
           document.getElementById("user-management-modal").style.display = "flex";
         } else {
-          const zoneName = prompt("Enter a name for this geofence zone:", "Assigned Zone");
+          const zoneName = prompt("Enter a name for this territory:", "Assigned Territory");
           if (!zoneName) {
             document.getElementById("user-management-modal").style.display = "flex";
             return;
@@ -3740,7 +3769,7 @@
             });
             await loadAllUsersForAdmin();
           } catch (err) {
-            alert("Failed to save geofence: " + err.message);
+            alert("Failed to save territory: " + err.message);
           }
           document.getElementById("user-management-modal").style.display = "flex";
         }
@@ -3802,7 +3831,7 @@
         pendingNewUserPolygon = [];
         const statusEl = document.getElementById("new-user-geofence-status");
         if (statusEl) {
-          statusEl.innerText = "No polygon drawn (Unrestricted)";
+          statusEl.innerText = "No territory drawn (Unrestricted)";
           statusEl.style.color = "#64748b";
         }
 
@@ -4070,16 +4099,16 @@
                 </select>
               </div>
               <div>
-                <label style="display: block; font-size: 11px; font-weight: 600; color: #475569;">Initial Geofence Name:</label>
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #475569;">Initial Territory Name:</label>
                 <input type="text" id="new-user-zone-name" placeholder="e.g., North Sector" style="width: 100%; padding: 7px; margin-top: 2px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px;">
               </div>
             </div>
 
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
               <button type="button" onclick="startUserGeofenceDraw('NEW_USER')" style="padding: 7px 10px; background: #8e44ad; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;">
-                ✏️ Draw Polygon Geofence
+                ✏️ Draw Territory
               </button>
-              <span id="new-user-geofence-status" style="font-size: 11px; color: #64748b;">No polygon drawn (Unrestricted)</span>
+              <span id="new-user-geofence-status" style="font-size: 11px; color: #64748b;">No territory drawn (Unrestricted)</span>
               <button type="button" onclick="submitNewUser()" style="padding: 7px 14px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;">
                 Create User
               </button>
