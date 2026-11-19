@@ -882,6 +882,11 @@
     }
 
     function isWithinAllowedGeofences(lat, lng) {
+      const role = getCurrentUserRole();
+      if (['super_admin', 'Owner', 'Manager'].includes(role)) {
+        return true;
+      }
+
       if (!currentUserProfile || !currentUserProfile.allowedGeofences || currentUserProfile.allowedGeofences.length === 0) {
         return true;
       }
@@ -3042,7 +3047,7 @@
                                (targetZone.radiusMeters != null && Number(targetZone.radiusMeters) > 0) ||
                                (targetZone.radius != null && Number(targetZone.radius) > 0);
 
-      if (currentUserProfile.role === 'Tech' && isStrictGeofence) {
+      if (['Tech', 'Supervisor'].includes(getCurrentUserRole()) && isStrictGeofence) {
         alert("Permission denied: Assigned geofences cannot be deleted.");
         return;
       }
@@ -3095,7 +3100,7 @@
       geofenceLayerGroup.clearLayers();
 
       const userZones = currentUserProfile?.allowedGeofences;
-      const isTech = currentUserProfile?.role === 'Tech';
+      const isGeofenceLockedRole = ['Tech', 'Supervisor'].includes(getCurrentUserRole());
 
       if (userZones && userZones.length > 0) {
         zonesList.innerHTML = "";
@@ -3121,9 +3126,9 @@
 
             row.appendChild(btn);
 
-            const isLockedForTech = isTech && isStrictGeofence;
+            const isLockedGeofence = isGeofenceLockedRole && isStrictGeofence;
 
-            if (!isLockedForTech) {
+            if (!isLockedGeofence) {
               const renameBtn = document.createElement("button");
               renameBtn.type = "button";
               renameBtn.className = "zone-rename-btn";
