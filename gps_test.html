@@ -507,9 +507,24 @@
     }
 	  
     window.openUserManagementModal = async function() {
-      if (!currentUserProfile || !['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(currentUserProfile.role)) {
-        alert("Permission denied: Management access required.");
+      const myRole = currentUserProfile?.role || currentUserProfile?.userRole || "User";
+      if (!currentUserProfile || !['super_admin', 'Owner', 'Manager'].includes(myRole)) {
+        alert("Permission denied: Manager, Owner, or Super Admin access required.");
         return;
+      }
+      // Restrict Create New User role dropdown based on current user's rank
+      const newRoleSelect = document.getElementById("new-user-role");
+      if (newRoleSelect) {
+        const myRank = getRoleRank(myRole);
+        Array.from(newRoleSelect.options).forEach(opt => {
+          const optRank = getRoleRank(opt.value);
+          const allowed = (myRole === 'super_admin') ? true : (optRank < myRank);
+          opt.style.display = allowed ? '' : 'none';
+          opt.disabled = !allowed;
+        });
+        if (newRoleSelect.selectedOptions[0]?.disabled) {
+          newRoleSelect.value = "Tech";
+        }
       }
       document.getElementById("user-management-modal").style.display = "flex";
       await loadAllUsersForAdmin();
@@ -717,8 +732,9 @@
           opt.disabled = !isPrivileged;
         });
 
+        const canManageUsers = ['super_admin', 'Owner', 'Manager'].includes(role);
         const adminBtn = document.getElementById("admin-manage-users-btn");
-        if (adminBtn) adminBtn.style.display = isPrivileged ? "block" : "none";
+        if (adminBtn) adminBtn.style.display = canManageUsers ? "block" : "none";
 
         updateZonesPanelUI();
 		
@@ -3366,19 +3382,40 @@
       }
     }
 
+    function canManageTargetUser(targetUser) {
+      if (!currentUserProfile || !targetUser) return false;
+      if (currentUser && targetUser.uid === currentUser.uid) return false;
+      const myRole = currentUserProfile.role || currentUserProfile.userRole || "User";
+      const targetRole = targetUser.role || targetUser.userRole || "User";
+      if (myRole === 'super_admin') return true;
+      return getRoleRank(myRole) > getRoleRank(targetRole);
+    }
+
     window.renderUsersList = function() {
       const listEl = document.getElementById("users-directory-list");
       const filterText = (document.getElementById("user-search-filter")?.value || "").toLowerCase();
+      const myRole = currentUserProfile?.role || currentUserProfile?.userRole || "User";
+      const myRank = getRoleRank(myRole);
 
       const filtered = allManagedUsers.filter(u => {
+        if (!canManageTargetUser(u)) return false;
         const identifier = (u.email || u.uid || "").toLowerCase();
         return identifier.includes(filterText);
       });
 
       if (filtered.length === 0) {
-        listEl.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 16px; font-size: 12px;">No matching users found.</div>';
+        listEl.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 16px; font-size: 12px;">No editable users found.</div>';
         return;
       }
+
+      const assignableRoles = [
+        { value: 'User', label: 'Fallback User' },
+        { value: 'Tech', label: 'Tech' },
+        { value: 'Supervisor', label: 'Supervisor' },
+        { value: 'Manager', label: 'Manager' },
+        { value: 'Owner', label: 'Owner' },
+        { value: 'super_admin', label: 'Super Admin' }
+      ].filter(r => myRole === 'super_admin' || getRoleRank(r.value) < myRank);
 
       listEl.innerHTML = filtered.map(u => {
         const displayEmail = u.email || `UID: ${u.uid.slice(0, 8)}...`;
@@ -3399,38 +3436,24 @@
               `;
             }).join('');
 
+        const roleOptionsHtml = assignableRoles.map(r =>
+          `<option value="${r.value}" ${role === r.value ? 'selected' : ''}>${r.label}</option>`
+        ).join('');
+
         return `
           <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; background: #ffffff;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
-              <div style="font-weight: 600; font-size: 13px; color: #1e293b; overflow: hidden; text-overflow: ellipsis;">
+              <div style="font-weight: 600; font-size: 13px; color: #1e293b; overflow: hidden; text-overflow: ellipsis; flex: 1;">
                 ${escapeHtml(displayEmail)}
               </div>
-              ${(() => {
-                const currentRole = currentUserProfile?.role || currentUserProfile?.userRole || "";
-                const canChangeAllRoles = ['super_admin', 'Owner'].includes(currentRole);
-                const isManagerUser = currentRole === 'Manager';
-                
-                if (canChangeAllRoles) {
-                  return `
-                    <select onchange="updateExistingUserRole('${u.uid}', this.value)" style="padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f8fafc; cursor: pointer;">
-                      <option value="Tech" ${role === 'Tech' ? 'selected' : ''}>Tech</option>
-                      <option value="Supervisor" ${role === 'Supervisor' ? 'selected' : ''}>Supervisor</option>
-                      <option value="Manager" ${role === 'Manager' ? 'selected' : ''}>Manager</option>
-                      <option value="Owner" ${role === 'Owner' ? 'selected' : ''}>Owner</option>
-                      <option value="super_admin" ${role === 'super_admin' ? 'selected' : ''}>Super Admin</option>
-                    </select>
-                  `;
-                } else if (isManagerUser && ['Tech', 'Supervisor'].includes(role)) {
-                  return `
-                    <select onchange="updateExistingUserRole('${u.uid}', this.value)" style="padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f8fafc; cursor: pointer;">
-                      <option value="Tech" ${role === 'Tech' ? 'selected' : ''}>Tech</option>
-                      <option value="Supervisor" ${role === 'Supervisor' ? 'selected' : ''}>Supervisor</option>
-                    </select>
-                  `;
-                } else {
-                  return `<span style="font-size: 11px; font-weight: 600; color: #475569; background: #f1f5f9; padding: 3px 6px; border-radius: 4px; text-transform: uppercase;">${role.replace('_', ' ')}</span>`;
-                }
-              })()}
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <select onchange="updateExistingUserRole('${u.uid}', this.value)" style="padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f8fafc; cursor: pointer;">
+                  ${roleOptionsHtml}
+                </select>
+                <button type="button" onclick="deleteUserAccount('${u.uid}')" style="background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 4px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;" title="Delete user account">
+                  Delete
+                </button>
+              </div>
             </div>
 
             <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
@@ -3444,12 +3467,42 @@
       }).join('');
     };
 
+    window.deleteUserAccount = async function(uid) {
+      const userObj = allManagedUsers.find(u => u.uid === uid);
+      if (!userObj || !canManageTargetUser(userObj)) {
+        alert("Permission denied: You cannot delete this account.");
+        return;
+      }
+
+      const label = userObj.email || uid;
+      if (!confirm(`Permanently delete the user account for "${label}"? They will lose access immediately.`)) {
+        return;
+      }
+
+      try {
+        await db.collection("users").doc(uid).delete();
+        allManagedUsers = allManagedUsers.filter(u => u.uid !== uid);
+        modifiedUserIds.delete(uid);
+        delete userRolesById[uid];
+        renderUsersList();
+        alert(`Account "${label}" has been deleted.`);
+      } catch (err) {
+        console.error("Error deleting user account:", err);
+        alert("Failed to delete account: " + err.message);
+      }
+    };
+
     window.updateExistingUserRole = function(uid, newRole) {
       const userObj = allManagedUsers.find(u => u.uid === uid);
-      if (userObj) {
-        userObj.role = newRole;
-        modifiedUserIds.add(uid);
+      if (!userObj || !canManageTargetUser(userObj)) return;
+      const myRole = currentUserProfile?.role || currentUserProfile?.userRole || "User";
+      if (myRole !== 'super_admin' && getRoleRank(newRole) >= getRoleRank(myRole)) {
+        alert("Permission denied: Cannot assign a role equal to or higher than your own.");
+        renderUsersList();
+        return;
       }
+      userObj.role = newRole;
+      modifiedUserIds.add(uid);
     };
 
     window.deleteUserGeofence = function(uid, fenceIndex) {
@@ -3661,6 +3714,11 @@
       const email = document.getElementById("new-user-email").value.trim();
       const tempPassword = document.getElementById("new-user-password").value.trim();
       const role = document.getElementById("new-user-role").value;
+      const myRole = currentUserProfile?.role || currentUserProfile?.userRole || "User";
+      if (myRole !== 'super_admin' && getRoleRank(role) >= getRoleRank(myRole)) {
+        alert("Permission denied: You cannot create a user with a role equal to or higher than your own.");
+        return;
+      }
       const zoneName = document.getElementById("new-user-zone-name").value.trim() || "Assigned Zone";
 
       if (!email || tempPassword.length < 6) {
@@ -3958,7 +4016,8 @@
               <div>
                 <label style="display: block; font-size: 11px; font-weight: 600; color: #475569;">Role:</label>
                 <select id="new-user-role" style="width: 100%; padding: 7px; margin-top: 2px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; font-size: 12px;">
-                  <option value="Tech">Tech</option>
+                  <option value="User">Fallback User</option>
+                  <option value="Tech" selected>Tech</option>
                   <option value="Supervisor">Supervisor</option>
                   <option value="Manager">Manager</option>
                   <option value="Owner">Owner</option>
