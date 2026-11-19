@@ -503,11 +503,11 @@
 	
     function canViewAuditTrail() {
       if (!currentUserProfile) return false;
-      return currentUserProfile.canViewAudit === true || ['super_admin', 'Owner', 'Supervisor'].includes(currentUserProfile.role);
+      return currentUserProfile.canViewAudit === true || ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(currentUserProfile.role);
     }
 	  
     window.openUserManagementModal = async function() {
-      if (!currentUserProfile || !['super_admin', 'Owner', 'Supervisor'].includes(currentUserProfile.role)) {
+      if (!currentUserProfile || !['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(currentUserProfile.role)) {
         alert("Permission denied: Management access required.");
         return;
       }
@@ -629,6 +629,31 @@
     let searchResultMarker = null;
     let geofenceLayerGroup = L.layerGroup();
 
+    const ROLE_RANK = {
+      super_admin: 5,
+      Owner: 4,
+      Manager: 3,
+      Supervisor: 2,
+      Tech: 1,
+      User: 0
+    };
+    let userRolesById = {};
+
+    function getRoleRank(roleName) {
+      return ROLE_RANK[roleName] ?? 0;
+    }
+
+    function isPinCreatorHigherRole(pinData) {
+      if (!pinData || !currentUser) return false;
+      if (pinData.userId && pinData.userId === currentUser.uid) return false;
+
+      const myRole = currentUserProfile?.role || currentUserProfile?.userRole || "User";
+      const creatorRole = pinData.creatorRole || (pinData.userId ? userRolesById[pinData.userId] : null);
+      if (!creatorRole) return false;
+
+      return getRoleRank(creatorRole) > getRoleRank(myRole);
+    }
+
     function showAppModal(title, message) {
       alert(title + ": " + message);
     }
@@ -668,7 +693,7 @@
         
         if (roleBadge) {
           roleBadge.textContent = role.replace('_', ' ').toUpperCase();
-          if (['super_admin', 'Owner'].includes(role)) {
+          if (['super_admin', 'Owner', 'Manager'].includes(role)) {
             roleBadge.style.background = '#dbeafe';
             roleBadge.style.color = '#1e40af';
           } else {
@@ -677,7 +702,7 @@
           }
         }
 
-        const isPrivileged = ['super_admin', 'Owner', 'Supervisor'].includes(role);
+        const isPrivileged = ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(role);
         document.querySelectorAll('.super-admin-only-option').forEach(opt => {
           opt.style.display = isPrivileged ? '' : 'none';
           opt.disabled = !isPrivileged;
@@ -690,6 +715,17 @@
 		
 		updateZonesPanelUI();
         
+        try {
+          const usersSnap = await db.collection("users").get();
+          userRolesById = {};
+          usersSnap.forEach(doc => {
+            const u = doc.data();
+            userRolesById[doc.id] = u.role || u.userRole || "User";
+          });
+        } catch (err) {
+          console.warn("Could not load user roles map:", err);
+        }
+
         // Refresh all existing markers so popups/buttons update with the user's geofences
         Object.keys(activeMarkers).forEach(id => {
           if (activeMarkers[id] && activeMarkers[id].data) {
@@ -1292,6 +1328,7 @@
           polygonCoords: [],
           attribution: getPinAttribution(),
           userId: auth.currentUser.uid,
+          creatorRole: currentUserProfile?.role || currentUserProfile?.userRole || "User",
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -1569,7 +1606,7 @@
 
         const comments = data.comments || [];
         const legacyNote = data.description || data.text || data.note || "";
-        const canModerateComments = currentUserProfile && ['super_admin', 'Owner', 'Supervisor'].includes(currentUserProfile.role);
+        const canModerateComments = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(currentUserProfile.role);
 
         let htmlParts = [];
 
@@ -1698,7 +1735,7 @@
     };
 
     window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsModal = false) {
-      const canModerate = currentUserProfile && ['super_admin', 'Owner', 'Supervisor'].includes(currentUserProfile.role);
+      const canModerate = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(currentUserProfile.role);
       if (!canModerate) {
         alert("Permission denied: You do not have permission to delete comments.");
         return;
@@ -1760,7 +1797,7 @@
     function renderPinMarker(id, data) {
       var currentUser = auth.currentUser;
       var role = currentUserProfile?.role || currentUserProfile?.userRole || "User";
-      var isPrivileged = ['super_admin', 'Owner'].includes(role);
+      var isPrivileged = ['super_admin', 'Owner', 'Manager'].includes(role);
       var isSupervisor = role === 'Supervisor';
       var isTech = role === 'Tech';
       
@@ -1769,8 +1806,8 @@
       var isGeofenceAllowed = typeof isWithinAllowedGeofences === 'function' && isWithinAllowedGeofences(pinLat, pinLng);
       
       // ➔ Strict Ownership & Role Check:
-      // - Super Admins & Owners can edit/delete any pin.
-      // - Supervisors can only edit/delete pins within their allowed geofences.
+      // - Super Admins, Owners & Managers can edit/delete pins map-wide (unless creator has a higher role).
+      // - Supervisors can only edit/delete pins within their allowed geofences (unless creator has a higher role).
       // - Techs can ONLY edit/delete pins THEY created themselves within their geofence.
       var isPinOwner = currentUser && data.userId && data.userId === currentUser.uid;
       
@@ -1784,6 +1821,10 @@
           canEditPin = isPinOwner && isGeofenceAllowed;
         } else {
           canEditPin = isPinOwner && isGeofenceAllowed;
+        }
+
+        if (isPinCreatorHigherRole(data)) {
+          canEditPin = false;
         }
       }
 
@@ -2001,6 +2042,11 @@
         return;
       }
       
+      if (isPinCreatorHigherRole(pinData)) {
+        alert("Action blocked: You cannot edit a pin created by someone with a higher role.");
+        return;
+      }
+
       const pinLat = pinData.lat ?? pinData.latitude;
       const pinLng = pinData.lng ?? pinData.longitude;
       if (['Tech', 'Supervisor'].includes(currentUserProfile?.role) && pinLat != null && pinLng != null) {
@@ -2010,7 +2056,7 @@
         }
       }
       
-      const isPrivileged = currentUserProfile && ['super_admin', 'Owner'].includes(currentUserProfile.role);
+      const isPrivileged = currentUserProfile && ['super_admin', 'Owner', 'Manager'].includes(currentUserProfile.role);
      
       const idField = document.getElementById("edit-pin-id");
       const titleField = document.getElementById("edit-title");
@@ -2066,7 +2112,7 @@
             const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             const username = comment.userEmail ? comment.userEmail.split('@')[0] : 'Unknown';
             
-            const canModerateComments = currentUserProfile && ['super_admin', 'Owner', 'Supervisor'].includes(currentUserProfile.role);
+            const canModerateComments = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(currentUserProfile.role);
             const deleteBtn = canModerateComments 
               ? `<button type="button" onclick="deletePinComment('${id}', '${comment.timestamp}')" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
               : '';
@@ -2117,6 +2163,10 @@
       if (!id) return;
 
       const entry = activeMarkers[id];
+      if (entry && entry.data && isPinCreatorHigherRole(entry.data)) {
+        alert("Action blocked: You cannot edit a pin created by someone with a higher role.");
+        return;
+      }
       if (entry && entry.data && ['Tech', 'Supervisor'].includes(currentUserProfile?.role)) {
         const pinLat = entry.data.lat ?? entry.data.latitude;
         const pinLng = entry.data.lng ?? entry.data.longitude;
@@ -2177,10 +2227,15 @@
     window.deletePin = async function(id) {
       const entry = activeMarkers[id];
       if (entry && entry.data) {
+        if (isPinCreatorHigherRole(entry.data)) {
+          alert("Action blocked: You cannot delete a pin created by someone with a higher role.");
+          return;
+        }
+
         const pinLat = entry.data.lat ?? entry.data.latitude;
         const pinLng = entry.data.lng ?? entry.data.longitude;
         
-        if (pinLat != null && pinLng != null && typeof isWithinAllowedGeofences === 'function') {
+        if (['Tech', 'Supervisor'].includes(currentUserProfile?.role) && pinLat != null && pinLng != null && typeof isWithinAllowedGeofences === 'function') {
           if (!isWithinAllowedGeofences(pinLat, pinLng)) {
             alert("Action blocked: This pin is outside your allowed editing geofence.");
             return;
@@ -2705,6 +2760,10 @@
 
     async function deletePinImage(pinId, targetUrl) {
       const entry = activeMarkers[pinId];
+      if (entry && entry.data && isPinCreatorHigherRole(entry.data)) {
+        alert("Action blocked: You cannot delete photos from a pin created by someone with a higher role.");
+        return;
+      }
       if (entry && entry.data && ['Tech', 'Supervisor'].includes(currentUserProfile?.role)) {
         const pinLat = entry.data.lat ?? entry.data.latitude;
         const pinLng = entry.data.lng ?? entry.data.longitude;
@@ -3361,15 +3420,24 @@
               </div>
               ${(() => {
                 const currentRole = currentUserProfile?.role || currentUserProfile?.userRole || "";
-                const canChangeRoles = ['super_admin', 'Owner'].includes(currentRole);
+                const canChangeAllRoles = ['super_admin', 'Owner'].includes(currentRole);
+                const isManagerUser = currentRole === 'Manager';
                 
-                if (canChangeRoles) {
+                if (canChangeAllRoles) {
                   return `
                     <select onchange="updateExistingUserRole('${u.uid}', this.value)" style="padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f8fafc; cursor: pointer;">
                       <option value="Tech" ${role === 'Tech' ? 'selected' : ''}>Tech</option>
                       <option value="Supervisor" ${role === 'Supervisor' ? 'selected' : ''}>Supervisor</option>
+                      <option value="Manager" ${role === 'Manager' ? 'selected' : ''}>Manager</option>
                       <option value="Owner" ${role === 'Owner' ? 'selected' : ''}>Owner</option>
                       <option value="super_admin" ${role === 'super_admin' ? 'selected' : ''}>Super Admin</option>
+                    </select>
+                  `;
+                } else if (isManagerUser && ['Tech', 'Supervisor'].includes(role)) {
+                  return `
+                    <select onchange="updateExistingUserRole('${u.uid}', this.value)" style="padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f8fafc; cursor: pointer;">
+                      <option value="Tech" ${role === 'Tech' ? 'selected' : ''}>Tech</option>
+                      <option value="Supervisor" ${role === 'Supervisor' ? 'selected' : ''}>Supervisor</option>
                     </select>
                   `;
                 } else {
@@ -3434,6 +3502,10 @@
         });
 
         await batch.commit();
+        modifiedUserIds.forEach(uid => {
+          const userObj = allManagedUsers.find(u => u.uid === uid);
+          if (userObj) userRolesById[uid] = userObj.role || "User";
+        });
         modifiedUserIds.clear();
         alert("User & geofence changes saved successfully!");
         closeUserManagementModal();
@@ -3901,6 +3973,7 @@
                 <select id="new-user-role" style="width: 100%; padding: 7px; margin-top: 2px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; font-size: 12px;">
                   <option value="Tech">Tech</option>
                   <option value="Supervisor">Supervisor</option>
+                  <option value="Manager">Manager</option>
                   <option value="Owner">Owner</option>
                   <option value="super_admin">Super Admin</option>
                 </select>
