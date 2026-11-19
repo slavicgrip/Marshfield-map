@@ -503,7 +503,7 @@
 	
     function canViewAuditTrail() {
       if (!currentUserProfile) return false;
-      return currentUserProfile.canViewAudit === true || ['super_admin', 'Owner'].includes(currentUserProfile.role);
+      return currentUserProfile.canViewAudit === true || ['super_admin', 'Owner', 'Supervisor'].includes(currentUserProfile.role);
     }
 	  
     window.openUserManagementModal = async function() {
@@ -792,8 +792,8 @@
       });
 
       if (strictFences.length === 0) {
-        if (currentUserProfile?.role === 'Tech') {
-          return false; // Techs without geofences cannot edit globally
+        if (['Tech', 'Supervisor'].includes(currentUserProfile?.role)) {
+          return false; // Techs and Supervisors without geofences cannot edit globally
         }
         return true; 
       }
@@ -1569,7 +1569,7 @@
 
         const comments = data.comments || [];
         const legacyNote = data.description || data.text || data.note || "";
-        const isPrivileged = currentUserProfile && ['super_admin', 'Owner'].includes(currentUserProfile.role);
+        const canModerateComments = currentUserProfile && ['super_admin', 'Owner', 'Supervisor'].includes(currentUserProfile.role);
 
         let htmlParts = [];
 
@@ -1592,7 +1592,7 @@
             const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
             const username = comment.userEmail ? comment.userEmail.split('@')[0] : 'Unknown';
             
-            const deleteBtn = isPrivileged 
+            const deleteBtn = canModerateComments 
               ? `<button type="button" onclick="deletePinComment('${pinId}', '${comment.timestamp}', true)" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
               : '';
 
@@ -1698,6 +1698,11 @@
     };
 
     window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsModal = false) {
+      const canModerate = currentUserProfile && ['super_admin', 'Owner', 'Supervisor'].includes(currentUserProfile.role);
+      if (!canModerate) {
+        alert("Permission denied: You do not have permission to delete comments.");
+        return;
+      }
       if (!confirm("Are you sure you want to delete this comment?")) return;
 
       try {
@@ -1756,6 +1761,7 @@
       var currentUser = auth.currentUser;
       var role = currentUserProfile?.role || currentUserProfile?.userRole || "User";
       var isPrivileged = ['super_admin', 'Owner'].includes(role);
+      var isSupervisor = role === 'Supervisor';
       var isTech = role === 'Tech';
       
       var pinLat = data.lat ?? data.latitude;
@@ -1764,18 +1770,20 @@
       
       // ➔ Strict Ownership & Role Check:
       // - Super Admins & Owners can edit/delete any pin.
-      // - Techs & standard users can ONLY edit/delete pins THEY created themselves, 
-      //   within their geofence, and excluding legacy pins (where userId is missing).
+      // - Supervisors can only edit/delete pins within their allowed geofences.
+      // - Techs can ONLY edit/delete pins THEY created themselves within their geofence.
       var isPinOwner = currentUser && data.userId && data.userId === currentUser.uid;
       
       var canEditPin = false;
       if (currentUser) {
         if (isPrivileged) {
           canEditPin = true;
+        } else if (isSupervisor) {
+          canEditPin = isGeofenceAllowed;
         } else if (isTech) {
           canEditPin = isPinOwner && isGeofenceAllowed;
         } else {
-          canEditPin = isPinOwner || isGeofenceAllowed;
+          canEditPin = isPinOwner && isGeofenceAllowed;
         }
       }
 
@@ -1995,7 +2003,7 @@
       
       const pinLat = pinData.lat ?? pinData.latitude;
       const pinLng = pinData.lng ?? pinData.longitude;
-      if (currentUserProfile?.role === 'Tech' && pinLat != null && pinLng != null) {
+      if (['Tech', 'Supervisor'].includes(currentUserProfile?.role) && pinLat != null && pinLng != null) {
         if (!isWithinAllowedGeofences(pinLat, pinLng)) {
           alert("Action blocked: This pin is outside your allowed editing geofence.");
           return;
@@ -2058,7 +2066,8 @@
             const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             const username = comment.userEmail ? comment.userEmail.split('@')[0] : 'Unknown';
             
-            const deleteBtn = isPrivileged 
+            const canModerateComments = currentUserProfile && ['super_admin', 'Owner', 'Supervisor'].includes(currentUserProfile.role);
+            const deleteBtn = canModerateComments 
               ? `<button type="button" onclick="deletePinComment('${id}', '${comment.timestamp}')" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
               : '';
 
@@ -2108,7 +2117,7 @@
       if (!id) return;
 
       const entry = activeMarkers[id];
-      if (entry && entry.data && currentUserProfile?.role === 'Tech') {
+      if (entry && entry.data && ['Tech', 'Supervisor'].includes(currentUserProfile?.role)) {
         const pinLat = entry.data.lat ?? entry.data.latitude;
         const pinLng = entry.data.lng ?? entry.data.longitude;
         if (pinLat != null && pinLng != null && !isWithinAllowedGeofences(pinLat, pinLng)) {
@@ -2695,6 +2704,16 @@
     };
 
     async function deletePinImage(pinId, targetUrl) {
+      const entry = activeMarkers[pinId];
+      if (entry && entry.data && ['Tech', 'Supervisor'].includes(currentUserProfile?.role)) {
+        const pinLat = entry.data.lat ?? entry.data.latitude;
+        const pinLng = entry.data.lng ?? entry.data.longitude;
+        if (pinLat != null && pinLng != null && !isWithinAllowedGeofences(pinLat, pinLng)) {
+          alert("Action blocked: This pin is outside your allowed editing geofence.");
+          return;
+        }
+      }
+
       if (!confirm("Are you sure you want to delete this photo? This will also readjust the pin's polygon boundary.")) {
         return;
       }
