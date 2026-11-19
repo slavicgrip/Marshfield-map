@@ -1751,21 +1751,25 @@
       var role = currentUserProfile?.role || currentUserProfile?.userRole || "User";
       var isPrivileged = ['super_admin', 'Owner'].includes(role);
       var isTech = role === 'Tech';
-      var isOwner = currentUser && data.userId === currentUser.uid;
       
       var pinLat = data.lat ?? data.latitude;
       var pinLng = data.lng ?? data.longitude;
       var isGeofenceAllowed = typeof isWithinAllowedGeofences === 'function' && isWithinAllowedGeofences(pinLat, pinLng);
       
-      // Techs can ONLY edit/delete pins inside their geofence (even if they created the pin)
+      // ➔ Strict Ownership & Role Check:
+      // - Super Admins & Owners can edit/delete any pin.
+      // - Techs & standard users can ONLY edit/delete pins THEY created themselves, 
+      //   within their geofence, and excluding legacy pins (where userId is missing).
+      var isPinOwner = currentUser && data.userId && data.userId === currentUser.uid;
+      
       var canEditPin = false;
       if (currentUser) {
         if (isPrivileged) {
           canEditPin = true;
         } else if (isTech) {
-          canEditPin = isGeofenceAllowed;
+          canEditPin = isPinOwner && isGeofenceAllowed;
         } else {
-          canEditPin = isOwner || isGeofenceAllowed;
+          canEditPin = isPinOwner || isGeofenceAllowed;
         }
       }
 
