@@ -516,6 +516,12 @@
     };
 
     window.closeUserManagementModal = function() {
+      if (typeof modifiedUserIds !== 'undefined' && modifiedUserIds.size > 0) {
+        if (!confirm("You have unsaved changes. Discard them?")) {
+          return;
+        }
+        modifiedUserIds.clear();
+      }
       document.getElementById("user-management-modal").style.display = "none";
       if (previewGeofenceLayer) {
         map.removeLayer(previewGeofenceLayer);
@@ -3256,6 +3262,7 @@
     // 👥 USER & GEOFENCE MANAGEMENT CONTROLLER
     // ==========================================
     let allManagedUsers = [];
+    let modifiedUserIds = new Set();
     let pendingNewUserPolygon = [];
     let geofenceDrawTarget = null;
     let userDrawLayer = null;
@@ -3276,6 +3283,7 @@
     };
 
     async function loadAllUsersForAdmin() {
+      modifiedUserIds.clear();
       const listEl = document.getElementById("users-directory-list");
       listEl.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-size: 12px;">Loading users...</div>';
 
@@ -3362,40 +3370,57 @@
       }).join('');
     };
 
-    window.updateExistingUserRole = async function(uid, newRole) {
-      try {
-        await db.collection("users").doc(uid).update({ role: newRole });
-        const userObj = allManagedUsers.find(u => u.uid === uid);
-        if (userObj) userObj.role = newRole;
-
-        if (currentUser && uid === currentUser.uid && currentUserProfile) {
-          currentUserProfile.role = newRole;
-        }
-      } catch (err) {
-        alert("Failed to update user role: " + err.message);
-        await loadAllUsersForAdmin();
+    window.updateExistingUserRole = function(uid, newRole) {
+      const userObj = allManagedUsers.find(u => u.uid === uid);
+      if (userObj) {
+        userObj.role = newRole;
+        modifiedUserIds.add(uid);
       }
     };
 
-    window.deleteUserGeofence = async function(uid, fenceIndex) {
+    window.deleteUserGeofence = function(uid, fenceIndex) {
       const userObj = allManagedUsers.find(u => u.uid === uid);
       if (!userObj || !userObj.allowedGeofences) return;
 
       const fenceName = userObj.allowedGeofences[fenceIndex]?.name || "this geofence";
       if (!confirm(`Remove "${fenceName}" from ${userObj.email || uid}?`)) return;
 
-      try {
-        const updatedFences = [...userObj.allowedGeofences];
-        updatedFences.splice(fenceIndex, 1);
+      userObj.allowedGeofences.splice(fenceIndex, 1);
+      modifiedUserIds.add(uid);
+      renderUsersList();
+    };
 
-        await db.collection("users").doc(uid).update({
-          allowedGeofences: updatedFences
+    window.saveUserManagementChanges = async function() {
+      if (modifiedUserIds.size === 0) {
+        closeUserManagementModal();
+        return;
+      }
+
+      try {
+        const batch = db.batch();
+        modifiedUserIds.forEach(uid => {
+          const userObj = allManagedUsers.find(u => u.uid === uid);
+          if (userObj) {
+            const userRef = db.collection("users").doc(uid);
+            batch.update(userRef, {
+              role: userObj.role || "User",
+              allowedGeofences: userObj.allowedGeofences || []
+            });
+
+            if (currentUser && uid === currentUser.uid && currentUserProfile) {
+              currentUserProfile.role = userObj.role;
+              currentUserProfile.allowedGeofences = userObj.allowedGeofences;
+            }
+          }
         });
 
-        userObj.allowedGeofences = updatedFences;
-        renderUsersList();
+        await batch.commit();
+        modifiedUserIds.clear();
+        alert("User & geofence changes saved successfully!");
+        closeUserManagementModal();
+        updateZonesPanelUI();
       } catch (err) {
-        alert("Failed to delete geofence: " + err.message);
+        alert("Failed to save changes: " + err.message);
       }
     };
 
@@ -3893,8 +3918,9 @@
 
       </div>
 
-      <div style="border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 10px; text-align: right;">
-        <button type="button" onclick="closeUserManagementModal()" style="padding: 7px 14px; background: #64748b; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;">Close</button>
+      <div style="border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 10px; display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" onclick="closeUserManagementModal()" style="padding: 7px 14px; background: #e5e7eb; color: #334155; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: 500;">Cancel</button>
+        <button type="button" onclick="saveUserManagementChanges()" style="padding: 7px 14px; background: #2563eb; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: 600;">Save Changes</button>
       </div>
     </div>
   </div>
