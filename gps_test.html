@@ -1856,6 +1856,9 @@
         if (change.type === "removed" && activeMarkers[id]) {
           markerClusterGroup.removeLayer(activeMarkers[id].marker);
           if (activeMarkers[id].polygon) map.removeLayer(activeMarkers[id].polygon);
+          if (activeMarkers[id].photoMarkers) {
+            activeMarkers[id].photoMarkers.forEach(m => map.removeLayer(m));
+          }
           delete activeMarkers[id];
         }
       });
