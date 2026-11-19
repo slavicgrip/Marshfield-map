@@ -457,6 +457,30 @@
     .delete-img-btn:hover {
       background: #b91c1c;
     }
+
+    /* ROLE DROPDOWN LABEL STYLING */
+    .role-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .role-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .role-select {
+      padding: 4px 6px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #f8fafc;
+      color: #1e293b;
+      cursor: pointer;
+    }
   </style>
 
   <!-- CRITICAL GLOBAL MODAL FUNCTIONS DEFINED EARLY -->
@@ -737,8 +761,6 @@
         if (adminBtn) adminBtn.style.display = canManageUsers ? "block" : "none";
 
         updateZonesPanelUI();
-		
-		updateZonesPanelUI();
         
         try {
           const usersSnap = await db.collection("users").get();
@@ -1820,10 +1842,6 @@
       var pinLng = data.lng ?? data.longitude;
       var isGeofenceAllowed = typeof isWithinAllowedGeofences === 'function' && isWithinAllowedGeofences(pinLat, pinLng);
       
-      // ➔ Strict Ownership & Role Check:
-      // - Super Admins, Owners & Managers can edit/delete pins map-wide (unless creator has a higher role).
-      // - Supervisors can only edit/delete pins within their allowed geofences (unless creator has a higher role).
-      // - Techs can ONLY edit/delete pins THEY created themselves within their geofence.
       var isPinOwner = currentUser && data.userId && data.userId === currentUser.uid;
       
       var canEditPin = false;
@@ -3072,13 +3090,11 @@
             const btn = document.createElement("button");
             btn.type = "button";
             btn.className = "zone-btn";
-            // Use a shield icon for assigned admin/strict fences, pin icon for personal bookmarks
             btn.innerHTML = `<span>${isStrictGeofence ? '🛡️' : '📍'} ${escapeHtml(name)}</span>`;
             btn.onclick = () => jumpToZone(lat, lng);
 
             row.appendChild(btn);
 
-            // If the user is a Tech and this is a strict admin geofence, lock it (hide delete & rename)
             const isLockedForTech = isTech && isStrictGeofence;
 
             if (!isLockedForTech) {
@@ -3109,7 +3125,6 @@
 
             zonesList.appendChild(row);
 
-            // Render the geofence boundary shape on the map so it's always visible
             if (isPolygon) {
               const polyLatLngs = zone.polygon.map(p => [p.lat, p.lng]);
               L.polygon(polyLatLngs, {
@@ -3421,6 +3436,8 @@
         const displayEmail = u.email || `UID: ${u.uid.slice(0, 8)}...`;
         const role = u.role || u.userRole || "User";
         const fences = Array.isArray(u.allowedGeofences) ? u.allowedGeofences : [];
+        const canEditRoleForUser = canManageTargetUser(u) && assignableRoles.length > 0;
+        const selectId = `role-select-${u.uid}`;
 
         const fenceTagsHtml = fences.length === 0
           ? '<span style="font-size: 11px; color: #94a3b8; font-style: italic;">Unrestricted (No geofences)</span>'
@@ -3440,6 +3457,17 @@
           `<option value="${r.value}" ${role === r.value ? 'selected' : ''}>${r.label}</option>`
         ).join('');
 
+        const roleControlHtml = canEditRoleForUser
+          ? `
+            <div class="role-control">
+              <label for="${selectId}" class="role-label">Role:</label>
+              <select id="${selectId}" class="role-select" onchange="updateExistingUserRole('${u.uid}', this.value)">
+                ${roleOptionsHtml}
+              </select>
+            </div>
+          `
+          : `<span style="font-size: 11px; font-weight: 600; color: #475569;">Role: ${escapeHtml(role)}</span>`;
+
         return `
           <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; background: #ffffff;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
@@ -3447,9 +3475,7 @@
                 ${escapeHtml(displayEmail)}
               </div>
               <div style="display: flex; align-items: center; gap: 6px;">
-                <select onchange="updateExistingUserRole('${u.uid}', this.value)" style="padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f8fafc; cursor: pointer;">
-                  ${roleOptionsHtml}
-                </select>
+                ${roleControlHtml}
                 <button type="button" onclick="deleteUserAccount('${u.uid}')" style="background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 4px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;" title="Delete user account">
                   Delete
                 </button>
@@ -3769,13 +3795,11 @@
           statusEl.style.color = "#64748b";
         }
 
-        // Collapse the Create New User section back to default closed state
         const formBody = document.getElementById("create-user-form-body");
         const toggleIcon = document.getElementById("create-user-toggle-icon");
         if (formBody) formBody.style.display = "none";
         if (toggleIcon) toggleIcon.innerText = "▸";
 
-        // Ensure user management modal is visible and focused back on the directory
         const mgmtModal = document.getElementById("user-management-modal");
         if (mgmtModal) mgmtModal.style.display = "flex";
 
