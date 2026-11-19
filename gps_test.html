@@ -995,6 +995,12 @@
       attribution: 'Esri, DigitalGlobe, GeoEye, Earthstar Geographics, and the GIS User Community (Leaf-Off)'
     });
 
+    const esriStreetLayer = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 21,
+      maxNativeZoom: 19,
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012'
+    });
+
     const wiParcelsLayer = L.layerGroup();
     let parcelFetchTimeout = null;
 
@@ -1138,6 +1144,7 @@
 
     const baseMaps = {
       "OpenStreetMap": osmLayer,
+      "Esri Street Map": esriStreetLayer,
       "Satellite (Leaf-On)": leafOffLayer
     };
 
