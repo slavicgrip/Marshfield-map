@@ -550,8 +550,16 @@
           newRoleSelect.value = "Tech";
         }
       }
+      if (typeof window.resetCreateUserSection === 'function') window.resetCreateUserSection();
       document.getElementById("user-management-modal").style.display = "flex";
       await loadAllUsersForAdmin();
+    };
+
+    window.resetCreateUserSection = function() {
+      const formBody = document.getElementById("create-user-form-body");
+      const toggleIcon = document.getElementById("create-user-toggle-icon");
+      if (formBody) formBody.style.display = "none";
+      if (toggleIcon) toggleIcon.innerText = "▸";
     };
 
     window.closeUserManagementModal = function() {
@@ -561,8 +569,10 @@
         }
         modifiedUserIds.clear();
       }
-      document.getElementById("user-management-modal").style.display = "none";
-      if (previewGeofenceLayer) {
+      window.resetCreateUserSection();
+      const modal = document.getElementById("user-management-modal");
+      if (modal) modal.style.display = "none";
+      if (typeof previewGeofenceLayer !== 'undefined' && previewGeofenceLayer && typeof map !== 'undefined') {
         map.removeLayer(previewGeofenceLayer);
         previewGeofenceLayer = null;
       }
@@ -3573,6 +3583,7 @@
           if (userObj) userRolesById[uid] = userObj.role || "User";
         });
         modifiedUserIds.clear();
+        window.resetCreateUserSection();
         alert("User & territory changes saved successfully!");
         closeUserManagementModal();
         updateZonesPanelUI();
