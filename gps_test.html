@@ -3332,12 +3332,23 @@
               <div style="font-weight: 600; font-size: 13px; color: #1e293b; overflow: hidden; text-overflow: ellipsis;">
                 ${escapeHtml(displayEmail)}
               </div>
-              <select onchange="updateExistingUserRole('${u.uid}', this.value)" style="padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f8fafc; cursor: pointer;">
-                <option value="Tech" ${role === 'Tech' ? 'selected' : ''}>Tech</option>
-                <option value="Supervisor" ${role === 'Supervisor' ? 'selected' : ''}>Supervisor</option>
-                <option value="Owner" ${role === 'Owner' ? 'selected' : ''}>Owner</option>
-                <option value="super_admin" ${role === 'super_admin' ? 'selected' : ''}>Super Admin</option>
-              </select>
+              ${(() => {
+                const currentRole = currentUserProfile?.role || currentUserProfile?.userRole || "";
+                const canChangeRoles = ['super_admin', 'Owner'].includes(currentRole);
+                
+                if (canChangeRoles) {
+                  return `
+                    <select onchange="updateExistingUserRole('${u.uid}', this.value)" style="padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f8fafc; cursor: pointer;">
+                      <option value="Tech" ${role === 'Tech' ? 'selected' : ''}>Tech</option>
+                      <option value="Supervisor" ${role === 'Supervisor' ? 'selected' : ''}>Supervisor</option>
+                      <option value="Owner" ${role === 'Owner' ? 'selected' : ''}>Owner</option>
+                      <option value="super_admin" ${role === 'super_admin' ? 'selected' : ''}>Super Admin</option>
+                    </select>
+                  `;
+                } else {
+                  return `<span style="font-size: 11px; font-weight: 600; color: #475569; background: #f1f5f9; padding: 3px 6px; border-radius: 4px; text-transform: uppercase;">${role.replace('_', ' ')}</span>`;
+                }
+              })()}
             </div>
 
             <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
