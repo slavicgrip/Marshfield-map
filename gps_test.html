@@ -1498,6 +1498,14 @@
       return `${username} - ${month}/${day}/${year}`;
     }
 
+    function getCardinalDirection(degrees) {
+      if (degrees == null || isNaN(degrees)) return "";
+      const directions = ["North", "Northeast", "East", "Southeast", "South", "Southwest", "West", "Northwest"];
+      const normalized = ((Number(degrees) % 360) + 360) % 360;
+      const index = Math.round(normalized / 45) % 8;
+      return directions[index];
+    }
+
     function buildPopupContent(data, pinId, canEditPin) {
       let metaText = data.attribution;
 
@@ -1973,7 +1981,7 @@
             });
 
             var headingHtml = img.direction != null 
-              ? `<br><span style="font-size: 11px; color: #555;">Heading: ${Math.round(img.direction)}°</span>` 
+              ? `<br><span style="font-size: 11px; color: #555;">Heading: ${Math.round(img.direction)}° (${getCardinalDirection(img.direction)})</span>` 
               : '';
 
             var photoMarker = L.marker([img.lat, img.lng], { icon: bubbleIcon });
@@ -2058,7 +2066,7 @@
             var photoMarker = L.marker([img.lat, img.lng], { icon: bubbleIcon });
             
             var headingHtml = img.direction != null 
-              ? `<br><span style="font-size: 11px; color: #555;">Heading: ${Math.round(img.direction)}°</span>` 
+              ? `<br><span style="font-size: 11px; color: #555;">Heading: ${Math.round(img.direction)}° (${getCardinalDirection(img.direction)})</span>` 
               : '';
 
             photoMarker.bindPopup(`
