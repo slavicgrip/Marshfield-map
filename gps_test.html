@@ -682,6 +682,15 @@
 
         updateZonesPanelUI();
 		
+		updateZonesPanelUI();
+        
+        // Refresh all existing markers so popups/buttons update with the user's geofences
+        Object.keys(activeMarkers).forEach(id => {
+          if (activeMarkers[id] && activeMarkers[id].data) {
+            renderPinMarker(id, activeMarkers[id].data);
+          }
+        });
+		
         // ➔ 3-TIER LOGIN MAP JUMP HIERARCHY
         const zones = currentUserProfile?.allowedGeofences || [];
         let targetLat = null;
@@ -1739,14 +1748,26 @@
 
     function renderPinMarker(id, data) {
       var currentUser = auth.currentUser;
+      var role = currentUserProfile?.role || currentUserProfile?.userRole || "User";
+      var isPrivileged = ['super_admin', 'Owner'].includes(role);
+      var isTech = role === 'Tech';
       var isOwner = currentUser && data.userId === currentUser.uid;
-      var isPrivileged = typeof currentUserProfile !== 'undefined' && currentUserProfile && ['super_admin', 'Owner'].includes(currentUserProfile.role);
       
       var pinLat = data.lat ?? data.latitude;
       var pinLng = data.lng ?? data.longitude;
       var isGeofenceAllowed = typeof isWithinAllowedGeofences === 'function' && isWithinAllowedGeofences(pinLat, pinLng);
       
-      var canEditPin = currentUser && (isOwner || isPrivileged || isGeofenceAllowed);
+      // Techs can ONLY edit/delete pins inside their geofence (even if they created the pin)
+      var canEditPin = false;
+      if (currentUser) {
+        if (isPrivileged) {
+          canEditPin = true;
+        } else if (isTech) {
+          canEditPin = isGeofenceAllowed;
+        } else {
+          canEditPin = isOwner || isGeofenceAllowed;
+        }
+      }
 
       var pinColor = data.color && markerIcons[data.color] ? data.color : 'purple';
       var chosenIcon = markerIcons[pinColor];
@@ -1962,6 +1983,15 @@
         return;
       }
       
+      const pinLat = pinData.lat ?? pinData.latitude;
+      const pinLng = pinData.lng ?? pinData.longitude;
+      if (currentUserProfile?.role === 'Tech' && pinLat != null && pinLng != null) {
+        if (!isWithinAllowedGeofences(pinLat, pinLng)) {
+          alert("Action blocked: This pin is outside your allowed editing geofence.");
+          return;
+        }
+      }
+      
       const isPrivileged = currentUserProfile && ['super_admin', 'Owner'].includes(currentUserProfile.role);
      
       const idField = document.getElementById("edit-pin-id");
@@ -2065,6 +2095,18 @@
       if (!idField || !titleField) return;
 
       const id = idField.value;
+      if (!id) return;
+
+      const entry = activeMarkers[id];
+      if (entry && entry.data && currentUserProfile?.role === 'Tech') {
+        const pinLat = entry.data.lat ?? entry.data.latitude;
+        const pinLng = entry.data.lng ?? entry.data.longitude;
+        if (pinLat != null && pinLng != null && !isWithinAllowedGeofences(pinLat, pinLng)) {
+          alert("Action blocked: Cannot save edits to a pin outside your allowed geofence.");
+          return;
+        }
+      }
+
       const title = titleField.value.trim();
       const color = colorField ? colorField.value : "purple";
 
