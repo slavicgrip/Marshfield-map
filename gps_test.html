@@ -527,7 +527,7 @@
 	
     function canViewAuditTrail() {
       if (!currentUserProfile) return false;
-      return currentUserProfile.canViewAudit === true || ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(currentUserProfile.role);
+      return currentUserProfile.canViewAudit === true || ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(getCurrentUserRole());
     }
 	  
     window.openUserManagementModal = async function() {
@@ -692,6 +692,15 @@
       return ROLE_RANK[roleName] ?? 0;
     }
 
+    function getCurrentUserRole() {
+      if (!currentUserProfile) return "User";
+      return currentUserProfile.role || currentUserProfile.userRole || "User";
+    }
+
+    function canManagePulsingAlerts(roleName = getCurrentUserRole()) {
+      return ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(roleName);
+    }
+
     function createActivityEntry(action, email = null) {
       return {
         userEmail: email || (currentUser && currentUser.email ? currentUser.email : "guest@local"),
@@ -760,10 +769,10 @@
           }
         }
 
-        const isPrivileged = ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(role);
+        const canAssignUrgentAlert = canManagePulsingAlerts(role);
         document.querySelectorAll('.super-admin-only-option').forEach(opt => {
-          opt.style.display = isPrivileged ? '' : 'none';
-          opt.disabled = !isPrivileged;
+          opt.style.display = canAssignUrgentAlert ? '' : 'none';
+          opt.disabled = !canAssignUrgentAlert;
         });
 
         const canManageUsers = ['super_admin', 'Owner', 'Manager'].includes(role);
@@ -885,7 +894,7 @@
       });
 
       if (strictFences.length === 0) {
-        if (['Tech', 'Supervisor'].includes(currentUserProfile?.role)) {
+        if (['Tech', 'Supervisor'].includes(getCurrentUserRole())) {
           return false; // Techs and Supervisors without geofences cannot edit globally
         }
         return true; 
@@ -1655,7 +1664,7 @@
 
         const comments = data.comments || [];
         const legacyNote = data.description || data.text || data.note || "";
-        const canModerateComments = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(currentUserProfile.role);
+        const canModerateComments = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(getCurrentUserRole());
 
         let htmlParts = [];
 
@@ -1786,7 +1795,7 @@
     };
 
     window.deletePinComment = async function(pinId, commentTimestamp, fromCommentsModal = false) {
-      const canModerate = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(currentUserProfile.role);
+      const canModerate = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(getCurrentUserRole());
       if (!canModerate) {
         alert("Permission denied: You do not have permission to delete comments.");
         return;
@@ -2092,14 +2101,15 @@
 
       const pinLat = pinData.lat ?? pinData.latitude;
       const pinLng = pinData.lng ?? pinData.longitude;
-      if (['Tech', 'Supervisor'].includes(currentUserProfile?.role) && pinLat != null && pinLng != null) {
+      if (['Tech', 'Supervisor'].includes(getCurrentUserRole()) && pinLat != null && pinLng != null) {
         if (!isWithinAllowedGeofences(pinLat, pinLng)) {
           alert("Action blocked: This pin is outside your allowed editing geofence.");
           return;
         }
       }
       
-      const isPrivileged = currentUserProfile && ['super_admin', 'Owner', 'Manager'].includes(currentUserProfile.role);
+      const activeRole = getCurrentUserRole();
+      const canManageUrgentAlert = canManagePulsingAlerts(activeRole);
      
       const idField = document.getElementById("edit-pin-id");
       const titleField = document.getElementById("edit-title");
@@ -2110,12 +2120,17 @@
       if (titleField) titleField.value = pinData.title || "";
       
       if (colorField) {
+        const alertOpt = colorField.querySelector('option[value="pulsing_alert"]');
+        if (alertOpt) {
+          alertOpt.style.display = canManageUrgentAlert ? '' : 'none';
+          alertOpt.disabled = !canManageUrgentAlert;
+        }
         colorField.value = pinData.color || "purple";
-        if (pinData.color === "pulsing_alert" && !isPrivileged) {
+        if (pinData.color === "pulsing_alert" && !canManageUrgentAlert) {
           colorField.disabled = true;
           colorField.style.backgroundColor = "#f1f5f9";
           colorField.style.cursor = "not-allowed";
-          colorField.title = "Only Super Admins and Owners can change Urgent Alert status.";
+          colorField.title = "Only Supervisors, Managers, Owners, and Super Admins can change Urgent Alert status.";
         } else {
           colorField.disabled = false;
           colorField.style.backgroundColor = "#ffffff";
@@ -2128,7 +2143,8 @@
         const existingDesc = pinData.description || pinData.text || pinData.note || "";
         descField.value = existingDesc;
 
-        if (existingDesc.trim() !== "" && !isPrivileged) {
+        const canEditLockedDesc = ['super_admin', 'Owner', 'Manager'].includes(activeRole);
+        if (existingDesc.trim() !== "" && !canEditLockedDesc) {
           descField.readOnly = true;
           descField.style.backgroundColor = "#f1f5f9";
           descField.style.color = "#475569";
@@ -2155,7 +2171,7 @@
             const timeString = isNaN(timestamp) ? 'Recent' : timestamp.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             const username = comment.userEmail ? comment.userEmail.split('@')[0] : 'Unknown';
             
-            const canModerateComments = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(currentUserProfile.role);
+            const canModerateComments = currentUserProfile && ['super_admin', 'Owner', 'Manager', 'Supervisor'].includes(getCurrentUserRole());
             const deleteBtn = canModerateComments 
               ? `<button type="button" onclick="deletePinComment('${id}', '${comment.timestamp}')" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: bold; font-size: 12px; float: right;" title="Delete comment">✕</button>` 
               : '';
@@ -2210,7 +2226,7 @@
         alert("Action blocked: You cannot edit a pin created by someone with a higher role.");
         return;
       }
-      if (entry && entry.data && ['Tech', 'Supervisor'].includes(currentUserProfile?.role)) {
+      if (entry && entry.data && ['Tech', 'Supervisor'].includes(getCurrentUserRole())) {
         const pinLat = entry.data.lat ?? entry.data.latitude;
         const pinLng = entry.data.lng ?? entry.data.longitude;
         if (pinLat != null && pinLng != null && !isWithinAllowedGeofences(pinLat, pinLng)) {
@@ -2232,11 +2248,11 @@
         const activityEntry = createActivityEntry("Updated pin details");
 	
         const editColorSelect = document.getElementById("edit-color");
-        const userRole = currentUserProfile?.role || currentUserProfile?.userRole || "User";
-        const isPrivileged = ['super_admin', 'Owner'].includes(userRole);
+        const userRole = getCurrentUserRole();
+        const canAssignAlert = canManagePulsingAlerts(userRole);
 
-        if (color === "pulsing_alert" && !isPrivileged && (!editColorSelect || !editColorSelect.disabled)) {
-          showAppModal("Permission Denied", "Only Super Admins and Owners can assign Pulsing Red Alerts.");
+        if (color === "pulsing_alert" && !canAssignAlert && (!editColorSelect || !editColorSelect.disabled)) {
+          showAppModal("Permission Denied", "Only Supervisors, Managers, Owners, and Super Admins can assign Pulsing Red Alerts.");
           return;
         }
 
@@ -2274,7 +2290,7 @@
         const pinLat = entry.data.lat ?? entry.data.latitude;
         const pinLng = entry.data.lng ?? entry.data.longitude;
         
-        if (['Tech', 'Supervisor'].includes(currentUserProfile?.role) && pinLat != null && pinLng != null && typeof isWithinAllowedGeofences === 'function') {
+        if (['Tech', 'Supervisor'].includes(getCurrentUserRole()) && pinLat != null && pinLng != null && typeof isWithinAllowedGeofences === 'function') {
           if (!isWithinAllowedGeofences(pinLat, pinLng)) {
             alert("Action blocked: This pin is outside your allowed editing geofence.");
             return;
@@ -2799,7 +2815,7 @@
         alert("Action blocked: You cannot delete photos from a pin created by someone with a higher role.");
         return;
       }
-      if (entry && entry.data && ['Tech', 'Supervisor'].includes(currentUserProfile?.role)) {
+      if (entry && entry.data && ['Tech', 'Supervisor'].includes(getCurrentUserRole())) {
         const pinLat = entry.data.lat ?? entry.data.latitude;
         const pinLng = entry.data.lng ?? entry.data.longitude;
         if (pinLat != null && pinLng != null && !isWithinAllowedGeofences(pinLat, pinLng)) {
